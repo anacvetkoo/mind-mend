@@ -1,0 +1,269 @@
+Please rebuild and complete the MindMend app with proper screen navigation, role-based access (User / Therapist / Admin), and all missing screens. The existing design system must stay exactly the same (Otto otter mascot, Outfit font, lavender/mint/purple palette, rounded cards, soft shadows).
+
+1. ROLE-BASED SYSTEM
+The app must support 3 different user roles. After login, the user selects or is assigned a role:
+
+User — regular app user (patient/client)
+Therapist — licensed professional who publishes content and chats with users
+Admin — manages users, therapists, and content
+
+Store the active role in app state. Show different navigation and screens based on role.
+
+2. NAVIGATION STRUCTURE
+User Bottom Navigation (5 tabs):
+
+🏠 Home
+📖 Journal
+❤️ Check-in (floating center button)
+💬 Chat
+👤 Profile
+
+Therapist Bottom Navigation (5 tabs):
+
+🏠 Dashboard
+📚 My Content
+➕ Add Content (floating center button)
+💬 Messages
+👤 Profile
+
+Admin Bottom Navigation (4 tabs):
+
+🏠 Overview
+👥 Users
+🩺 Therapists
+⚙️ Settings
+
+
+3. ALL SCREENS TO CREATE/FIX
+USER SCREENS:
+A) Home Dashboard (already exists — keep it)
+
+Tapping "Find a Therapist" card → navigates to Therapist List screen
+Tapping "Explore Content" → navigates to Content Library screen
+Tapping "Start Check-in" → opens Mood Check-in flow
+
+B) Content Library (already exists — keep it)
+
+Tapping any content card → navigates to Content Detail screen
+
+C) Content Detail (FIX THIS SCREEN)
+
+Fix the layout so it flows naturally top to bottom with no broken gaps:
+
+Gradient header (title, therapist, duration, back button, bookmark)
+Dynamic section (breathing animation OR audio player OR step cards)
+"About this session" card — directly below, no large gap
+"About the Therapist" card with "View Profile" button → navigates to Therapist Profile screen
+"More from this therapist" horizontal scroll
+"You might also like" cards
+
+
+Fix: remove all excessive empty space between cards
+Fix: consistent 16px padding and spacing throughout
+
+D) Therapist List Screen (NEW)
+
+Search bar at top
+Filter chips: All / Anxiety / Depression / Relationships / Sleep / Burnout
+Therapist cards showing:
+
+Avatar, name, specialization
+Star rating + number of reviews
+Availability badge (Available Now / Busy)
+Tags (CBT, Mindfulness, etc.)
+"View Profile" button → navigates to Therapist Profile screen
+"Message" button → navigates to Chat screen with that therapist
+
+
+
+E) Therapist Profile Screen (NEW)
+
+Full profile page:
+
+Large header with gradient background
+Therapist photo (large, circular)
+Name, title, specialization
+Star rating + reviews count
+Short bio paragraph
+Specialization tags (pill badges)
+Statistics row: years of experience, sessions completed, rating
+"Their Content" section — horizontal scroll of their published content cards, tapping one → Content Detail screen
+3 action buttons at bottom:
+
+"Send Message" → Chat screen with this therapist
+"Voice Call" → Call screen
+"Video Call" → Video Call screen
+
+
+
+
+
+F) Chat Screen (FIX — currently broken/missing)
+
+List of conversations (inbox view):
+
+AI Companion chat (Otto the otter)
+Individual therapist chats
+Each row: avatar, name, last message preview, timestamp, unread badge
+Tapping a conversation → opens individual Chat Conversation screen
+
+
+
+G) Chat Conversation Screen (NEW)
+
+Modern messenger UI
+Header: back button, therapist/AI avatar + name + online status
+Message bubbles (user = right/lavender, therapist = left/white)
+Typing indicator (3 dots animation)
+Input bar at bottom: text field + send button + attachment icon + voice message icon
+Otto mascot appears as AI companion with typing animation when chatting with AI
+
+H) Call Screen (NEW)
+
+Full screen UI shown during an active voice call
+Calming gradient background (lavender to soft purple)
+Large circular therapist avatar in center
+Therapist name + "Voice Call" label
+Call timer (00:00 counting up)
+4 action buttons: Mute / Speaker / Hold / End Call (red)
+Otto mascot small in corner for emotional support
+
+I) Video Call Screen (NEW)
+
+Full screen video call UI
+Large area = therapist video feed (gradient placeholder)
+Small corner box = user self-view
+Therapist name overlay at top
+Call timer
+Bottom action bar: Mute / Camera toggle / End Call (red) / Chat button
+Soft overlay controls that auto-hide
+
+J) Journal History (already exists — keep it)
+K) Profile Screen — User (already exists — keep it)
+
+Add: role badge showing "User"
+
+
+THERAPIST SCREENS:
+A) Therapist Dashboard (NEW)
+
+Welcome header with Otto mascot
+Stats cards: Total Sessions, Active Clients, Content Published, Rating
+"My Clients" section — list of recent client avatars + names
+"My Published Content" section — horizontal scroll of their content cards
+"Upcoming Sessions" section — schedule cards with client name, time, type (chat/call/video)
+Quick action button: "Publish New Content"
+
+B) My Content Screen (NEW — Therapist only)
+
+List of all content published by this therapist
+Each card: title, category, duration, views count, likes count, edit button
+Filter tabs: All / Relaxation / Breathing / Sound Therapy
+Empty state with Otto mascot if no content yet
+
+C) Add/Edit Content Screen (NEW — Therapist only)
+
+Form to publish new content:
+
+Title input
+Category selector (Relaxation Exercise / Breathing Technique / Sound Therapy)
+Description textarea
+Duration input
+Difficulty selector (Beginner / Intermediate / Advanced)
+For Relaxation: add steps (add/remove step cards with title + description)
+For Breathing: select technique (4-7-8 / Box / etc.) and timing
+For Sound Therapy: upload audio file option (UI only)
+"Publish" button (lavender gradient, full width)
+"Save as Draft" button (outlined)
+
+
+
+D) Therapist Messages Screen (NEW — Therapist only)
+
+Same inbox UI as User chat list
+Shows all client conversations
+Each row: client avatar, name, last message, timestamp, unread count
+Tapping → opens Chat Conversation screen
+
+E) Therapist Profile Screen — own profile (NEW)
+
+View and edit their own profile
+Edit bio, specializations, profile photo
+Toggle availability (Available / Busy)
+View their stats and reviews
+
+
+ADMIN SCREENS:
+A) Admin Overview (NEW)
+
+Stats dashboard:
+
+Total Users, Total Therapists, Total Content, Active Sessions
+Simple bar chart of daily active users
+
+
+Recent activity feed
+Quick actions: Add Therapist, Review Content, Manage Users
+
+B) Users Management (NEW)
+
+List of all users with search
+Each row: avatar, name, email, join date, status (Active/Suspended)
+Tap user → view profile, suspend/activate account
+
+C) Therapists Management (NEW)
+
+List of all therapists
+Each row: avatar, name, specialization, status (Approved/Pending/Suspended)
+Pending therapists shown first with "Approve" / "Reject" buttons
+Tap therapist → view full profile
+
+D) Admin Settings (NEW)
+
+App configuration options
+Notification settings
+Content moderation settings
+
+
+4. NAVIGATION CONNECTIONS (critical — wire everything up)
+In App.tsx, connect ALL screens so every button navigates correctly:
+User flow:
+Home → [Check-in button] → MoodCheckIn → AIAnalysis → Home
+Home → [Explore button] → ContentLibrary → ContentDetail → TherapistProfile → ChatConversation
+Home → [Find Therapist button] → TherapistList → TherapistProfile
+TherapistProfile → [Send Message] → ChatConversation
+TherapistProfile → [Voice Call] → CallScreen
+TherapistProfile → [Video Call] → VideoCallScreen
+ChatList → [tap conversation] → ChatConversation
+BottomNav → all main screens
+
+Therapist flow:
+TherapistDashboard → [Publish New] → AddContent
+MyContent → [Edit card] → EditContent
+TherapistMessages → [tap client] → ChatConversation
+
+Admin flow:
+AdminOverview → UsersManagement
+AdminOverview → TherapistsManagement
+Pass the correct props between screens (therapist name, avatar, id) so the Chat and Call screens show the right person.
+
+5. ROLE SWITCHER (for demo/testing)
+On the Login/Auth screen, add 3 demo login buttons:
+
+"Continue as User" → loads User app
+"Continue as Therapist" → loads Therapist app
+"Continue as Admin" → loads Admin app
+
+This makes it easy to preview all 3 versions of the app.
+
+6. DESIGN RULES (keep consistent throughout)
+
+Outfit font everywhere
+Pastel palette: lavender #C4B5FD, mint #86EFAC, soft blue #93C5FD, warm white #FAFAFA, soft purple #7C3AED
+All cards: 16px+ border radius, soft drop shadows
+Otto otter mascot appears in: empty states, loading, AI chat, dashboard greetings
+Bottom navigation always visible on all main screens
+Mobile screen: 390x844px
+16px horizontal padding on all screens
+Smooth motion/framer-motion animations on screen transitions
+All buttons: minimum 48px touch target height
