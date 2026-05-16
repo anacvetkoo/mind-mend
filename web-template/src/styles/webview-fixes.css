@@ -1,0 +1,21 @@
+/* Fixes for running the Figma Make Vite app inside Expo WebView */
+html,
+body,
+#root {
+  margin: 0 !important;
+  padding: 0 !important;
+  width: 100% !important;
+  min-height: 100% !important;
+  background: #FFFBF5 !important;
+  overflow-x: hidden !important;
+  -webkit-text-size-adjust: 100% !important;
+  overscroll-behavior: none !important;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  touch-action: manipulation;
+}

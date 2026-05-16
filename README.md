@@ -7,53 +7,46 @@ Aplikacija združuje spremljanje razpoloženja, AI analizo, sprostitvene vsebine
 
 # Opis projekta
 
+Projekt je izdelan kot kombinacija:
+
+- React Native + Expo mobilne aplikacije
+- React + Vite spletnega vmesnika (Figma Make template)
+
+Trenutno aplikacija deluje tako, da se originalni Figma Make frontend zažene kot spletna aplikacija (Vite development server), nato pa se preko `react-native-webview` prikaže znotraj Expo mobilne aplikacije.
+
+To omogoča:
+
+- identičen izgled kot v Figma Make templatu
+- identične animacije
+- identičen flow med stranmi
+- hitrejši razvoj UI-ja
+- ohranitev vseh funkcionalnosti iz templata
+
+Mobilna aplikacija je zato trenutno tehnično:
+- native Expo aplikacija
+- ki znotraj sebe prikazuje React/Vite frontend preko WebView komponente
 
 ---
 
 # Tehnologije
 
+## Mobilna aplikacija
 - React Native
 - Expo
-- JavaScript
+- React Native WebView
+
+## Spletni frontend
+- React
+- Vite
+- TypeScript
+- TailwindCSS
+
+## Backend / Baza
 - Firebase
+
+## Design
 - Figma
-
----
-
-# Navodila za zagon projekta
-
-## Kloniranje repozitorija
-
-```bash
-git clone https://github.com/anacvetkoo/mind-mend.git
-cd mind-mend
-```
-
-## Namestitev odvisnosti
-
-```bash
-npm install
-```
-
-## Zagon Expo razvojnega strežnika
-
-```bash
-npx expo start
-```
-
-## Web Preview (opcijsko)
-
-Če web preview ne deluje, namestite dodatne odvisnosti:
-
-```bash
-npx expo install react-dom react-native-web
-```
-
-Nato v Expo terminalu pritisnite:
-
-```bash
-w
-```
+- Figma Make
 
 ---
 
@@ -62,17 +55,150 @@ w
 ```txt
 mind-mend/
 │
-├── assets/
 ├── App.js
 ├── package.json
-├── package-lock.json
-└── README.md
+├── README.md
+│
+├── web-template/
+│   ├── src/
+│   ├── package.json
+│   ├── vite.config.ts
+│   └── ...
+│
+└── assets/
+
+# Namestitev projekta
+
+## 1. Kloniranje repozitorija
+
+```bash
+git clone https://github.com/anacvetkoo/mind-mend.git
+cd mind-mend
 ```
 
 ---
 
-# Ekipa
+# Prvi setup projekta
 
-- Ana
-- Hana
-- Živa
+## 1. Namestitev Expo odvisnosti
+
+V root mapi projekta:
+
+```bash
+npm install
+```
+
+## 2. Namestitev WebView
+
+```bash
+npm install react-native-webview
+```
+
+## 3. Setup web-template projekta
+
+Premakni se v mapo:
+
+```bash
+cd web-template
+```
+
+Namesti odvisnosti:
+
+```bash
+npm install
+```
+
+Če pride do dependency napake:
+
+```bash
+npm install --legacy-peer-deps
+```
+
+---
+
+# Zagon projekta
+
+Projekt potrebuje DVA terminala.
+
+---
+
+# TERMINAL 1 – Web frontend
+
+Premakni se v `web-template`:
+
+```bash
+cd web-template
+```
+
+Zaženi Vite development server:
+
+```bash
+npm run dev -- --host 0.0.0.0
+```
+
+Po zagonu terminal izpiše nekaj takega:
+
+```txt
+Local:   http://localhost:5173/
+Network: http://192.168.x.x:5173/
+```
+
+POMEMBNO:  
+uporabi `Network` URL.
+
+---
+
+# TERMINAL 2 – Expo mobilna aplikacija
+
+Vrni se v root projekta:
+
+```bash
+cd ..
+```
+
+Zaženi Expo:
+
+```bash
+npx expo start -c
+```
+
+---
+
+# Nastavitev App.js
+
+V `App.js` mora biti nastavljen pravilen URL:
+
+```js
+const WEB_APP_URL = "http://192.168.x.x:5173";
+```
+
+IP mora biti enak kot ga izpiše Vite terminal pod `Network`.
+
+Primer:
+
+```js
+const WEB_APP_URL = "http://192.168.1.23:5173";
+```
+
+---
+
+# Kako aplikacija trenutno deluje
+
+Trenutna arhitektura:
+
+```txt
+React/Vite frontend
+↓
+Vite development server
+↓
+React Native WebView
+↓
+Expo mobilna aplikacija
+↓
+Android/iOS naprava
+```
+
+To pomeni:
+
+- frontend dejansko teče kot spletna aplikacija
+- Expo aplikacija pa ga prikazuje kot mobilno aplikacijo preko WebView-a
