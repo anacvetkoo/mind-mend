@@ -114,11 +114,27 @@ npm install
 npm install --legacy-peer-deps
 ```
 
+## 4. Ustvari .env datoteko
+V root mapi (`mind-mend/`) ustvari datoteko `.env` — **vsak razvijalec mora ustvariti svojo lokalno kopijo!**
+
+Za pomoč si poglej `.env.example`:
+```bash
+cp .env.example .env
+```
+
+Nato v `.env` nastavi svoj IP (glej korak Terminal 1 spodaj):
+
+```bash
+EXPO_PUBLIC_WEB_APP_URL=http://192.168.x.x:5173
+```
+
+> ⚠️ `.env` je dodan v `.gitignore` in se ne committa v repozitorij. Vsak razvijalec ima svoj lokalni IP!
+
 ---
 
 # Zagon projekta
 
-Projekt potrebuje DVA terminala.
+Projekt potrebuje **DVA terminala**.
 
 ---
 
@@ -143,8 +159,11 @@ Local:   http://localhost:5173/
 Network: http://192.168.x.x:5173/
 ```
 
-POMEMBNO:  
-uporabi `Network` URL.
+> ⚠️ **POMEMBNO:** Kopiraj `Network` URL in ga nastavi v svoji `.env` datoteki:
+
+```bash
+EXPO_PUBLIC_WEB_APP_URL=http://192.168.x.x:5173
+```
 
 ---
 
@@ -160,24 +179,6 @@ Zaženi Expo:
 
 ```bash
 npx expo start -c
-```
-
----
-
-# Nastavitev App.js
-
-V `App.js` mora biti nastavljen pravilen URL:
-
-```js
-const WEB_APP_URL = "http://192.168.x.x:5173";
-```
-
-IP mora biti enak kot ga izpiše Vite terminal pod `Network`.
-
-Primer:
-
-```js
-const WEB_APP_URL = "http://192.168.1.23:5173";
 ```
 
 ---
