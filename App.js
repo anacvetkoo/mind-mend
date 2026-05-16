@@ -2,7 +2,7 @@ import React from "react";
 import { SafeAreaView, StatusBar, StyleSheet } from "react-native";
 import { WebView } from "react-native-webview";
 
-const WEB_APP_URL = "http://192.168.1.12:5173";
+const WEB_APP_URL = process.env.EXPO_PUBLIC_WEB_APP_URL;
 
 export default function App() {
   return (
