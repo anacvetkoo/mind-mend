@@ -203,3 +203,12 @@ To pomeni:
 
 - frontend dejansko teče kot spletna aplikacija
 - Expo aplikacija pa ga prikazuje kot mobilno aplikacijo preko WebView-a
+
+---
+
+# Generiranje Google Gemini API Key
+1. Pojdi na https://aistudio.google.com/prompts/new_chat
+2. prijava z google računom
+3. Pojdi na Dashboard -> API Keys -> Create API Key
+4. Poimenuj EXPO_PUBLIC_GEMINI_API_KEY, izberi projekt MindMend
+5. Kopiraj ustvarjen ključ in ga prilepi v **.env** datoteko kot: **EXPO_PUBLIC_GEMINI_API_KEY=dobljen_ključ**
