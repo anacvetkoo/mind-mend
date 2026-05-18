@@ -83,3 +83,21 @@ export const updateUserDisplayName = async (
   const userRef = doc(db, 'users', uid);
   await setDoc(userRef, { displayName }, { merge: true });
 };
+
+export const updateTherapistProfile = async (
+  uid: string,
+  profileData: {
+    name?: string;
+    title?: string;
+    specializations?: string[];
+    fieldOfWork?: string;
+    bio?: string;
+    yearsOfExperience?: string;
+    education?: string;
+    licenseNumber?: string;
+    profileImage?: string;
+  }
+): Promise<void> => {
+  const therapistRef = doc(db, 'users', uid);
+  await setDoc(therapistRef, profileData, { merge: true });
+};

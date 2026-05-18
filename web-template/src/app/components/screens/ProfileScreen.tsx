@@ -37,16 +37,19 @@ interface ProfileScreenProps {
   onNavigateToSavedContent?: () => void;
   onEditProfile?: () => void;
   onUpdateName?: (name: string) => void;
+  therapistProfileProp?: any;
 }
 
-export function ProfileScreen({ onLogout, userName = 'Alex', userRole = 'User', darkMode = false, onToggleDarkMode, onNavigateToLikedContent, onNavigateToSavedContent, onEditProfile, onUpdateName }: ProfileScreenProps) {
+export function ProfileScreen({ onLogout, userName = 'Alex', userRole = 'User', darkMode = false, onToggleDarkMode, onNavigateToLikedContent, onNavigateToSavedContent, onEditProfile, onUpdateName, therapistProfileProp }: ProfileScreenProps) {
   const [availability, setAvailability] = useState<TherapistAvailability | null>(null);
   const [showAvailabilitySetup, setShowAvailabilitySetup] = useState(false);
   const [showBlockedTimeManagement, setShowBlockedTimeManagement] = useState(false);
   const [showNameEditor, setShowNameEditor] = useState(false);
   const [editedName, setEditedName] = useState(userName);
-
   const [userEmail, setUserEmail] = useState('');
+
+  const isTherapist = userRole === 'Therapist';
+  const therapistProfile = therapistProfileProp ?? null;
 
   useEffect(() => {
     import('../../services/firebaseConfig').then(({ auth }) => {
@@ -60,13 +63,6 @@ export function ProfileScreen({ onLogout, userName = 'Alex', userRole = 'User', 
   const [cameraPermission, setCameraPermission] = useState(() => localStorage.getItem('cameraPermission') === 'true');
   const [microphonePermission, setMicrophonePermission] = useState(() => localStorage.getItem('microphonePermission') === 'true');
   const [biometricAuth, setBiometricAuth] = useState(() => localStorage.getItem('biometricAuth') === 'true');
-  const isTherapist = userRole === 'Therapist';
-
-  // Load therapist profile if exists
-  const therapistProfile = isTherapist ? (() => {
-    const saved = localStorage.getItem('therapistProfile');
-    return saved ? JSON.parse(saved) : null;
-  })() : null;
 
   const handleNotificationsToggle = () => {
     const newValue = !notificationsEnabled;
@@ -143,7 +139,6 @@ export function ProfileScreen({ onLogout, userName = 'Alex', userRole = 'User', 
     );
   }
 
-  // Name editor modal
   if (showNameEditor) {
     return (
       <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-6">
@@ -187,7 +182,6 @@ export function ProfileScreen({ onLogout, userName = 'Alex', userRole = 'User', 
   return (
     <div className="min-h-screen bg-background pb-24">
       <div className="max-w-md mx-auto px-6 py-8">
-        {/* Profile Header */}
         <motion.div
           initial={{ opacity: 0, y: -20 }}
           animate={{ opacity: 1, y: 0 }}
@@ -233,7 +227,6 @@ export function ProfileScreen({ onLogout, userName = 'Alex', userRole = 'User', 
           )}
         </motion.div>
 
-        {/* Content Collections */}
         {!isTherapist && (
           <motion.div
             initial={{ opacity: 0, y: 20 }}
@@ -260,7 +253,6 @@ export function ProfileScreen({ onLogout, userName = 'Alex', userRole = 'User', 
           </motion.div>
         )}
 
-        {/* Therapist Availability Section */}
         {isTherapist && (
           <motion.div
             initial={{ opacity: 0, y: 20 }}
@@ -296,7 +288,6 @@ export function ProfileScreen({ onLogout, userName = 'Alex', userRole = 'User', 
               </Card>
             ) : (
               <Card>
-                {/* Working Days */}
                 <div className="mb-4">
                   <h4 className="text-sm text-muted-foreground mb-2">Working Days</h4>
                   <div className="flex flex-wrap gap-2">
@@ -307,8 +298,6 @@ export function ProfileScreen({ onLogout, userName = 'Alex', userRole = 'User', 
                     ))}
                   </div>
                 </div>
-
-                {/* Session Settings */}
                 <div className="mb-4 grid grid-cols-2 gap-4">
                   <div>
                     <h4 className="text-sm text-muted-foreground mb-1">Appointment Duration</h4>
@@ -319,8 +308,6 @@ export function ProfileScreen({ onLogout, userName = 'Alex', userRole = 'User', 
                     <p className="text-foreground">{availability.breakDuration} minutes</p>
                   </div>
                 </div>
-
-                {/* Appointment Types */}
                 <div className="mb-4">
                   <h4 className="text-sm text-muted-foreground mb-2">Appointment Types</h4>
                   <div className="flex flex-wrap gap-2">
@@ -335,8 +322,6 @@ export function ProfileScreen({ onLogout, userName = 'Alex', userRole = 'User', 
                     })}
                   </div>
                 </div>
-
-                {/* Manage Time Off Button */}
                 <button
                   onClick={() => setShowBlockedTimeManagement(true)}
                   className="w-full py-3 rounded-xl bg-[var(--muted)] text-foreground hover:bg-[var(--muted)]/70 transition-colors"
@@ -349,7 +334,6 @@ export function ProfileScreen({ onLogout, userName = 'Alex', userRole = 'User', 
           </motion.div>
         )}
 
-        {/* Settings */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
@@ -358,58 +342,34 @@ export function ProfileScreen({ onLogout, userName = 'Alex', userRole = 'User', 
         >
           <h3 className="text-xl text-foreground mb-4">Settings</h3>
           <Card className="divide-y divide-[var(--border)]">
-            <button
-              onClick={handleNotificationsToggle}
-              className="flex items-center justify-between w-full py-4 hover:bg-[var(--muted)] transition-colors px-2 -mx-2 rounded-xl"
-            >
+            <button onClick={handleNotificationsToggle} className="flex items-center justify-between w-full py-4 hover:bg-[var(--muted)] transition-colors px-2 -mx-2 rounded-xl">
               <div className="flex items-center gap-3">
                 <Bell className="w-5 h-5 text-muted-foreground" />
                 <span>Notifications</span>
               </div>
-              <div className={`w-12 h-6 rounded-full relative transition-colors duration-300 ease-in-out ${
-                notificationsEnabled ? 'bg-gradient-to-r from-[var(--lavender)] to-[var(--soft-purple)]' : 'bg-[var(--muted)]'
-              }`}>
-                <div className={`absolute top-1 w-4 h-4 bg-card rounded-full shadow-sm transition-all duration-300 ease-in-out ${
-                  notificationsEnabled ? 'right-1' : 'left-1'
-                }`} />
+              <div className={`w-12 h-6 rounded-full relative transition-colors duration-300 ease-in-out ${notificationsEnabled ? 'bg-gradient-to-r from-[var(--lavender)] to-[var(--soft-purple)]' : 'bg-[var(--muted)]'}`}>
+                <div className={`absolute top-1 w-4 h-4 bg-card rounded-full shadow-sm transition-all duration-300 ease-in-out ${notificationsEnabled ? 'right-1' : 'left-1'}`} />
               </div>
             </button>
-            <button
-              onClick={onToggleDarkMode}
-              className="flex items-center justify-between w-full py-4 hover:bg-[var(--muted)] transition-colors px-2 -mx-2 rounded-xl"
-            >
+            <button onClick={onToggleDarkMode} className="flex items-center justify-between w-full py-4 hover:bg-[var(--muted)] transition-colors px-2 -mx-2 rounded-xl">
               <div className="flex items-center gap-3">
                 <Moon className="w-5 h-5 text-muted-foreground" />
                 <span>Dark Mode</span>
               </div>
-              <div className={`w-12 h-6 rounded-full relative transition-colors duration-300 ease-in-out ${
-                darkMode ? 'bg-gradient-to-r from-[var(--lavender)] to-[var(--soft-purple)]' : 'bg-[var(--muted)]'
-              }`}>
-                <div className={`absolute top-1 w-4 h-4 bg-card rounded-full shadow-sm transition-all duration-300 ease-in-out ${
-                  darkMode ? 'right-1' : 'left-1'
-                }`} />
+              <div className={`w-12 h-6 rounded-full relative transition-colors duration-300 ease-in-out ${darkMode ? 'bg-gradient-to-r from-[var(--lavender)] to-[var(--soft-purple)]' : 'bg-[var(--muted)]'}`}>
+                <div className={`absolute top-1 w-4 h-4 bg-card rounded-full shadow-sm transition-all duration-300 ease-in-out ${darkMode ? 'right-1' : 'left-1'}`} />
               </div>
             </button>
-            <button
-              onClick={handleBiometricToggle}
-              className="flex items-center justify-between w-full py-4 hover:bg-[var(--muted)] transition-colors px-2 -mx-2 rounded-xl"
-            >
+            <button onClick={handleBiometricToggle} className="flex items-center justify-between w-full py-4 hover:bg-[var(--muted)] transition-colors px-2 -mx-2 rounded-xl">
               <div className="flex items-center gap-3">
                 <Fingerprint className="w-5 h-5 text-muted-foreground" />
                 <span>Biometric Auth</span>
               </div>
-              <div className={`w-12 h-6 rounded-full relative transition-colors duration-300 ease-in-out ${
-                biometricAuth ? 'bg-gradient-to-r from-[var(--lavender)] to-[var(--soft-purple)]' : 'bg-[var(--muted)]'
-              }`}>
-                <div className={`absolute top-1 w-4 h-4 bg-card rounded-full shadow-sm transition-all duration-300 ease-in-out ${
-                  biometricAuth ? 'right-1' : 'left-1'
-                }`} />
+              <div className={`w-12 h-6 rounded-full relative transition-colors duration-300 ease-in-out ${biometricAuth ? 'bg-gradient-to-r from-[var(--lavender)] to-[var(--soft-purple)]' : 'bg-[var(--muted)]'}`}>
+                <div className={`absolute top-1 w-4 h-4 bg-card rounded-full shadow-sm transition-all duration-300 ease-in-out ${biometricAuth ? 'right-1' : 'left-1'}`} />
               </div>
             </button>
-            <button
-              onClick={handleCameraToggle}
-              className="flex items-center justify-between w-full py-4 hover:bg-[var(--muted)] transition-colors px-2 -mx-2 rounded-xl"
-            >
+            <button onClick={handleCameraToggle} className="flex items-center justify-between w-full py-4 hover:bg-[var(--muted)] transition-colors px-2 -mx-2 rounded-xl">
               <div className="flex items-center gap-3">
                 <Camera className="w-5 h-5 text-muted-foreground" />
                 <div className="flex flex-col items-start">
@@ -417,18 +377,11 @@ export function ProfileScreen({ onLogout, userName = 'Alex', userRole = 'User', 
                   <span className="text-xs text-muted-foreground">For video calls and appointments</span>
                 </div>
               </div>
-              <div className={`w-12 h-6 rounded-full relative transition-colors duration-300 ease-in-out ${
-                cameraPermission ? 'bg-gradient-to-r from-[var(--lavender)] to-[var(--soft-purple)]' : 'bg-[var(--muted)]'
-              }`}>
-                <div className={`absolute top-1 w-4 h-4 bg-card rounded-full shadow-sm transition-all duration-300 ease-in-out ${
-                  cameraPermission ? 'right-1' : 'left-1'
-                }`} />
+              <div className={`w-12 h-6 rounded-full relative transition-colors duration-300 ease-in-out ${cameraPermission ? 'bg-gradient-to-r from-[var(--lavender)] to-[var(--soft-purple)]' : 'bg-[var(--muted)]'}`}>
+                <div className={`absolute top-1 w-4 h-4 bg-card rounded-full shadow-sm transition-all duration-300 ease-in-out ${cameraPermission ? 'right-1' : 'left-1'}`} />
               </div>
             </button>
-            <button
-              onClick={handleMicrophoneToggle}
-              className="flex items-center justify-between w-full py-4 hover:bg-[var(--muted)] transition-colors px-2 -mx-2 rounded-xl"
-            >
+            <button onClick={handleMicrophoneToggle} className="flex items-center justify-between w-full py-4 hover:bg-[var(--muted)] transition-colors px-2 -mx-2 rounded-xl">
               <div className="flex items-center gap-3">
                 <Mic className="w-5 h-5 text-muted-foreground" />
                 <div className="flex flex-col items-start">
@@ -436,18 +389,13 @@ export function ProfileScreen({ onLogout, userName = 'Alex', userRole = 'User', 
                   <span className="text-xs text-muted-foreground">For voice and video calls</span>
                 </div>
               </div>
-              <div className={`w-12 h-6 rounded-full relative transition-colors duration-300 ease-in-out ${
-                microphonePermission ? 'bg-gradient-to-r from-[var(--lavender)] to-[var(--soft-purple)]' : 'bg-[var(--muted)]'
-              }`}>
-                <div className={`absolute top-1 w-4 h-4 bg-card rounded-full shadow-sm transition-all duration-300 ease-in-out ${
-                  microphonePermission ? 'right-1' : 'left-1'
-                }`} />
+              <div className={`w-12 h-6 rounded-full relative transition-colors duration-300 ease-in-out ${microphonePermission ? 'bg-gradient-to-r from-[var(--lavender)] to-[var(--soft-purple)]' : 'bg-[var(--muted)]'}`}>
+                <div className={`absolute top-1 w-4 h-4 bg-card rounded-full shadow-sm transition-all duration-300 ease-in-out ${microphonePermission ? 'right-1' : 'left-1'}`} />
               </div>
             </button>
           </Card>
         </motion.div>
 
-        {/* Logout */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}

@@ -38,8 +38,8 @@ import { LikedContentScreen } from './components/screens/LikedContentScreen';
 import { SavedContentScreen } from './components/screens/SavedContentScreen';
 import type { TherapistAvailability } from './types/appointments';
 import { saveCheckIn } from './utils/checkInUtils';
-import { onAuthChange } from './services/auth';
-import { getUserDocument, updateUserDisplayName } from './services/users';
+import { onAuthChange, logout } from './services/auth';
+import { getUserDocument, updateUserDisplayName, updateTherapistProfile } from './services/users';
 
 type AppState = 'splash' | 'welcome' | 'auth' | 'questionnaire' | 'therapist-profile-setup' | 'app';
 
@@ -49,6 +49,10 @@ export default function App() {
   const [currentScreen, setCurrentScreen] = useState<string>('home');
   const [userData, setUserData] = useState({ name: localStorage.getItem('userName') || '' });
   const [therapistName, setTherapistName] = useState(localStorage.getItem('therapistName') || '');
+  const [therapistProfileData, setTherapistProfileData] = useState<any>(() => {
+    const saved = localStorage.getItem('therapistProfile');
+    return saved ? JSON.parse(saved) : null;
+  });
   const [darkMode, setDarkMode] = useState(false);
 
   const [showDailyCheckIn, setShowDailyCheckIn] = useState(false);
@@ -99,7 +103,12 @@ export default function App() {
       document.documentElement.classList.add('dark');
     }
 
+    let isFirstLoad = true;
+
     const unsubscribe = onAuthChange(async (firebaseUser) => {
+      if (!isFirstLoad) return;
+      isFirstLoad = false;
+
       if (firebaseUser) {
         const userDoc = await getUserDocument(firebaseUser.uid);
         if (userDoc) {
@@ -111,8 +120,25 @@ export default function App() {
           if (role === 'therapist') {
             const doc = userDoc as any;
             const fullName = `${doc.firstName || ''} ${doc.lastName || ''}`.trim();
-            setTherapistName(fullName);
-            localStorage.setItem('therapistName', fullName);
+            const displayName = (doc as any).name || fullName;
+            setTherapistName(displayName);
+            localStorage.setItem('therapistName', displayName);
+
+            const existingProfileRaw = localStorage.getItem('therapistProfile');
+            const existingProfile = existingProfileRaw ? JSON.parse(existingProfileRaw) : null;
+            const updatedProfile = {
+              name: (doc as any).name || existingProfile?.name || fullName,
+              profileImage: (doc as any).profileImage || existingProfile?.profileImage || '',
+              title: (doc as any).title || existingProfile?.title || '',
+              specializations: (doc as any).specializations || existingProfile?.specializations || [],
+              fieldOfWork: (doc as any).fieldOfWork || existingProfile?.fieldOfWork || '',
+              bio: (doc as any).bio || existingProfile?.bio || '',
+              yearsOfExperience: (doc as any).yearsOfExperience || existingProfile?.yearsOfExperience || '',
+              education: (doc as any).education || existingProfile?.education || '',
+              licenseNumber: (doc as any).licenseNumber || existingProfile?.licenseNumber || '',
+            };
+            localStorage.setItem('therapistProfile', JSON.stringify(updatedProfile));
+            setTherapistProfileData(updatedProfile);
             setCurrentScreen('dashboard');
           } else {
             const displayName = (userDoc as any).displayName || '';
@@ -125,7 +151,6 @@ export default function App() {
         }
       } else {
         const hasSeenWelcome = localStorage.getItem('hasSeenWelcome');
-        if (appState === 'splash') return;
         setAppState(hasSeenWelcome ? 'auth' : 'welcome');
       }
     });
@@ -171,6 +196,14 @@ export default function App() {
     setUserRole('user');
     setAppState('app');
     setCurrentScreen('home');
+
+    import('./services/firebaseConfig').then(({ auth }) => {
+      const currentUser = auth.currentUser;
+      if (currentUser && data.name) {
+        updateUserDisplayName(currentUser.uid, data.name);
+      }
+    });
+
     const hasSeenTutorial = localStorage.getItem('hasSeenTutorial');
     if (!hasSeenTutorial) {
       setTimeout(() => setShowTutorial(true), 500);
@@ -190,8 +223,25 @@ export default function App() {
         if (role === 'therapist') {
           const doc = userDoc as any;
           const fullName = `${doc.firstName || ''} ${doc.lastName || ''}`.trim();
-          setTherapistName(fullName);
-          localStorage.setItem('therapistName', fullName);
+          const displayName = (doc as any).name || fullName;
+          setTherapistName(displayName);
+          localStorage.setItem('therapistName', displayName);
+
+          const existingProfileRaw = localStorage.getItem('therapistProfile');
+          const existingProfile = existingProfileRaw ? JSON.parse(existingProfileRaw) : null;
+          const updatedProfile = {
+            name: (doc as any).name || existingProfile?.name || fullName,
+            profileImage: (doc as any).profileImage || existingProfile?.profileImage || '',
+            title: (doc as any).title || existingProfile?.title || '',
+            specializations: (doc as any).specializations || existingProfile?.specializations || [],
+            fieldOfWork: (doc as any).fieldOfWork || existingProfile?.fieldOfWork || '',
+            bio: (doc as any).bio || existingProfile?.bio || '',
+            yearsOfExperience: (doc as any).yearsOfExperience || existingProfile?.yearsOfExperience || '',
+            education: (doc as any).education || existingProfile?.education || '',
+            licenseNumber: (doc as any).licenseNumber || existingProfile?.licenseNumber || '',
+          };
+          localStorage.setItem('therapistProfile', JSON.stringify(updatedProfile));
+          setTherapistProfileData(updatedProfile);
         } else {
           const displayName = (userDoc as any).displayName || '';
           setUserData({ name: displayName });
@@ -200,37 +250,29 @@ export default function App() {
       }
     }
 
-    if (role === 'user' && !skipQuestionnaire) {
+    if (skipQuestionnaire) {
+      setAppState('app');
+      if (role === 'therapist') {
+        setCurrentScreen('dashboard');
+      } else {
+        setCurrentScreen('home');
+      }
+      return;
+    }
+
+    if (role === 'user') {
       localStorage.removeItem('dailyCheckInCompleted');
       localStorage.removeItem('lastDailyCheckInDate');
       localStorage.removeItem('dailyCheckIns');
       localStorage.removeItem('todayCheckIn');
-    }
-
-    if (role === 'user' && !skipQuestionnaire && !localStorage.getItem('hasSeenOnboarding')) {
+      localStorage.removeItem('hasSeenTutorial'); // ← DODANO
       setAppState('questionnaire');
       return;
     }
 
-    if (role === 'therapist' && !skipQuestionnaire && !localStorage.getItem('therapistProfileComplete')) {
+    if (role === 'therapist') {
       setAppState('therapist-profile-setup');
       return;
-    }
-
-    setAppState('app');
-
-    if (role === 'therapist') {
-      setCurrentScreen('dashboard');
-      if (!skipQuestionnaire) {
-        const hasSeenTherapistTutorial = localStorage.getItem('hasSeenTherapistTutorial');
-        if (!hasSeenTherapistTutorial) {
-          setTimeout(() => setShowTherapistTutorial(true), 500);
-        }
-      }
-    } else if (role === 'admin') {
-      setCurrentScreen('overview');
-    } else {
-      setCurrentScreen('home');
     }
   };
 
@@ -240,7 +282,9 @@ export default function App() {
     setCurrentScreen('home');
   };
 
-  const handleLogout = () => {
+  const handleLogout = async () => {
+    await logout();
+
     localStorage.removeItem('isAuthenticated');
     localStorage.removeItem('userRole');
     localStorage.removeItem('hasSeenTherapistTutorial');
@@ -248,12 +292,16 @@ export default function App() {
     localStorage.removeItem('therapistProfile');
     localStorage.removeItem('userName');
     localStorage.removeItem('therapistName');
+    localStorage.removeItem('currentAppState');
+    localStorage.removeItem('hasSeenOnboarding');
+    localStorage.removeItem('hasSeenTutorial'); // ← DODANO
 
     setAppState('auth');
     setUserRole('user');
     setCurrentScreen('home');
     setUserData({ name: '' });
     setTherapistName('');
+    setTherapistProfileData(null);
 
     setShowDailyCheckIn(false);
     setSelectedCheckIn(null);
@@ -301,11 +349,23 @@ export default function App() {
     setShowTherapistTutorial(false);
   };
 
-  const handleTherapistProfileSetupComplete = (profileData: TherapistProfileData) => {
+  const handleTherapistProfileSetupComplete = async (profileData: TherapistProfileData) => {
     localStorage.setItem('therapistProfile', JSON.stringify(profileData));
     localStorage.setItem('therapistProfileComplete', 'true');
     localStorage.setItem('isAuthenticated', 'true');
     localStorage.setItem('userRole', 'therapist');
+    setTherapistProfileData(profileData);
+    if (profileData.name) {
+      setTherapistName(profileData.name);
+      localStorage.setItem('therapistName', profileData.name);
+    }
+
+    const { auth } = await import('./services/firebaseConfig');
+    const currentUser = auth.currentUser;
+    if (currentUser) {
+      await updateTherapistProfile(currentUser.uid, profileData);
+    }
+
     setUserRole('therapist');
     setAppState('app');
     setCurrentScreen('dashboard');
@@ -315,8 +375,20 @@ export default function App() {
     }
   };
 
-  const handleTherapistProfileEdit = (profileData: TherapistProfileData) => {
+  const handleTherapistProfileEdit = async (profileData: TherapistProfileData) => {
     localStorage.setItem('therapistProfile', JSON.stringify(profileData));
+    setTherapistProfileData(profileData);
+    if (profileData.name) {
+      setTherapistName(profileData.name);
+      localStorage.setItem('therapistName', profileData.name);
+    }
+
+    const { auth } = await import('./services/firebaseConfig');
+    const currentUser = auth.currentUser;
+    if (currentUser) {
+      await updateTherapistProfile(currentUser.uid, profileData);
+    }
+
     setShowTherapistProfileEdit(false);
   };
 
@@ -342,10 +414,6 @@ export default function App() {
     }
   };
 
-
-
-
-
   if (appState === 'splash') {
     return <SplashScreen onComplete={handleSplashComplete} />;
   }
@@ -367,6 +435,7 @@ export default function App() {
       <TherapistProfileSetup
         onComplete={handleTherapistProfileSetupComplete}
         onSkip={() => {
+          localStorage.setItem('therapistProfileComplete', 'true');
           setAppState('app');
           setCurrentScreen('dashboard');
           const hasSeenTherapistTutorial = localStorage.getItem('hasSeenTherapistTutorial');
@@ -378,7 +447,6 @@ export default function App() {
     );
   }
 
-  // Modals/Overlays (on top of everything)
   if (showDailyCheckIn) {
     return (
       <DailyCheckIn
@@ -432,10 +500,10 @@ export default function App() {
   }
 
   if (showTherapistProfileEdit) {
-    const savedProfile = localStorage.getItem('therapistProfile');
-    const initialData: TherapistProfileData = savedProfile
-      ? JSON.parse(savedProfile)
-      : {
+    return (
+      <TherapistProfileEdit
+        onClose={() => setShowTherapistProfileEdit(false)}
+        initialData={therapistProfileData || {
           name: '',
           profileImage: '',
           title: '',
@@ -445,12 +513,7 @@ export default function App() {
           yearsOfExperience: '',
           education: '',
           licenseNumber: ''
-        };
-
-    return (
-      <TherapistProfileEdit
-        onClose={() => setShowTherapistProfileEdit(false)}
-        initialData={initialData}
+        }}
         onSave={handleTherapistProfileEdit}
       />
     );
@@ -520,7 +583,6 @@ export default function App() {
     );
   }
 
-  // Appointment booking flows
   if (showBookingFlow) {
     return (
       <BookAppointmentFlow
@@ -579,17 +641,13 @@ export default function App() {
           setCurrentScreen('appointments');
           alert('Appointment confirmed! Check your appointments to view details.');
         }}
-        onPaymentFailed={() => {
-          // Payment failed state is handled within the component
-        }}
+        onPaymentFailed={() => {}}
       />
     );
   }
 
-  // Main app screens based on role
   return (
     <div className="relative">
-      {/* USER SCREENS */}
       {userRole === 'user' && (
         <>
           {currentScreen === 'home' && (
@@ -652,7 +710,6 @@ export default function App() {
         </>
       )}
 
-      {/* THERAPIST SCREENS */}
       {userRole === 'therapist' && (
         <>
           {currentScreen === 'dashboard' && (
@@ -684,12 +741,12 @@ export default function App() {
               onNavigateToLikedContent={() => setShowLikedContent(true)}
               onNavigateToSavedContent={() => setShowSavedContent(true)}
               onEditProfile={() => setShowTherapistProfileEdit(true)}
+              therapistProfileProp={therapistProfileData}
             />
           )}
         </>
       )}
 
-      {/* ADMIN SCREENS */}
       {userRole === 'admin' && (
         <>
           {currentScreen === 'overview' && <AdminOverview />}
@@ -711,7 +768,6 @@ export default function App() {
 
       <BottomNav activeTab={currentScreen} onTabChange={handleTabChange} role={userRole} />
 
-      {/* App Tutorial */}
       {showTutorial && (
         <AppTutorial
           onComplete={handleTutorialComplete}
@@ -719,7 +775,6 @@ export default function App() {
         />
       )}
 
-      {/* Therapist Tutorial */}
       {showTherapistTutorial && (
         <TherapistTutorial
           onComplete={handleTherapistTutorialComplete}
