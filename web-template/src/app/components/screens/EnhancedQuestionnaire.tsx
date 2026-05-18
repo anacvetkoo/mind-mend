@@ -4,8 +4,27 @@ import { useTypingAnimation } from '../../hooks/useTypingAnimation';
 import { ChevronRight, Heart, Search, ArrowLeft } from 'lucide-react';
 import otterImage from '../../../imports/vidra.png';
 
+interface QuestionnaireOption {
+  id?: string;
+  value?: string;
+  label: string;
+  emoji?: string;
+}
+
+interface QuestionnaireQuestion {
+  id: string;
+  type: string;
+  question: string;
+  options?: QuestionnaireOption[];
+  min?: number;
+  max?: number;
+  labels?: string[];
+  searchable?: boolean;
+  supportiveText?: string;
+}
+
 interface EnhancedQuestionnaireProps {
-  onComplete: (data: any) => void;
+  onComplete: (data: any) => void | Promise<void>;
 }
 
 export function EnhancedQuestionnaire({ onComplete }: EnhancedQuestionnaireProps) {
@@ -32,7 +51,7 @@ export function EnhancedQuestionnaire({ onComplete }: EnhancedQuestionnaireProps
   );
 
   // Questions
-  const questions = [
+  const questions: QuestionnaireQuestion[] = [
     {
       id: 'healthGoal',
       type: 'single-select-cards',

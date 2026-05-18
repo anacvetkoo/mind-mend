@@ -40,7 +40,7 @@ import type { TherapistAvailability } from './types/appointments';
 import { saveCheckIn } from './utils/checkInUtils';
 import { onAuthChange, logout } from './services/auth';
 import { getUserDocument, updateUserDisplayName, updateTherapistProfile, updateTherapistAvailability, getTherapistAvailability } from './services/users';
-
+import { completeUserOnboarding } from './services/onboarding';
 
 type AppState = 'splash' | 'welcome' | 'auth' | 'questionnaire' | 'therapist-profile-setup' | 'app';
 
@@ -218,27 +218,29 @@ export default function App() {
     setAppState('auth');
   };
 
-  const handleQuestionnaireComplete = (data: any) => {
-    setUserData({ name: data.name || '' });
-    localStorage.setItem('hasSeenOnboarding', 'true');
-    localStorage.setItem('isAuthenticated', 'true');
-    localStorage.setItem('userRole', 'user');
-    setUserRole('user');
-    setAppState('app');
-    setCurrentScreen('home');
+const handleQuestionnaireComplete = async (data: any) => {
+  const { auth } = await import('./services/firebaseConfig');
+  const currentUser = auth.currentUser;
 
-    import('./services/firebaseConfig').then(({ auth }) => {
-      const currentUser = auth.currentUser;
-      if (currentUser && data.name) {
-        updateUserDisplayName(currentUser.uid, data.name);
-      }
-    });
+  if (currentUser) {
+    await completeUserOnboarding(currentUser.uid, data);
+  }
 
-    const hasSeenTutorial = localStorage.getItem('hasSeenTutorial');
-    if (!hasSeenTutorial) {
-      setTimeout(() => setShowTutorial(true), 500);
-    }
-  };
+  setUserData({ name: data.name || '' });
+  localStorage.setItem('userName', data.name || '');
+  localStorage.setItem('hasSeenOnboarding', 'true');
+  localStorage.setItem('isAuthenticated', 'true');
+  localStorage.setItem('userRole', 'user');
+
+  setUserRole('user');
+  setAppState('app');
+  setCurrentScreen('home');
+
+  const hasSeenTutorial = localStorage.getItem('hasSeenTutorial');
+  if (!hasSeenTutorial) {
+    setTimeout(() => setShowTutorial(true), 500);
+  }
+};
 
   const handleAuthComplete = async (role: UserRole, skipQuestionnaire: boolean = false) => {
     setUserRole(role);
