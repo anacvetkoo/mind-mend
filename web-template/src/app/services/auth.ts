@@ -41,20 +41,37 @@ export const loginWithEmail = async (
   }
 };
 
-export const loginWithGoogle = async (): Promise<AuthResult> => {
+export const loginWithGoogle = async (role: 'user' | 'therapist' = 'user'): Promise<AuthResult> => {
   try {
-    const credential = await signInWithPopup(auth, googleProvider);
-    const userDoc = await getUserDocument(credential.user.uid);
+    const isMobile = /Android|iPhone|iPad/i.test(navigator.userAgent);
 
-    if (!userDoc) {
-      await createUserDocument(credential.user.uid, {
-        email: credential.user.email ?? '',
-        displayName: credential.user.displayName ?? '',
-      });
-      return { success: true, role: 'user' };
+    if (isMobile) {
+      const { signInWithRedirect } = await import('firebase/auth');
+      await signInWithRedirect(auth, googleProvider);
+      return { success: true, role };
+    } else {
+      const credential = await signInWithPopup(auth, googleProvider);
+      const userDoc = await getUserDocument(credential.user.uid);
+
+      if (!userDoc) {
+        // Nov Google user — ustvari dokument z pravim role
+        if (role === 'therapist') {
+          await createTherapistDocument(credential.user.uid, {
+            email: credential.user.email ?? '',
+            firstName: credential.user.displayName?.split(' ')[0] ?? '',
+            lastName: credential.user.displayName?.split(' ').slice(1).join(' ') ?? '',
+          });
+        } else {
+          await createUserDocument(credential.user.uid, {
+            email: credential.user.email ?? '',
+            displayName: credential.user.displayName ?? '',
+          });
+        }
+        return { success: true, role };
+      }
+
+      return { success: true, role: userDoc.role };
     }
-
-    return { success: true, role: userDoc.role };
   } catch (err: any) {
     return { success: false, error: mapAuthError(err.code) };
   }

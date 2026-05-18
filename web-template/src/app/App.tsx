@@ -105,6 +105,28 @@ export default function App() {
 
     let isFirstLoad = true;
 
+    // Preveri Google redirect result
+    const checkRedirect = async () => {
+      try {
+        const { getRedirectResult } = await import('firebase/auth');
+        const { auth } = await import('./services/firebaseConfig');
+        const result = await getRedirectResult(auth);
+        if (result?.user) {
+          const userDoc = await getUserDocument(result.user.uid);
+          if (!userDoc) {
+            const { createUserDocument } = await import('./services/users');
+            await createUserDocument(result.user.uid, {
+              email: result.user.email ?? '',
+              displayName: result.user.displayName ?? '',
+            });
+          }
+        }
+      } catch (e) {
+        console.log('No redirect result');
+      }
+    };
+    checkRedirect();
+
     const unsubscribe = onAuthChange(async (firebaseUser) => {
       if (!isFirstLoad) return;
       isFirstLoad = false;
