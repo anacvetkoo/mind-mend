@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { motion } from 'motion/react';
 import { Button } from '../ui/Button';
 import { Mail, Lock, Eye, EyeOff, ArrowLeft } from 'lucide-react';
+import { signUpUser, loginWithGoogle } from '../../services/auth';
 
 interface UserSignUpFormProps {
   onSignUpSuccess: () => void;
@@ -15,14 +16,43 @@ export function UserSignUpForm({ onSignUpSuccess, onBack }: UserSignUpFormProps)
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [agreedToTerms, setAgreedToTerms] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState('');
 
   const passwordsMatch = password === confirmPassword || confirmPassword === '';
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (password !== confirmPassword) {
+    if (password !== confirmPassword) return;
+
+    setError('');
+    setIsLoading(true);
+
+    const result = await signUpUser(email, password);
+
+    setIsLoading(false);
+
+    if (!result.success) {
+      setError(result.error ?? 'Sign up failed.');
       return;
     }
+
+    onSignUpSuccess();
+  };
+
+  const handleGoogleSignUp = async () => {
+    setError('');
+    setIsLoading(true);
+
+    const result = await loginWithGoogle();
+
+    setIsLoading(false);
+
+    if (!result.success) {
+      setError(result.error ?? 'Google sign-up failed.');
+      return;
+    }
+
     onSignUpSuccess();
   };
 
@@ -102,6 +132,10 @@ export function UserSignUpForm({ onSignUpSuccess, onBack }: UserSignUpFormProps)
               <p className="text-xs text-red-500 -mt-2">Passwords do not match</p>
             )}
 
+            {error && (
+              <p className="text-xs text-red-500">{error}</p>
+            )}
+
             <div className="flex items-start gap-3">
               <input
                 type="checkbox"
@@ -124,10 +158,10 @@ export function UserSignUpForm({ onSignUpSuccess, onBack }: UserSignUpFormProps)
 
             <Button
               type="submit"
-              disabled={!passwordsMatch || !password || !confirmPassword || !agreedToTerms}
+              disabled={!passwordsMatch || !password || !confirmPassword || !agreedToTerms || isLoading}
               className="w-full h-14 bg-gradient-to-r from-[var(--lavender)] to-[var(--soft-purple)] text-white disabled:opacity-50"
             >
-              Create Account
+              {isLoading ? 'Creating account…' : 'Create Account'}
             </Button>
           </form>
 
@@ -142,7 +176,12 @@ export function UserSignUpForm({ onSignUpSuccess, onBack }: UserSignUpFormProps)
             </div>
           </div>
 
-          <Button variant="outline" className="w-full h-12">
+          <Button
+            variant="outline"
+            onClick={handleGoogleSignUp}
+            disabled={isLoading}
+            className="w-full h-12 disabled:opacity-50"
+          >
             <svg className="w-5 h-5 mr-2" viewBox="0 0 24 24">
               <path fill="currentColor" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" />
               <path fill="currentColor" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" />

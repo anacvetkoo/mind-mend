@@ -1,0 +1,85 @@
+import {
+  doc,
+  setDoc,
+  getDoc,
+  serverTimestamp,
+} from 'firebase/firestore';
+import { db } from './firebaseConfig';
+import type { UserRole } from './auth';
+
+// ─── Types ────────────────────────────────────────────────────────────────────
+
+export interface UserDocument {
+  uid: string;
+  email: string;
+  displayName: string;
+  role: UserRole;
+  createdAt: any;
+  hasCompletedOnboarding: boolean;
+  hasCompletedQuestionnaire: boolean;
+}
+
+export interface TherapistDocument {
+  uid: string;
+  email: string;
+  firstName: string;
+  lastName: string;
+  role: 'therapist';
+  createdAt: any;
+  hasCompletedOnboarding: boolean;
+}
+
+// ─── Create ───────────────────────────────────────────────────────────────────
+
+export const createUserDocument = async (
+  uid: string,
+  data: { email: string; displayName: string }
+): Promise<void> => {
+  const userRef = doc(db, 'users', uid);
+  await setDoc(userRef, {
+    email: data.email,
+    displayName: data.displayName,
+    role: 'user',
+    createdAt: serverTimestamp(),
+    hasCompletedOnboarding: false,
+    hasCompletedQuestionnaire: false,
+  });
+};
+
+export const createTherapistDocument = async (
+  uid: string,
+  data: { email: string; firstName: string; lastName: string }
+): Promise<void> => {
+  const therapistRef = doc(db, 'users', uid);
+  await setDoc(therapistRef, {
+    email: data.email,
+    firstName: data.firstName,
+    lastName: data.lastName,
+    role: 'therapist',
+    createdAt: serverTimestamp(),
+    hasCompletedOnboarding: false,
+    isApproved: false,
+    profileComplete: false,
+  });
+};
+
+// ─── Read ─────────────────────────────────────────────────────────────────────
+
+export const getUserDocument = async (
+  uid: string
+): Promise<(UserDocument | TherapistDocument) | null> => {
+  const userRef = doc(db, 'users', uid);
+  const snapshot = await getDoc(userRef);
+
+  if (!snapshot.exists()) return null;
+
+  return { uid: snapshot.id, ...snapshot.data() } as UserDocument | TherapistDocument;
+};
+
+export const updateUserDisplayName = async (
+  uid: string,
+  displayName: string
+): Promise<void> => {
+  const userRef = doc(db, 'users', uid);
+  await setDoc(userRef, { displayName }, { merge: true });
+};

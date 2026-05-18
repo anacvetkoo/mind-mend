@@ -38,6 +38,8 @@ import { LikedContentScreen } from './components/screens/LikedContentScreen';
 import { SavedContentScreen } from './components/screens/SavedContentScreen';
 import type { TherapistAvailability } from './types/appointments';
 import { saveCheckIn } from './utils/checkInUtils';
+import { onAuthChange } from './services/auth';
+import { getUserDocument, updateUserDisplayName } from './services/users';
 
 type AppState = 'splash' | 'welcome' | 'auth' | 'questionnaire' | 'therapist-profile-setup' | 'app';
 
@@ -45,10 +47,10 @@ export default function App() {
   const [appState, setAppState] = useState<AppState>('splash');
   const [userRole, setUserRole] = useState<UserRole>('user');
   const [currentScreen, setCurrentScreen] = useState<string>('home');
-  const [userData, setUserData] = useState({ name: localStorage.getItem('userName') || 'Alex' });
+  const [userData, setUserData] = useState({ name: localStorage.getItem('userName') || '' });
+  const [therapistName, setTherapistName] = useState(localStorage.getItem('therapistName') || '');
   const [darkMode, setDarkMode] = useState(false);
 
-  // Modal/Overlay states
   const [showDailyCheckIn, setShowDailyCheckIn] = useState(false);
   const [selectedCheckIn, setSelectedCheckIn] = useState<any>(null);
   const [selectedContent, setSelectedContent] = useState<any>(null);
@@ -58,25 +60,20 @@ export default function App() {
   const [showCallScreen, setShowCallScreen] = useState(false);
   const [showVideoCallScreen, setShowVideoCallScreen] = useState(false);
 
-  // Appointment booking states
   const [showBookingFlow, setShowBookingFlow] = useState(false);
   const [showCustomRequest, setShowCustomRequest] = useState(false);
   const [showPaymentCheckout, setShowPaymentCheckout] = useState(false);
   const [showCustomRequestConfirmation, setShowCustomRequestConfirmation] = useState(false);
   const [bookingData, setBookingData] = useState<any>(null);
 
-  // Tutorial state
   const [showTutorial, setShowTutorial] = useState(false);
   const [showTherapistTutorial, setShowTherapistTutorial] = useState(false);
 
-  // Content collection states
   const [showLikedContent, setShowLikedContent] = useState(false);
   const [showSavedContent, setShowSavedContent] = useState(false);
 
-  // Therapist profile edit state
   const [showTherapistProfileEdit, setShowTherapistProfileEdit] = useState(false);
 
-  // Mock therapist availability
   const mockTherapistAvailability: TherapistAvailability = {
     therapistId: 'therapist-1',
     workingHours: [
@@ -96,28 +93,44 @@ export default function App() {
   };
 
   useEffect(() => {
-    const hasSeenWelcome = localStorage.getItem('hasSeenWelcome');
-    const hasSeenOnboarding = localStorage.getItem('hasSeenOnboarding');
-    const isAuthenticated = localStorage.getItem('isAuthenticated');
-    const savedRole = localStorage.getItem('userRole') as UserRole;
     const savedDarkMode = localStorage.getItem('darkMode') === 'true';
-
-    if (isAuthenticated) {
-      setAppState('app');
-      if (savedRole) {
-        setUserRole(savedRole);
-        if (savedRole === 'therapist') {
-          setCurrentScreen('dashboard');
-        } else if (savedRole === 'admin') {
-          setCurrentScreen('overview');
-        }
-      }
-    }
-
     setDarkMode(savedDarkMode);
     if (savedDarkMode) {
       document.documentElement.classList.add('dark');
     }
+
+    const unsubscribe = onAuthChange(async (firebaseUser) => {
+      if (firebaseUser) {
+        const userDoc = await getUserDocument(firebaseUser.uid);
+        if (userDoc) {
+          const role = userDoc.role as UserRole;
+          setUserRole(role);
+          localStorage.setItem('isAuthenticated', 'true');
+          localStorage.setItem('userRole', role);
+
+          if (role === 'therapist') {
+            const doc = userDoc as any;
+            const fullName = `${doc.firstName || ''} ${doc.lastName || ''}`.trim();
+            setTherapistName(fullName);
+            localStorage.setItem('therapistName', fullName);
+            setCurrentScreen('dashboard');
+          } else {
+            const displayName = (userDoc as any).displayName || '';
+            setUserData({ name: displayName });
+            localStorage.setItem('userName', displayName);
+            setCurrentScreen('home');
+          }
+
+          setAppState('app');
+        }
+      } else {
+        const hasSeenWelcome = localStorage.getItem('hasSeenWelcome');
+        if (appState === 'splash') return;
+        setAppState(hasSeenWelcome ? 'auth' : 'welcome');
+      }
+    });
+
+    return () => unsubscribe();
   }, []);
 
   useEffect(() => {
@@ -130,14 +143,11 @@ export default function App() {
     }
   }, [darkMode]);
 
-  // Scroll to top on screen/page change
   useEffect(() => {
     window.scrollTo({ top: 0, behavior: 'instant' });
   }, [currentScreen, appState, showDailyCheckIn, selectedCheckIn, selectedContent, selectedTherapistId, showChatConversation, showCallScreen, showVideoCallScreen, showBookingFlow, showCustomRequest, showPaymentCheckout, showCustomRequestConfirmation, showLikedContent, showSavedContent]);
 
-  const toggleDarkMode = () => {
-    setDarkMode(!darkMode);
-  };
+  const toggleDarkMode = () => setDarkMode(!darkMode);
 
   const handleSplashComplete = () => {
     const hasSeenWelcome = localStorage.getItem('hasSeenWelcome');
@@ -154,43 +164,54 @@ export default function App() {
   };
 
   const handleQuestionnaireComplete = (data: any) => {
-    setUserData({ name: data.name || 'Friend' });
+    setUserData({ name: data.name || '' });
     localStorage.setItem('hasSeenOnboarding', 'true');
     localStorage.setItem('isAuthenticated', 'true');
     localStorage.setItem('userRole', 'user');
     setUserRole('user');
     setAppState('app');
     setCurrentScreen('home');
-
-    // Show tutorial on first app entry
     const hasSeenTutorial = localStorage.getItem('hasSeenTutorial');
     if (!hasSeenTutorial) {
       setTimeout(() => setShowTutorial(true), 500);
     }
   };
 
-  const handleAuthComplete = (role: UserRole, skipQuestionnaire: boolean = false) => {
+  const handleAuthComplete = async (role: UserRole, skipQuestionnaire: boolean = false) => {
     setUserRole(role);
     localStorage.setItem('isAuthenticated', 'true');
     localStorage.setItem('userRole', role);
 
+    const { auth } = await import('./services/firebaseConfig');
+    const currentUser = auth.currentUser;
+    if (currentUser) {
+      const userDoc = await getUserDocument(currentUser.uid);
+      if (userDoc) {
+        if (role === 'therapist') {
+          const doc = userDoc as any;
+          const fullName = `${doc.firstName || ''} ${doc.lastName || ''}`.trim();
+          setTherapistName(fullName);
+          localStorage.setItem('therapistName', fullName);
+        } else {
+          const displayName = (userDoc as any).displayName || '';
+          setUserData({ name: displayName });
+          localStorage.setItem('userName', displayName);
+        }
+      }
+    }
 
-      // Če je to nov sign up userja, počistimo daily check-in podatke,
-  // da ga ne označi kot že opravljenega.
-  if (role === 'user' && !skipQuestionnaire) {
-    localStorage.removeItem('dailyCheckInCompleted');
-    localStorage.removeItem('lastDailyCheckInDate');
-    localStorage.removeItem('dailyCheckIns');
-    localStorage.removeItem('todayCheckIn');
-  }
+    if (role === 'user' && !skipQuestionnaire) {
+      localStorage.removeItem('dailyCheckInCompleted');
+      localStorage.removeItem('lastDailyCheckInDate');
+      localStorage.removeItem('dailyCheckIns');
+      localStorage.removeItem('todayCheckIn');
+    }
 
-    // If signing up as a user and haven't completed questionnaire, show it
     if (role === 'user' && !skipQuestionnaire && !localStorage.getItem('hasSeenOnboarding')) {
       setAppState('questionnaire');
       return;
     }
 
-    // If signing up as a therapist and haven't completed profile setup, show it
     if (role === 'therapist' && !skipQuestionnaire && !localStorage.getItem('therapistProfileComplete')) {
       setAppState('therapist-profile-setup');
       return;
@@ -198,11 +219,8 @@ export default function App() {
 
     setAppState('app');
 
-    // Set initial screen based on role
     if (role === 'therapist') {
       setCurrentScreen('dashboard');
-
-      // Show therapist tutorial on first app entry
       if (!skipQuestionnaire) {
         const hasSeenTherapistTutorial = localStorage.getItem('hasSeenTherapistTutorial');
         if (!hasSeenTherapistTutorial) {
@@ -222,34 +240,36 @@ export default function App() {
     setCurrentScreen('home');
   };
 
- const handleLogout = () => {
-  localStorage.removeItem('isAuthenticated');
-  localStorage.removeItem('userRole');
-  localStorage.removeItem('hasSeenTherapistTutorial');
-  localStorage.removeItem('therapistProfileComplete');
-  localStorage.removeItem('therapistProfile');
-  localStorage.removeItem('userName');
+  const handleLogout = () => {
+    localStorage.removeItem('isAuthenticated');
+    localStorage.removeItem('userRole');
+    localStorage.removeItem('hasSeenTherapistTutorial');
+    localStorage.removeItem('therapistProfileComplete');
+    localStorage.removeItem('therapistProfile');
+    localStorage.removeItem('userName');
+    localStorage.removeItem('therapistName');
 
-  setAppState('auth');
-  setUserRole('user');
-  setCurrentScreen('home');
-  setUserData({ name: 'Friend' });
+    setAppState('auth');
+    setUserRole('user');
+    setCurrentScreen('home');
+    setUserData({ name: '' });
+    setTherapistName('');
 
-  setShowDailyCheckIn(false);
-  setSelectedCheckIn(null);
-  setSelectedContent(null);
-  setSelectedTherapistId(null);
-  setShowChatConversation(false);
-  setChatTarget(null);
-  setShowCallScreen(false);
-  setShowVideoCallScreen(false);
-  setShowBookingFlow(false);
-  setShowCustomRequest(false);
-  setShowPaymentCheckout(false);
-  setShowCustomRequestConfirmation(false);
-  setShowLikedContent(false);
-  setShowSavedContent(false);
-};
+    setShowDailyCheckIn(false);
+    setSelectedCheckIn(null);
+    setSelectedContent(null);
+    setSelectedTherapistId(null);
+    setShowChatConversation(false);
+    setChatTarget(null);
+    setShowCallScreen(false);
+    setShowVideoCallScreen(false);
+    setShowBookingFlow(false);
+    setShowCustomRequest(false);
+    setShowPaymentCheckout(false);
+    setShowCustomRequestConfirmation(false);
+    setShowLikedContent(false);
+    setShowSavedContent(false);
+  };
 
   const handleTutorialComplete = () => {
     localStorage.setItem('hasSeenTutorial', 'true');
@@ -261,9 +281,14 @@ export default function App() {
     setShowTutorial(false);
   };
 
-  const handleUpdateName = (newName: string) => {
+  const handleUpdateName = async (newName: string) => {
     setUserData({ ...userData, name: newName });
     localStorage.setItem('userName', newName);
+    const { auth } = await import('./services/firebaseConfig');
+    const currentUser = auth.currentUser;
+    if (currentUser) {
+      await updateUserDisplayName(currentUser.uid, newName);
+    }
   };
 
   const handleTherapistTutorialComplete = () => {
@@ -284,8 +309,6 @@ export default function App() {
     setUserRole('therapist');
     setAppState('app');
     setCurrentScreen('dashboard');
-
-    // Show tutorial after profile setup
     const hasSeenTherapistTutorial = localStorage.getItem('hasSeenTherapistTutorial');
     if (!hasSeenTherapistTutorial) {
       setTimeout(() => setShowTherapistTutorial(true), 500);
@@ -307,21 +330,21 @@ export default function App() {
       setShowChatConversation(true);
     } else if (tab === 'addcontent') {
       setCurrentScreen('mycontent');
-      // Trigger editor open via a brief state change
       setTimeout(() => {
         const addButton = document.querySelector('[data-add-content-trigger]') as HTMLButtonElement;
-        if (addButton) {
-          addButton.click();
-        }
+        if (addButton) addButton.click();
       }, 100);
     } else {
-      // If clicking the same tab, scroll to top
       if (currentScreen === tab) {
         window.scrollTo({ top: 0, behavior: 'smooth' });
       }
       setCurrentScreen(tab);
     }
   };
+
+
+
+
 
   if (appState === 'splash') {
     return <SplashScreen onComplete={handleSplashComplete} />;
@@ -634,7 +657,7 @@ export default function App() {
         <>
           {currentScreen === 'dashboard' && (
             <TherapistDashboard
-              therapistName="Dr. Sarah"
+              therapistName={therapistName || 'Therapist'}
               onViewNotifications={() => setCurrentScreen('notifications')}
             />
           )}
@@ -654,7 +677,7 @@ export default function App() {
           {currentScreen === 'profile' && (
             <ProfileScreen
               onLogout={handleLogout}
-              userName="Dr. Sarah"
+              userName={therapistName || 'Therapist'}
               userRole="Therapist"
               darkMode={darkMode}
               onToggleDarkMode={toggleDarkMode}

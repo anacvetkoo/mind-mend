@@ -45,6 +45,17 @@ export function ProfileScreen({ onLogout, userName = 'Alex', userRole = 'User', 
   const [showBlockedTimeManagement, setShowBlockedTimeManagement] = useState(false);
   const [showNameEditor, setShowNameEditor] = useState(false);
   const [editedName, setEditedName] = useState(userName);
+
+  const [userEmail, setUserEmail] = useState('');
+
+  useEffect(() => {
+    import('../../services/firebaseConfig').then(({ auth }) => {
+      if (auth.currentUser?.email) {
+        setUserEmail(auth.currentUser.email);
+      }
+    });
+  }, []);
+
   const [notificationsEnabled, setNotificationsEnabled] = useState(() => localStorage.getItem('notificationsEnabled') !== 'false');
   const [cameraPermission, setCameraPermission] = useState(() => localStorage.getItem('cameraPermission') === 'true');
   const [microphonePermission, setMicrophonePermission] = useState(() => localStorage.getItem('microphonePermission') === 'true');
@@ -205,7 +216,7 @@ export function ProfileScreen({ onLogout, userName = 'Alex', userRole = 'User', 
           {isTherapist && therapistProfile?.title && (
             <p className="text-muted-foreground mt-1">{therapistProfile.title}</p>
           )}
-          {!isTherapist && <p className="text-muted-foreground mt-1">alex@mindmend.com</p>}
+          {!isTherapist && <p className="text-muted-foreground mt-1">{userEmail}</p>}
           <div className="mt-2">
             <span className="inline-block px-3 py-1 rounded-full bg-[var(--lavender)]/10 text-[var(--lavender)] text-xs">
               {userRole}
