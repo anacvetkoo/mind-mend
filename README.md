@@ -67,13 +67,6 @@ mind-mend/
 │
 └── assets/
 
-# Namestitev projekta
-
-## 1. Kloniranje repozitorija
-
-```bash
-git clone https://github.com/anacvetkoo/mind-mend.git
-cd mind-mend
 ```
 
 ---
