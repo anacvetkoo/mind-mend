@@ -174,6 +174,16 @@ export default function App() {
     localStorage.setItem('isAuthenticated', 'true');
     localStorage.setItem('userRole', role);
 
+
+      // Če je to nov sign up userja, počistimo daily check-in podatke,
+  // da ga ne označi kot že opravljenega.
+  if (role === 'user' && !skipQuestionnaire) {
+    localStorage.removeItem('dailyCheckInCompleted');
+    localStorage.removeItem('lastDailyCheckInDate');
+    localStorage.removeItem('dailyCheckIns');
+    localStorage.removeItem('todayCheckIn');
+  }
+
     // If signing up as a user and haven't completed questionnaire, show it
     if (role === 'user' && !skipQuestionnaire && !localStorage.getItem('hasSeenOnboarding')) {
       setAppState('questionnaire');
@@ -212,26 +222,34 @@ export default function App() {
     setCurrentScreen('home');
   };
 
-  const handleLogout = () => {
-    // Clear localStorage
-    localStorage.removeItem('isAuthenticated');
-    localStorage.removeItem('userRole');
+ const handleLogout = () => {
+  localStorage.removeItem('isAuthenticated');
+  localStorage.removeItem('userRole');
+  localStorage.removeItem('hasSeenTherapistTutorial');
+  localStorage.removeItem('therapistProfileComplete');
+  localStorage.removeItem('therapistProfile');
+  localStorage.removeItem('userName');
 
-    // Reset app state
-    setAppState('auth');
-    setUserRole('user');
-    setCurrentScreen('home');
+  setAppState('auth');
+  setUserRole('user');
+  setCurrentScreen('home');
+  setUserData({ name: 'Friend' });
 
-    // Clear any modal states
-    setShowDailyCheckIn(false);
-    setSelectedCheckIn(null);
-    setSelectedContent(null);
-    setSelectedTherapistId(null);
-    setShowChatConversation(false);
-    setChatTarget(null);
-    setShowCallScreen(false);
-    setShowVideoCallScreen(false);
-  };
+  setShowDailyCheckIn(false);
+  setSelectedCheckIn(null);
+  setSelectedContent(null);
+  setSelectedTherapistId(null);
+  setShowChatConversation(false);
+  setChatTarget(null);
+  setShowCallScreen(false);
+  setShowVideoCallScreen(false);
+  setShowBookingFlow(false);
+  setShowCustomRequest(false);
+  setShowPaymentCheckout(false);
+  setShowCustomRequestConfirmation(false);
+  setShowLikedContent(false);
+  setShowSavedContent(false);
+};
 
   const handleTutorialComplete = () => {
     localStorage.setItem('hasSeenTutorial', 'true');
