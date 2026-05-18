@@ -101,3 +101,20 @@ export const updateTherapistProfile = async (
   const therapistRef = doc(db, 'users', uid);
   await setDoc(therapistRef, profileData, { merge: true });
 };
+
+export const updateTherapistAvailability = async (
+  uid: string,
+  availability: any
+): Promise<void> => {
+  const therapistRef = doc(db, 'users', uid);
+  await setDoc(therapistRef, { availability }, { merge: true });
+};
+
+export const getTherapistAvailability = async (
+  uid: string
+): Promise<any | null> => {
+  const therapistRef = doc(db, 'users', uid);
+  const snapshot = await getDoc(therapistRef);
+  if (!snapshot.exists()) return null;
+  return snapshot.data().availability ?? null;
+};

@@ -39,7 +39,8 @@ import { SavedContentScreen } from './components/screens/SavedContentScreen';
 import type { TherapistAvailability } from './types/appointments';
 import { saveCheckIn } from './utils/checkInUtils';
 import { onAuthChange, logout } from './services/auth';
-import { getUserDocument, updateUserDisplayName, updateTherapistProfile } from './services/users';
+import { getUserDocument, updateUserDisplayName, updateTherapistProfile, updateTherapistAvailability, getTherapistAvailability } from './services/users';
+
 
 type AppState = 'splash' | 'welcome' | 'auth' | 'questionnaire' | 'therapist-profile-setup' | 'app';
 
@@ -162,6 +163,13 @@ export default function App() {
             localStorage.setItem('therapistProfile', JSON.stringify(updatedProfile));
             setTherapistProfileData(updatedProfile);
             setCurrentScreen('dashboard');
+
+            // Preberi availability iz Firestorea
+            const firestoreAvailability = await getTherapistAvailability(firebaseUser.uid);
+            if (firestoreAvailability) {
+              localStorage.setItem('therapistAvailability', JSON.stringify(firestoreAvailability));
+            }
+
           } else {
             const displayName = (userDoc as any).displayName || '';
             setUserData({ name: displayName });
@@ -264,6 +272,13 @@ export default function App() {
           };
           localStorage.setItem('therapistProfile', JSON.stringify(updatedProfile));
           setTherapistProfileData(updatedProfile);
+
+          // Preberi availability iz Firestorea
+          const firestoreAvailability = await getTherapistAvailability(currentUser.uid);
+          if (firestoreAvailability) {
+            localStorage.setItem('therapistAvailability', JSON.stringify(firestoreAvailability));
+          }
+
         } else {
           const displayName = (userDoc as any).displayName || '';
           setUserData({ name: displayName });

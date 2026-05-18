@@ -90,16 +90,38 @@ export function ProfileScreen({ onLogout, userName = 'Alex', userRole = 'User', 
 
   useEffect(() => {
     if (isTherapist) {
-      const saved = localStorage.getItem('therapistAvailability');
-      if (saved) {
-        setAvailability(JSON.parse(saved));
-      }
+      const loadAvailability = async () => {
+        const { auth } = await import('../../services/firebaseConfig');
+        const currentUser = auth.currentUser;
+        if (currentUser) {
+          const { getTherapistAvailability } = await import('../../services/users');
+          const firestoreAvailability = await getTherapistAvailability(currentUser.uid);
+          if (firestoreAvailability) {
+            setAvailability(firestoreAvailability);
+          }
+        }
+      };
+      loadAvailability();
     }
   }, [isTherapist]);
 
-  const handleSaveAvailability = (newAvailability: TherapistAvailability) => {
-    setAvailability(newAvailability);
-    localStorage.setItem('therapistAvailability', JSON.stringify(newAvailability));
+  const handleSaveAvailability = async (newAvailability: TherapistAvailability) => {
+    // Počisti undefined vrednosti — Firebase ne sprejme undefined
+    const cleanAvailability = {
+      ...newAvailability,
+      inPersonAddress: newAvailability.inPersonAddress ?? '',
+    };
+
+    setAvailability(cleanAvailability);
+    localStorage.setItem('therapistAvailability', JSON.stringify(cleanAvailability));
+
+    const { auth } = await import('../../services/firebaseConfig');
+    const currentUser = auth.currentUser;
+    if (currentUser) {
+      const { updateTherapistAvailability } = await import('../../services/users');
+      await updateTherapistAvailability(currentUser.uid, cleanAvailability);
+    }
+
     setShowAvailabilitySetup(false);
   };
 
