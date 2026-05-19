@@ -4,7 +4,7 @@ import { SignUpRoleSelection } from './SignUpRoleSelection';
 import { UserSignUpForm } from './UserSignUpForm';
 import { TherapistSignUpForm } from './TherapistSignUpForm';
 
-type UserRole = 'user' | 'therapist' | 'admin';
+type UserRole = 'user' | 'therapist';
 type AuthFlow = 'login' | 'signupRole' | 'signupUser' | 'signupTherapist';
 
 interface AuthScreenProps {
