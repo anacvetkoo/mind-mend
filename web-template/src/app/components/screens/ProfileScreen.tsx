@@ -48,6 +48,17 @@ export function ProfileScreen({ onLogout, userName = 'Alex', userRole = 'User', 
   const [availability, setAvailability] = useState<TherapistAvailability | null>(null);
   const [showAvailabilitySetup, setShowAvailabilitySetup] = useState(false);
   const [showBlockedTimeManagement, setShowBlockedTimeManagement] = useState(false);
+
+  const [currentTherapistId, setCurrentTherapistId] = useState('');
+
+  useEffect(() => {
+    import('../../services/firebaseConfig').then(({ auth }) => {
+      if (auth.currentUser?.uid) {
+        setCurrentTherapistId(auth.currentUser.uid);
+      }
+    });
+  }, []);
+
   const [showNameEditor, setShowNameEditor] = useState(false);
   const [editedName, setEditedName] = useState(userName);
   const [userEmail, setUserEmail] = useState('');
@@ -170,7 +181,7 @@ export function ProfileScreen({ onLogout, userName = 'Alex', userRole = 'User', 
   if (showBlockedTimeManagement) {
     return (
       <BlockedTimeManagement
-        therapistId="therapist-1"
+        therapistId={currentTherapistId}
         onClose={() => setShowBlockedTimeManagement(false)}
       />
     );
