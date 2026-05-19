@@ -146,3 +146,17 @@ export const updateUserNotificationsEnabled = async (uid: string, notificationsE
   const userRef = doc(db, 'users', uid);
   await setDoc(userRef, { notificationsEnabled }, { merge: true });
 };
+
+// ─── Biometric Auth (per-user) ────────────────────────────────────────────────
+
+export const getUserBiometricAuthEnabled = async (uid: string): Promise<boolean> => {
+  const userRef = doc(db, 'users', uid);
+  const snapshot = await getDoc(userRef);
+  if (!snapshot.exists()) return false;
+  return snapshot.data().biometricAuthEnabled ?? false;
+};
+
+export const updateUserBiometricAuthEnabled = async (uid: string, biometricAuthEnabled: boolean): Promise<void> => {
+  const userRef = doc(db, 'users', uid);
+  await setDoc(userRef, { biometricAuthEnabled }, { merge: true });
+};

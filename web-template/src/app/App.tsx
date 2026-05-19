@@ -36,7 +36,7 @@ import { SavedContentScreen } from './components/screens/SavedContentScreen';
 import type { TherapistAvailability } from './types/appointments';
 import { saveCheckIn } from './utils/checkInUtils';
 import { onAuthChange, logout } from './services/auth';
-import { getUserDocument, updateUserDisplayName, updateTherapistProfile, updateTherapistAvailability, getTherapistAvailability, getUserDarkMode, updateUserDarkMode, getUserNotificationsEnabled, updateUserNotificationsEnabled } from './services/users';
+import { getUserDocument, updateUserDisplayName, updateTherapistProfile, updateTherapistAvailability, getTherapistAvailability, getUserDarkMode, updateUserDarkMode, getUserNotificationsEnabled, updateUserNotificationsEnabled, getUserBiometricAuthEnabled, updateUserBiometricAuthEnabled } from './services/users';
 import { completeUserOnboarding } from './services/onboarding';
 import { getAuth } from 'firebase/auth';
 
@@ -54,6 +54,7 @@ export default function App() {
   });
   const [darkMode, setDarkMode] = useState(false);
   const [notificationsEnabled, setNotificationsEnabled] = useState(false);
+  const [biometricAuthEnabled, setBiometricAuthEnabled] = useState(false);
 
   const [showDailyCheckIn, setShowDailyCheckIn] = useState(false);
   const [selectedCheckIn, setSelectedCheckIn] = useState<any>(null);
@@ -133,11 +134,13 @@ export default function App() {
           localStorage.setItem('isAuthenticated', 'true');
           localStorage.setItem('userRole', role);
 
-          // Naloži dark mode in notifications iz Firestorea za tega userja
+          // Naloži settings iz Firestorea za tega userja
           const savedDarkMode = await getUserDarkMode(firebaseUser.uid);
           setDarkMode(savedDarkMode);
           const savedNotifications = await getUserNotificationsEnabled(firebaseUser.uid);
           setNotificationsEnabled(savedNotifications);
+          const savedBiometric = await getUserBiometricAuthEnabled(firebaseUser.uid);
+          setBiometricAuthEnabled(savedBiometric);
 
           if (role === 'therapist') {
             const doc = userDoc as any;
@@ -218,6 +221,15 @@ export default function App() {
     }
   };
 
+  const handleToggleBiometricAuth = async (newValue: boolean) => {
+    setBiometricAuthEnabled(newValue);
+    const { auth } = await import('./services/firebaseConfig');
+    const currentUser = auth.currentUser;
+    if (currentUser) {
+      await updateUserBiometricAuthEnabled(currentUser.uid, newValue);
+    }
+  };
+
   const handleSplashComplete = () => {
     const hasSeenWelcome = localStorage.getItem('hasSeenWelcome');
     if (hasSeenWelcome) {
@@ -264,11 +276,13 @@ const handleQuestionnaireComplete = async (data: any) => {
     const { auth } = await import('./services/firebaseConfig');
     const currentUser = auth.currentUser;
     if (currentUser) {
-      // Naloži dark mode in notifications iz Firestorea za tega userja
+      // Naloži settings iz Firestorea za tega userja
       const savedDarkMode = await getUserDarkMode(currentUser.uid);
       setDarkMode(savedDarkMode);
       const savedNotifications = await getUserNotificationsEnabled(currentUser.uid);
       setNotificationsEnabled(savedNotifications);
+      const savedBiometric = await getUserBiometricAuthEnabled(currentUser.uid);
+      setBiometricAuthEnabled(savedBiometric);
 
       const userDoc = await getUserDocument(currentUser.uid);
       if (userDoc) {
@@ -356,6 +370,7 @@ const handleQuestionnaireComplete = async (data: any) => {
     // Resetiraj settings na default — vsak user ima svoje nastavitve v Firestoreu
     setDarkMode(false);
     setNotificationsEnabled(false);
+    setBiometricAuthEnabled(false);
 
     setAppState('auth');
     setUserRole('user');
@@ -766,6 +781,8 @@ const handleQuestionnaireComplete = async (data: any) => {
               onToggleDarkMode={toggleDarkMode}
               notificationsEnabled={notificationsEnabled}
               onToggleNotifications={handleToggleNotifications}
+              biometricAuthEnabled={biometricAuthEnabled}
+              onToggleBiometricAuth={handleToggleBiometricAuth}
               onNavigateToLikedContent={() => setShowLikedContent(true)}
               onNavigateToSavedContent={() => setShowSavedContent(true)}
               onUpdateName={handleUpdateName}
@@ -804,6 +821,8 @@ const handleQuestionnaireComplete = async (data: any) => {
               onToggleDarkMode={toggleDarkMode}
               notificationsEnabled={notificationsEnabled}
               onToggleNotifications={handleToggleNotifications}
+              biometricAuthEnabled={biometricAuthEnabled}
+              onToggleBiometricAuth={handleToggleBiometricAuth}
               onNavigateToLikedContent={() => setShowLikedContent(true)}
               onNavigateToSavedContent={() => setShowSavedContent(true)}
               onEditProfile={() => setShowTherapistProfileEdit(true)}
@@ -827,6 +846,8 @@ const handleQuestionnaireComplete = async (data: any) => {
               onToggleDarkMode={toggleDarkMode}
               notificationsEnabled={notificationsEnabled}
               onToggleNotifications={handleToggleNotifications}
+              biometricAuthEnabled={biometricAuthEnabled}
+              onToggleBiometricAuth={handleToggleBiometricAuth}
               onNavigateToLikedContent={() => setShowLikedContent(true)}
               onNavigateToSavedContent={() => setShowSavedContent(true)}
             />

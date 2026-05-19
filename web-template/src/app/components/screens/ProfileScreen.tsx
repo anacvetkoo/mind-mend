@@ -35,6 +35,8 @@ interface ProfileScreenProps {
   onToggleDarkMode?: () => void;
   notificationsEnabled?: boolean;
   onToggleNotifications?: (newValue: boolean) => void;
+  biometricAuthEnabled?: boolean;
+  onToggleBiometricAuth?: (newValue: boolean) => void;
   onNavigateToLikedContent?: () => void;
   onNavigateToSavedContent?: () => void;
   onEditProfile?: () => void;
@@ -42,7 +44,7 @@ interface ProfileScreenProps {
   therapistProfileProp?: any;
 }
 
-export function ProfileScreen({ onLogout, userName = 'Alex', userRole = 'User', darkMode = false, onToggleDarkMode, notificationsEnabled = false, onToggleNotifications, onNavigateToLikedContent, onNavigateToSavedContent, onEditProfile, onUpdateName, therapistProfileProp }: ProfileScreenProps) {
+export function ProfileScreen({ onLogout, userName = 'Alex', userRole = 'User', darkMode = false, onToggleDarkMode, notificationsEnabled = false, onToggleNotifications, biometricAuthEnabled = false, onToggleBiometricAuth, onNavigateToLikedContent, onNavigateToSavedContent, onEditProfile, onUpdateName, therapistProfileProp }: ProfileScreenProps) {
   const [availability, setAvailability] = useState<TherapistAvailability | null>(null);
   const [showAvailabilitySetup, setShowAvailabilitySetup] = useState(false);
   const [showBlockedTimeManagement, setShowBlockedTimeManagement] = useState(false);
@@ -67,7 +69,6 @@ export function ProfileScreen({ onLogout, userName = 'Alex', userRole = 'User', 
   });
   // const [cameraPermission, setCameraPermission] = useState(() => localStorage.getItem('cameraPermission') === 'true');
   // const [microphonePermission, setMicrophonePermission] = useState(() => localStorage.getItem('microphonePermission') === 'true');
-  const [biometricAuth, setBiometricAuth] = useState(() => localStorage.getItem('biometricAuth') === 'true');
 
   const handleNotificationsToggle = async () => {
     // Če želimo vklopiti — zaprosi za dovoljenje
@@ -98,9 +99,8 @@ export function ProfileScreen({ onLogout, userName = 'Alex', userRole = 'User', 
   // };
 
   const handleBiometricToggle = () => {
-    const newValue = !biometricAuth;
-    setBiometricAuth(newValue);
-    localStorage.setItem('biometricAuth', String(newValue));
+    const newValue = !biometricAuthEnabled;
+    onToggleBiometricAuth?.(newValue); // Shrani v Firestore prek App.tsx
   };
 
   useEffect(() => {
@@ -409,8 +409,8 @@ export function ProfileScreen({ onLogout, userName = 'Alex', userRole = 'User', 
                 <Fingerprint className="w-5 h-5 text-muted-foreground" />
                 <span>Biometric Auth</span>
               </div>
-              <div className={`w-12 h-6 rounded-full relative transition-colors duration-300 ease-in-out ${biometricAuth ? 'bg-gradient-to-r from-[var(--lavender)] to-[var(--soft-purple)]' : 'bg-[var(--muted)]'}`}>
-                <div className={`absolute top-1 w-4 h-4 bg-card rounded-full shadow-sm transition-all duration-300 ease-in-out ${biometricAuth ? 'right-1' : 'left-1'}`} />
+              <div className={`w-12 h-6 rounded-full relative transition-colors duration-300 ease-in-out ${biometricAuthEnabled ? 'bg-gradient-to-r from-[var(--lavender)] to-[var(--soft-purple)]' : 'bg-[var(--muted)]'}`}>
+                <div className={`absolute top-1 w-4 h-4 bg-card rounded-full shadow-sm transition-all duration-300 ease-in-out ${biometricAuthEnabled ? 'right-1' : 'left-1'}`} />
               </div>
             </button>
             {/* Camera Access — zakomentirano: klici so delegirani na zunanjo app, permission ni potreben
