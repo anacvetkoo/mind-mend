@@ -118,3 +118,17 @@ export const getTherapistAvailability = async (
   if (!snapshot.exists()) return null;
   return snapshot.data().availability ?? null;
 };
+
+// ─── Dark Mode (per-user) ─────────────────────────────────────────────────────
+
+export const getUserDarkMode = async (uid: string): Promise<boolean> => {
+  const userRef = doc(db, 'users', uid);
+  const snapshot = await getDoc(userRef);
+  if (!snapshot.exists()) return false;
+  return snapshot.data().darkMode ?? false;
+};
+
+export const updateUserDarkMode = async (uid: string, darkMode: boolean): Promise<void> => {
+  const userRef = doc(db, 'users', uid);
+  await setDoc(userRef, { darkMode }, { merge: true });
+};

@@ -60,8 +60,8 @@ export function ProfileScreen({ onLogout, userName = 'Alex', userRole = 'User', 
   }, []);
 
   const [notificationsEnabled, setNotificationsEnabled] = useState(() => localStorage.getItem('notificationsEnabled') !== 'false');
-  const [cameraPermission, setCameraPermission] = useState(() => localStorage.getItem('cameraPermission') === 'true');
-  const [microphonePermission, setMicrophonePermission] = useState(() => localStorage.getItem('microphonePermission') === 'true');
+  // const [cameraPermission, setCameraPermission] = useState(() => localStorage.getItem('cameraPermission') === 'true');
+  // const [microphonePermission, setMicrophonePermission] = useState(() => localStorage.getItem('microphonePermission') === 'true');
   const [biometricAuth, setBiometricAuth] = useState(() => localStorage.getItem('biometricAuth') === 'true');
 
   const handleNotificationsToggle = () => {
@@ -70,17 +70,17 @@ export function ProfileScreen({ onLogout, userName = 'Alex', userRole = 'User', 
     localStorage.setItem('notificationsEnabled', String(newValue));
   };
 
-  const handleCameraToggle = () => {
-    const newValue = !cameraPermission;
-    setCameraPermission(newValue);
-    localStorage.setItem('cameraPermission', String(newValue));
-  };
+  // const handleCameraToggle = () => {
+  //   const newValue = !cameraPermission;
+  //   setCameraPermission(newValue);
+  //   localStorage.setItem('cameraPermission', String(newValue));
+  // };
 
-  const handleMicrophoneToggle = () => {
-    const newValue = !microphonePermission;
-    setMicrophonePermission(newValue);
-    localStorage.setItem('microphonePermission', String(newValue));
-  };
+  // const handleMicrophoneToggle = () => {
+  //   const newValue = !microphonePermission;
+  //   setMicrophonePermission(newValue);
+  //   localStorage.setItem('microphonePermission', String(newValue));
+  // };
 
   const handleBiometricToggle = () => {
     const newValue = !biometricAuth;
@@ -391,6 +391,7 @@ export function ProfileScreen({ onLogout, userName = 'Alex', userRole = 'User', 
                 <div className={`absolute top-1 w-4 h-4 bg-card rounded-full shadow-sm transition-all duration-300 ease-in-out ${biometricAuth ? 'right-1' : 'left-1'}`} />
               </div>
             </button>
+            {/* Camera Access — zakomentirano: klici so delegirani na zunanjo app, permission ni potreben
             <button onClick={handleCameraToggle} className="flex items-center justify-between w-full py-4 hover:bg-[var(--muted)] transition-colors px-2 -mx-2 rounded-xl">
               <div className="flex items-center gap-3">
                 <Camera className="w-5 h-5 text-muted-foreground" />
@@ -403,6 +404,8 @@ export function ProfileScreen({ onLogout, userName = 'Alex', userRole = 'User', 
                 <div className={`absolute top-1 w-4 h-4 bg-card rounded-full shadow-sm transition-all duration-300 ease-in-out ${cameraPermission ? 'right-1' : 'left-1'}`} />
               </div>
             </button>
+            */}
+            {/* Microphone Access — zakomentirano: klici so delegirani na zunanjo app, permission ni potreben
             <button onClick={handleMicrophoneToggle} className="flex items-center justify-between w-full py-4 hover:bg-[var(--muted)] transition-colors px-2 -mx-2 rounded-xl">
               <div className="flex items-center gap-3">
                 <Mic className="w-5 h-5 text-muted-foreground" />
@@ -415,6 +418,7 @@ export function ProfileScreen({ onLogout, userName = 'Alex', userRole = 'User', 
                 <div className={`absolute top-1 w-4 h-4 bg-card rounded-full shadow-sm transition-all duration-300 ease-in-out ${microphonePermission ? 'right-1' : 'left-1'}`} />
               </div>
             </button>
+            */}
           </Card>
         </motion.div>
 

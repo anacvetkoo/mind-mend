@@ -36,7 +36,7 @@ import { SavedContentScreen } from './components/screens/SavedContentScreen';
 import type { TherapistAvailability } from './types/appointments';
 import { saveCheckIn } from './utils/checkInUtils';
 import { onAuthChange, logout } from './services/auth';
-import { getUserDocument, updateUserDisplayName, updateTherapistProfile, updateTherapistAvailability, getTherapistAvailability } from './services/users';
+import { getUserDocument, updateUserDisplayName, updateTherapistProfile, updateTherapistAvailability, getTherapistAvailability, getUserDarkMode, updateUserDarkMode } from './services/users';
 import { completeUserOnboarding } from './services/onboarding';
 
 type AppState = 'splash' | 'welcome' | 'auth' | 'questionnaire' | 'therapist-profile-setup' | 'app';
@@ -95,12 +95,6 @@ export default function App() {
   };
 
   useEffect(() => {
-    const savedDarkMode = localStorage.getItem('darkMode') === 'true';
-    setDarkMode(savedDarkMode);
-    if (savedDarkMode) {
-      document.documentElement.classList.add('dark');
-    }
-
     let isFirstLoad = true;
 
     // Preveri Google redirect result
@@ -136,6 +130,10 @@ export default function App() {
           setUserRole(role);
           localStorage.setItem('isAuthenticated', 'true');
           localStorage.setItem('userRole', role);
+
+          // Naloži dark mode iz Firestorea za tega userja
+          const savedDarkMode = await getUserDarkMode(firebaseUser.uid);
+          setDarkMode(savedDarkMode);
 
           if (role === 'therapist') {
             const doc = userDoc as any;
@@ -188,10 +186,8 @@ export default function App() {
   useEffect(() => {
     if (darkMode) {
       document.documentElement.classList.add('dark');
-      localStorage.setItem('darkMode', 'true');
     } else {
       document.documentElement.classList.remove('dark');
-      localStorage.setItem('darkMode', 'false');
     }
   }, [darkMode]);
 
@@ -199,7 +195,15 @@ export default function App() {
     window.scrollTo({ top: 0, behavior: 'instant' });
   }, [currentScreen, appState, showDailyCheckIn, selectedCheckIn, selectedContent, selectedTherapistId, showChatConversation, showCallScreen, showVideoCallScreen, showBookingFlow, showCustomRequest, showPaymentCheckout, showCustomRequestConfirmation, showLikedContent, showSavedContent]);
 
-  const toggleDarkMode = () => setDarkMode(!darkMode);
+  const toggleDarkMode = async () => {
+    const newValue = !darkMode;
+    setDarkMode(newValue);
+    const { auth } = await import('./services/firebaseConfig');
+    const currentUser = auth.currentUser;
+    if (currentUser) {
+      await updateUserDarkMode(currentUser.uid, newValue);
+    }
+  };
 
   const handleSplashComplete = () => {
     const hasSeenWelcome = localStorage.getItem('hasSeenWelcome');
@@ -247,6 +251,10 @@ const handleQuestionnaireComplete = async (data: any) => {
     const { auth } = await import('./services/firebaseConfig');
     const currentUser = auth.currentUser;
     if (currentUser) {
+      // Naloži dark mode iz Firestorea za tega userja
+      const savedDarkMode = await getUserDarkMode(currentUser.uid);
+      setDarkMode(savedDarkMode);
+
       const userDoc = await getUserDocument(currentUser.uid);
       if (userDoc) {
         if (role === 'therapist') {
@@ -326,13 +334,12 @@ const handleQuestionnaireComplete = async (data: any) => {
       console.error("Napaka pri Firebase odjavi:", error);
     }
 
-    const currentDarkMode = localStorage.getItem('darkMode');
     const hasSeenWelcome = localStorage.getItem('hasSeenWelcome');
-
-    if (currentDarkMode) localStorage.setItem('darkMode', currentDarkMode);
+    localStorage.clear();
     if (hasSeenWelcome) localStorage.setItem('hasSeenWelcome', hasSeenWelcome);
 
-    localStorage.clear();
+    // Resetiraj dark mode na default — vsak user ima svoje nastavitve v Firestoreu
+    setDarkMode(false);
 
     setAppState('auth');
     setUserRole('user');
