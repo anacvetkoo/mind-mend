@@ -119,16 +119,23 @@ export function TherapistTutorial({ onComplete, onSkip }: TherapistTutorialProps
   };
 
   const getTooltipPosition = () => {
+
+    const padding = 16;
+    const tooltipWidth = 450;
+
+    const tooltipStyle = {
+      width: 'calc(100vw - 32px)',
+      maxWidth: `${tooltipWidth}px`
+    };
+
     if (!targetRect || step.position === 'center') {
       return {
         top: '50%',
         left: '50%',
-        transform: 'translate(-50%, -50%)'
+        transform: 'translate(-50%, -50%)',
+        ...tooltipStyle
       };
     }
-
-    const padding = 16;
-    const tooltipWidth = 450;
 
     if (step.position === 'bottom' || step.highlightBottom) {
       // Position above the element
@@ -136,7 +143,7 @@ export function TherapistTutorial({ onComplete, onSkip }: TherapistTutorialProps
         bottom: `${window.innerHeight - targetRect.top + 16}px`,
         left: '50%',
         transform: 'translateX(-50%)',
-        maxWidth: `${tooltipWidth}px`
+        ...tooltipStyle
       };
     } else if (step.position === 'top') {
       // Position below the element
@@ -144,14 +151,15 @@ export function TherapistTutorial({ onComplete, onSkip }: TherapistTutorialProps
         top: `${targetRect.bottom + padding}px`,
         left: '50%',
         transform: 'translateX(-50%)',
-        maxWidth: `${tooltipWidth}px`
+        ...tooltipStyle
       };
     }
 
     return {
       top: '50%',
       left: '50%',
-      transform: 'translate(-50%, -50%)'
+      transform: 'translate(-50%, -50%)',
+      ...tooltipStyle
     };
   };
 
@@ -218,7 +226,7 @@ export function TherapistTutorial({ onComplete, onSkip }: TherapistTutorialProps
 
       {/* Tutorial tooltip card */}
       <div
-        className="absolute pointer-events-auto px-4"
+        className="absolute pointer-events-auto"
         style={getTooltipPosition()}
       >
         <AnimatePresence mode="wait">
