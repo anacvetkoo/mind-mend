@@ -38,6 +38,7 @@ import { saveCheckIn } from './utils/checkInUtils';
 import { onAuthChange, logout } from './services/auth';
 import { getUserDocument, updateUserDisplayName, updateTherapistProfile, updateTherapistAvailability, getTherapistAvailability, getUserDarkMode, updateUserDarkMode } from './services/users';
 import { completeUserOnboarding } from './services/onboarding';
+import { getAuth } from 'firebase/auth';
 
 type AppState = 'splash' | 'welcome' | 'auth' | 'questionnaire' | 'therapist-profile-setup' | 'app';
 
@@ -697,6 +698,7 @@ const handleQuestionnaireComplete = async (data: any) => {
         <>
           {currentScreen === 'home' && (
             <HomeDashboard
+              userId={getAuth().currentUser?.uid || ""}
               userName={userData.name}
               onCheckIn={() => setShowDailyCheckIn(true)}
               onFindTherapist={() => setCurrentScreen('therapists')}
