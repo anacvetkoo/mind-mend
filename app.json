@@ -13,7 +13,10 @@
       "backgroundColor": "#ffffff"
     },
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": true,
+      "infoPlist": {
+        "NSFaceIDUsageDescription": "MindMend uses Face ID to protect your account."
+      }
     },
     "android": {
       "adaptiveIcon": {

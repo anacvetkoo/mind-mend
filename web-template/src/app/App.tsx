@@ -99,6 +99,12 @@ export default function App() {
     isSetupComplete: true
   };
 
+  const sendNativeMessage = (data: any) => {
+    if ((window as any).ReactNativeWebView) {
+      (window as any).ReactNativeWebView.postMessage(JSON.stringify(data));
+    }
+  };
+
   useEffect(() => {
     let isFirstLoad = true;
 
@@ -143,6 +149,10 @@ export default function App() {
           setNotificationsEnabled(savedNotifications);
           const savedBiometric = await getUserBiometricAuthEnabled(firebaseUser.uid);
           setBiometricAuthEnabled(savedBiometric);
+          sendNativeMessage({
+            type: 'biometricAuthChanged',
+            enabled: savedBiometric,
+          });
 
           if (role === 'therapist') {
             const doc = userDoc as any;
@@ -229,6 +239,10 @@ export default function App() {
     const currentUser = auth.currentUser;
     if (currentUser) {
       await updateUserBiometricAuthEnabled(currentUser.uid, newValue);
+      sendNativeMessage({
+        type: 'biometricAuthChanged',
+        enabled: newValue,
+      });
     }
   };
 
@@ -285,6 +299,10 @@ const handleQuestionnaireComplete = async (data: any) => {
       setNotificationsEnabled(savedNotifications);
       const savedBiometric = await getUserBiometricAuthEnabled(currentUser.uid);
       setBiometricAuthEnabled(savedBiometric);
+      sendNativeMessage({
+        type: 'biometricAuthChanged',
+        enabled: savedBiometric,
+      });
 
       const userDoc = await getUserDocument(currentUser.uid);
       if (userDoc) {
