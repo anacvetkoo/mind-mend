@@ -30,7 +30,8 @@ export function HomeDashboard({ userName, onCheckIn, onFindTherapist, onViewAppo
     const loadDashboardData = async () => {
       setIsLoading(true);
       
-      setTodayCompleted(isTodayCompleted());
+      const completedToday = await isTodayCompleted();
+      setTodayCompleted(completedToday);
       setWeeklyTrend(getWeeklyTrend());
       
       try {
