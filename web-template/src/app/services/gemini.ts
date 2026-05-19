@@ -3,7 +3,7 @@ import { app } from './firebaseConfig';
 
 const aiService = getAI(app, { backend: new GoogleAIBackend() });
 
-const model = getGenerativeModel(aiService, { model: "gemini-3-flash-preview" }); //gemini-3-flash-preview
+const model = getGenerativeModel(aiService, { model: "gemini-3-flash-preview" }); //gemini-3-flash-preview - 20 povpraševanj na dan?
 
 export async function generateAIWellnessTips(checkIns: any[]): Promise<string[]> {
   const fallbackTips = [

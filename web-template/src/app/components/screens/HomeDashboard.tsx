@@ -29,7 +29,13 @@ export function HomeDashboard({ userId, userName, onCheckIn, onFindTherapist, on
     currentHour < 12 ? 'Good morning' : currentHour < 18 ? 'Good afternoon' : 'Good evening';
 
   const [todayCompleted, setTodayCompleted] = useState(false);
-  const [streakData, setStreakData] = useState({ current: 0, longest: 0 });
+  const [streakData, setStreakData] = useState(() => {
+    const savedStreak = localStorage.getItem('mindmend_current_streak');
+    return {
+      current: savedStreak ? parseInt(savedStreak, 10) : 0,
+      longest: 0 
+    };
+  });
   const [weeklyTrend, setWeeklyTrend] = useState('Stable');
   const [isLoading, setIsLoading] = useState(true);
 
@@ -48,6 +54,9 @@ export function HomeDashboard({ userId, userName, onCheckIn, onFindTherapist, on
 
        const incomingStreak = await getStreakDataFromFirestore();
        setStreakData(incomingStreak);
+       if (incomingStreak && typeof incomingStreak.current === 'number') {
+        localStorage.setItem('mindmend_current_streak', String(incomingStreak.current)); //shranjenje corrent streak v local storage
+      }
 
        if (completedToday && userId) {
         const userDocRef = doc(db, "users", userId);
@@ -158,7 +167,7 @@ export function HomeDashboard({ userId, userName, onCheckIn, onFindTherapist, on
         >
           <StatCard 
             icon={<Flame className="w-6 h-6" />} 
-            value={isLoading ? "..." : String(streakData.current || 0)} 
+            value={String(streakData.current)}
             label="Day Streak" 
             color="var(--soft-pink)" 
           />
