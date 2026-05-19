@@ -13,6 +13,7 @@ export interface UserDocument {
   uid: string;
   email: string;
   displayName: string;
+  photoURL: string;
   role: UserRole;
   createdAt: any;
   hasCompletedOnboarding: boolean;
@@ -33,12 +34,13 @@ export interface TherapistDocument {
 
 export const createUserDocument = async (
   uid: string,
-  data: { email: string; displayName: string }
+  data: { email: string; displayName: string; photoURL?: string }
 ): Promise<void> => {
   const userRef = doc(db, 'users', uid);
   await setDoc(userRef, {
     email: data.email,
     displayName: data.displayName,
+    photoURL: data.photoURL ?? '',
     role: 'user',
     createdAt: serverTimestamp(),
     hasCompletedOnboarding: false,

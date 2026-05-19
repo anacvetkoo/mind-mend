@@ -54,7 +54,6 @@ export const loginWithGoogle = async (role: 'user' | 'therapist' = 'user'): Prom
       const userDoc = await getUserDocument(credential.user.uid);
 
       if (!userDoc) {
-        // Nov Google user — ustvari dokument z pravim role
         if (role === 'therapist') {
           await createTherapistDocument(credential.user.uid, {
             email: credential.user.email ?? '',
@@ -65,6 +64,7 @@ export const loginWithGoogle = async (role: 'user' | 'therapist' = 'user'): Prom
           await createUserDocument(credential.user.uid, {
             email: credential.user.email ?? '',
             displayName: credential.user.displayName ?? '',
+            photoURL: credential.user.photoURL ?? '',
           });
         }
         return { success: true, role };
@@ -88,6 +88,7 @@ export const signUpUser = async (
     await createUserDocument(credential.user.uid, {
       email,
       displayName: '',
+      photoURL: '',
     });
     return { success: true, role: 'user' };
   } catch (err: any) {
