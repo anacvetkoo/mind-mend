@@ -1,4 +1,5 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import { BlockedTimeManagement } from './BlockedTimeManagement';
 import { motion } from 'motion/react';
 import { Calendar, ArrowRight } from 'lucide-react';
 import { TherapistAvailabilitySetup } from './TherapistAvailabilitySetup';
@@ -9,6 +10,16 @@ export function TherapistAvailabilityScreen() {
   const [availability, setAvailability] = useState<TherapistAvailability | null>(null);
   const [showSetup, setShowSetup] = useState(false);
   const [showBlockedTime, setShowBlockedTime] = useState(false);
+
+  const [currentTherapistId, setCurrentTherapistId] = useState('');
+
+  useEffect(() => {
+    import('../../services/firebaseConfig').then(({ auth }) => {
+      if (auth.currentUser?.uid) {
+        setCurrentTherapistId(auth.currentUser.uid);
+      }
+    });
+  }, []);
 
   const handleSaveAvailability = (newAvailability: TherapistAvailability) => {
     setAvailability(newAvailability);
@@ -21,6 +32,15 @@ export function TherapistAvailabilityScreen() {
         onClose={() => setShowSetup(false)}
         existingAvailability={availability || undefined}
         onSave={handleSaveAvailability}
+      />
+    );
+  }
+
+  if (showBlockedTime) {
+    return (
+      <BlockedTimeManagement
+        therapistId={currentTherapistId}
+        onClose={() => setShowBlockedTime(false)}
       />
     );
   }

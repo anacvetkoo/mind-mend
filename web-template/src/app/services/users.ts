@@ -119,6 +119,23 @@ export const getTherapistAvailability = async (
   return snapshot.data().availability ?? null;
 };
 
+export const updateBlockedTimes = async (
+  uid: string,
+  blockedTimes: any[]
+): Promise<void> => {
+  const therapistRef = doc(db, 'users', uid);
+  await setDoc(therapistRef, { blockedTimes }, { merge: true });
+};
+
+export const getBlockedTimes = async (
+  uid: string
+): Promise<any[]> => {
+  const therapistRef = doc(db, 'users', uid);
+  const snapshot = await getDoc(therapistRef);
+  if (!snapshot.exists()) return [];
+  return snapshot.data().blockedTimes ?? [];
+};
+
 // ─── Dark Mode (per-user) ─────────────────────────────────────────────────────
 
 export const getUserDarkMode = async (uid: string): Promise<boolean> => {

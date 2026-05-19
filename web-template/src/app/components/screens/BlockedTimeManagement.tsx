@@ -10,19 +10,6 @@ interface BlockedTimeManagementProps {
 
 export function BlockedTimeManagement({ therapistId, onClose }: BlockedTimeManagementProps) {
   const [blockedTimes, setBlockedTimes] = useState<BlockedTime[]>([]);
-
-  useEffect(() => {
-    const saved = localStorage.getItem(`blockedTimes_${therapistId}`);
-    if (saved) {
-      setBlockedTimes(JSON.parse(saved));
-    }
-  }, [therapistId]);
-
-  useEffect(() => {
-    if (blockedTimes.length >= 0) {
-      localStorage.setItem(`blockedTimes_${therapistId}`, JSON.stringify(blockedTimes));
-    }
-  }, [blockedTimes, therapistId]);
   const [showAddForm, setShowAddForm] = useState(false);
   const [formData, setFormData] = useState({
     startDate: '',
@@ -33,19 +20,43 @@ export function BlockedTimeManagement({ therapistId, onClose }: BlockedTimeManag
     isFullDay: true
   });
 
+  useEffect(() => {
+    const loadBlockedTimes = async () => {
+      const { auth } = await import('../../services/firebaseConfig');
+      const currentUser = auth.currentUser;
+      if (currentUser) {
+        const { getBlockedTimes } = await import('../../services/users');
+        const times = await getBlockedTimes(currentUser.uid);
+        setBlockedTimes(times);
+      }
+    };
+    loadBlockedTimes();
+  }, []);
+
+  const saveToFirestore = async (times: any[]) => {
+    const { auth } = await import('../../services/firebaseConfig');
+    const currentUser = auth.currentUser;
+    if (currentUser) {
+      const { updateBlockedTimes } = await import('../../services/users');
+      await updateBlockedTimes(currentUser.uid, times);
+    }
+  };
+
   const handleAddBlockedTime = () => {
     const newBlocked: BlockedTime = {
       id: `blocked-${Date.now()}`,
       therapistId,
       startDate: formData.startDate,
       endDate: formData.endDate || formData.startDate,
-      startTime: formData.isFullDay ? undefined : formData.startTime,
-      endTime: formData.isFullDay ? undefined : formData.endTime,
+      startTime: formData.isFullDay ? '' : formData.startTime,
+      endTime: formData.isFullDay ? '' : formData.endTime,
       reason: formData.reason,
       isFullDay: formData.isFullDay
     };
 
-    setBlockedTimes([...blockedTimes, newBlocked]);
+    const newTimes = [...blockedTimes, newBlocked];
+    setBlockedTimes(newTimes);
+    saveToFirestore(newTimes);
     setShowAddForm(false);
     setFormData({
       startDate: '',
@@ -58,7 +69,9 @@ export function BlockedTimeManagement({ therapistId, onClose }: BlockedTimeManag
   };
 
   const handleDelete = (id: string) => {
-    setBlockedTimes(blockedTimes.filter(bt => bt.id !== id));
+    const newTimes = blockedTimes.filter(bt => bt.id !== id);
+    setBlockedTimes(newTimes);
+    saveToFirestore(newTimes);
   };
 
   const formatDate = (dateStr: string) => {
@@ -72,7 +85,6 @@ export function BlockedTimeManagement({ therapistId, onClose }: BlockedTimeManag
   return (
     <div className="fixed inset-0 bg-background z-50 overflow-auto">
       <div className="max-w-md mx-auto min-h-screen pb-24">
-        {/* Header */}
         <div className="sticky top-0 bg-background/95 backdrop-blur-xl border-b border-[var(--border)] px-6 py-4 flex items-center z-10">
           <button
             onClick={onClose}
@@ -91,7 +103,6 @@ export function BlockedTimeManagement({ therapistId, onClose }: BlockedTimeManag
         </div>
 
         <div className="px-6 pt-6">
-          {/* Add Form */}
           {showAddForm && (
             <motion.div
               initial={{ opacity: 0, y: -20 }}
@@ -100,7 +111,6 @@ export function BlockedTimeManagement({ therapistId, onClose }: BlockedTimeManag
             >
               <h3 className="text-lg text-foreground mb-4">Add Blocked Time</h3>
 
-              {/* Full Day Toggle */}
               <div className="flex items-center justify-between mb-4 p-3 rounded-xl bg-[var(--muted)]">
                 <span className="text-sm text-foreground">Full Day</span>
                 <button
@@ -115,7 +125,6 @@ export function BlockedTimeManagement({ therapistId, onClose }: BlockedTimeManag
                 </button>
               </div>
 
-              {/* Date Range */}
               <div className="grid grid-cols-2 gap-3 mb-4">
                 <div>
                   <label className="block text-sm text-foreground mb-2">Start Date</label>
@@ -138,7 +147,6 @@ export function BlockedTimeManagement({ therapistId, onClose }: BlockedTimeManag
                 </div>
               </div>
 
-              {/* Time Range (if not full day) */}
               {!formData.isFullDay && (
                 <div className="grid grid-cols-2 gap-3 mb-4">
                   <div>
@@ -162,7 +170,6 @@ export function BlockedTimeManagement({ therapistId, onClose }: BlockedTimeManag
                 </div>
               )}
 
-              {/* Reason */}
               <div className="mb-4">
                 <label className="block text-sm text-foreground mb-2">Reason</label>
                 <input
@@ -194,7 +201,6 @@ export function BlockedTimeManagement({ therapistId, onClose }: BlockedTimeManag
             </motion.div>
           )}
 
-          {/* Blocked Times List */}
           {blockedTimes.length === 0 ? (
             <div className="text-center py-16">
               <Calendar className="w-16 h-16 text-muted-foreground mx-auto mb-4 opacity-50" />
