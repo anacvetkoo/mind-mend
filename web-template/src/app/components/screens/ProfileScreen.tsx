@@ -33,6 +33,8 @@ interface ProfileScreenProps {
   userRole?: string;
   darkMode?: boolean;
   onToggleDarkMode?: () => void;
+  notificationsEnabled?: boolean;
+  onToggleNotifications?: (newValue: boolean) => void;
   onNavigateToLikedContent?: () => void;
   onNavigateToSavedContent?: () => void;
   onEditProfile?: () => void;
@@ -40,7 +42,7 @@ interface ProfileScreenProps {
   therapistProfileProp?: any;
 }
 
-export function ProfileScreen({ onLogout, userName = 'Alex', userRole = 'User', darkMode = false, onToggleDarkMode, onNavigateToLikedContent, onNavigateToSavedContent, onEditProfile, onUpdateName, therapistProfileProp }: ProfileScreenProps) {
+export function ProfileScreen({ onLogout, userName = 'Alex', userRole = 'User', darkMode = false, onToggleDarkMode, notificationsEnabled = false, onToggleNotifications, onNavigateToLikedContent, onNavigateToSavedContent, onEditProfile, onUpdateName, therapistProfileProp }: ProfileScreenProps) {
   const [availability, setAvailability] = useState<TherapistAvailability | null>(null);
   const [showAvailabilitySetup, setShowAvailabilitySetup] = useState(false);
   const [showBlockedTimeManagement, setShowBlockedTimeManagement] = useState(false);
@@ -59,15 +61,28 @@ export function ProfileScreen({ onLogout, userName = 'Alex', userRole = 'User', 
     });
   }, []);
 
-  const [notificationsEnabled, setNotificationsEnabled] = useState(() => localStorage.getItem('notificationsEnabled') !== 'false');
+  const [notificationPermission, setNotificationPermission] = useState<NotificationPermission>(() => {
+    if ('Notification' in window) return Notification.permission;
+    return 'default';
+  });
   // const [cameraPermission, setCameraPermission] = useState(() => localStorage.getItem('cameraPermission') === 'true');
   // const [microphonePermission, setMicrophonePermission] = useState(() => localStorage.getItem('microphonePermission') === 'true');
   const [biometricAuth, setBiometricAuth] = useState(() => localStorage.getItem('biometricAuth') === 'true');
 
-  const handleNotificationsToggle = () => {
+  const handleNotificationsToggle = async () => {
+    // Če želimo vklopiti — zaprosi za dovoljenje
+    if (!notificationsEnabled && 'Notification' in window) {
+      if (Notification.permission === 'default') {
+        const permission = await Notification.requestPermission();
+        setNotificationPermission(permission);
+        if (permission !== 'granted') return; // User je zavrnil — ne vklopi
+      } else if (Notification.permission === 'denied') {
+        setNotificationPermission('denied');
+        return; // Ne moremo vklopiti — user mora ročno dovoliti v nastavitvah
+      }
+    }
     const newValue = !notificationsEnabled;
-    setNotificationsEnabled(newValue);
-    localStorage.setItem('notificationsEnabled', String(newValue));
+    onToggleNotifications?.(newValue); // Shrani v Firestore prek App.tsx
   };
 
   // const handleCameraToggle = () => {
@@ -364,15 +379,22 @@ export function ProfileScreen({ onLogout, userName = 'Alex', userRole = 'User', 
         >
           <h3 className="text-xl text-foreground mb-4">Settings</h3>
           <Card className="divide-y divide-[var(--border)]">
-            <button onClick={handleNotificationsToggle} className="flex items-center justify-between w-full py-4 hover:bg-[var(--muted)] transition-colors px-2 -mx-2 rounded-xl">
-              <div className="flex items-center gap-3">
-                <Bell className="w-5 h-5 text-muted-foreground" />
-                <span>Notifications</span>
-              </div>
-              <div className={`w-12 h-6 rounded-full relative transition-colors duration-300 ease-in-out ${notificationsEnabled ? 'bg-gradient-to-r from-[var(--lavender)] to-[var(--soft-purple)]' : 'bg-[var(--muted)]'}`}>
-                <div className={`absolute top-1 w-4 h-4 bg-card rounded-full shadow-sm transition-all duration-300 ease-in-out ${notificationsEnabled ? 'right-1' : 'left-1'}`} />
-              </div>
-            </button>
+            <div className="py-1">
+              <button onClick={handleNotificationsToggle} className="flex items-center justify-between w-full py-3 hover:bg-[var(--muted)] transition-colors px-2 -mx-2 rounded-xl">
+                <div className="flex items-center gap-3">
+                  <Bell className="w-5 h-5 text-muted-foreground" />
+                  <span>Notifications</span>
+                </div>
+                <div className={`w-12 h-6 rounded-full relative transition-colors duration-300 ease-in-out ${notificationsEnabled && notificationPermission !== 'denied' ? 'bg-gradient-to-r from-[var(--lavender)] to-[var(--soft-purple)]' : 'bg-[var(--muted)]'}`}>
+                  <div className={`absolute top-1 w-4 h-4 bg-card rounded-full shadow-sm transition-all duration-300 ease-in-out ${notificationsEnabled && notificationPermission !== 'denied' ? 'right-1' : 'left-1'}`} />
+                </div>
+              </button>
+              {notificationPermission === 'denied' && (
+                <p className="text-xs text-[var(--destructive)] px-2 pb-2">
+                  Notifications so blokirane. Dovoli jih ročno v nastavitvah telefona.
+                </p>
+              )}
+            </div>
             <button onClick={onToggleDarkMode} className="flex items-center justify-between w-full py-4 hover:bg-[var(--muted)] transition-colors px-2 -mx-2 rounded-xl">
               <div className="flex items-center gap-3">
                 <Moon className="w-5 h-5 text-muted-foreground" />

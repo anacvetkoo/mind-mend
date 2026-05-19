@@ -132,3 +132,17 @@ export const updateUserDarkMode = async (uid: string, darkMode: boolean): Promis
   const userRef = doc(db, 'users', uid);
   await setDoc(userRef, { darkMode }, { merge: true });
 };
+
+// ─── Notifications (per-user) ─────────────────────────────────────────────────
+
+export const getUserNotificationsEnabled = async (uid: string): Promise<boolean> => {
+  const userRef = doc(db, 'users', uid);
+  const snapshot = await getDoc(userRef);
+  if (!snapshot.exists()) return false;
+  return snapshot.data().notificationsEnabled ?? false;
+};
+
+export const updateUserNotificationsEnabled = async (uid: string, notificationsEnabled: boolean): Promise<void> => {
+  const userRef = doc(db, 'users', uid);
+  await setDoc(userRef, { notificationsEnabled }, { merge: true });
+};

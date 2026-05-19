@@ -36,7 +36,7 @@ import { SavedContentScreen } from './components/screens/SavedContentScreen';
 import type { TherapistAvailability } from './types/appointments';
 import { saveCheckIn } from './utils/checkInUtils';
 import { onAuthChange, logout } from './services/auth';
-import { getUserDocument, updateUserDisplayName, updateTherapistProfile, updateTherapistAvailability, getTherapistAvailability, getUserDarkMode, updateUserDarkMode } from './services/users';
+import { getUserDocument, updateUserDisplayName, updateTherapistProfile, updateTherapistAvailability, getTherapistAvailability, getUserDarkMode, updateUserDarkMode, getUserNotificationsEnabled, updateUserNotificationsEnabled } from './services/users';
 import { completeUserOnboarding } from './services/onboarding';
 import { getAuth } from 'firebase/auth';
 
@@ -53,6 +53,7 @@ export default function App() {
     return saved ? JSON.parse(saved) : null;
   });
   const [darkMode, setDarkMode] = useState(false);
+  const [notificationsEnabled, setNotificationsEnabled] = useState(false);
 
   const [showDailyCheckIn, setShowDailyCheckIn] = useState(false);
   const [selectedCheckIn, setSelectedCheckIn] = useState<any>(null);
@@ -132,9 +133,11 @@ export default function App() {
           localStorage.setItem('isAuthenticated', 'true');
           localStorage.setItem('userRole', role);
 
-          // Naloži dark mode iz Firestorea za tega userja
+          // Naloži dark mode in notifications iz Firestorea za tega userja
           const savedDarkMode = await getUserDarkMode(firebaseUser.uid);
           setDarkMode(savedDarkMode);
+          const savedNotifications = await getUserNotificationsEnabled(firebaseUser.uid);
+          setNotificationsEnabled(savedNotifications);
 
           if (role === 'therapist') {
             const doc = userDoc as any;
@@ -206,6 +209,15 @@ export default function App() {
     }
   };
 
+  const handleToggleNotifications = async (newValue: boolean) => {
+    setNotificationsEnabled(newValue);
+    const { auth } = await import('./services/firebaseConfig');
+    const currentUser = auth.currentUser;
+    if (currentUser) {
+      await updateUserNotificationsEnabled(currentUser.uid, newValue);
+    }
+  };
+
   const handleSplashComplete = () => {
     const hasSeenWelcome = localStorage.getItem('hasSeenWelcome');
     if (hasSeenWelcome) {
@@ -252,9 +264,11 @@ const handleQuestionnaireComplete = async (data: any) => {
     const { auth } = await import('./services/firebaseConfig');
     const currentUser = auth.currentUser;
     if (currentUser) {
-      // Naloži dark mode iz Firestorea za tega userja
+      // Naloži dark mode in notifications iz Firestorea za tega userja
       const savedDarkMode = await getUserDarkMode(currentUser.uid);
       setDarkMode(savedDarkMode);
+      const savedNotifications = await getUserNotificationsEnabled(currentUser.uid);
+      setNotificationsEnabled(savedNotifications);
 
       const userDoc = await getUserDocument(currentUser.uid);
       if (userDoc) {
@@ -339,8 +353,9 @@ const handleQuestionnaireComplete = async (data: any) => {
     localStorage.clear();
     if (hasSeenWelcome) localStorage.setItem('hasSeenWelcome', hasSeenWelcome);
 
-    // Resetiraj dark mode na default — vsak user ima svoje nastavitve v Firestoreu
+    // Resetiraj settings na default — vsak user ima svoje nastavitve v Firestoreu
     setDarkMode(false);
+    setNotificationsEnabled(false);
 
     setAppState('auth');
     setUserRole('user');
@@ -749,6 +764,8 @@ const handleQuestionnaireComplete = async (data: any) => {
               userRole="User"
               darkMode={darkMode}
               onToggleDarkMode={toggleDarkMode}
+              notificationsEnabled={notificationsEnabled}
+              onToggleNotifications={handleToggleNotifications}
               onNavigateToLikedContent={() => setShowLikedContent(true)}
               onNavigateToSavedContent={() => setShowSavedContent(true)}
               onUpdateName={handleUpdateName}
@@ -785,6 +802,8 @@ const handleQuestionnaireComplete = async (data: any) => {
               userRole="Therapist"
               darkMode={darkMode}
               onToggleDarkMode={toggleDarkMode}
+              notificationsEnabled={notificationsEnabled}
+              onToggleNotifications={handleToggleNotifications}
               onNavigateToLikedContent={() => setShowLikedContent(true)}
               onNavigateToSavedContent={() => setShowSavedContent(true)}
               onEditProfile={() => setShowTherapistProfileEdit(true)}
@@ -806,6 +825,8 @@ const handleQuestionnaireComplete = async (data: any) => {
               userRole="Administrator"
               darkMode={darkMode}
               onToggleDarkMode={toggleDarkMode}
+              notificationsEnabled={notificationsEnabled}
+              onToggleNotifications={handleToggleNotifications}
               onNavigateToLikedContent={() => setShowLikedContent(true)}
               onNavigateToSavedContent={() => setShowSavedContent(true)}
             />
