@@ -842,28 +842,7 @@ const handleQuestionnaireComplete = async (data: any) => {
         </>
       )}
 
-      {userRole === 'admin' && (
-        <>
-          {currentScreen === 'overview' && <AdminOverview />}
-          {currentScreen === 'users' && <AdminUsers />}
-          {currentScreen === 'therapists' && <TherapistList onSelectTherapist={(id) => setSelectedTherapistId(id)} />}
-          {currentScreen === 'settings' && (
-            <ProfileScreen
-              onLogout={handleLogout}
-              userName="Admin"
-              userRole="Administrator"
-              darkMode={darkMode}
-              onToggleDarkMode={toggleDarkMode}
-              notificationsEnabled={notificationsEnabled}
-              onToggleNotifications={handleToggleNotifications}
-              biometricAuthEnabled={biometricAuthEnabled}
-              onToggleBiometricAuth={handleToggleBiometricAuth}
-              onNavigateToLikedContent={() => setShowLikedContent(true)}
-              onNavigateToSavedContent={() => setShowSavedContent(true)}
-            />
-          )}
-        </>
-      )}
+     
 
       <BottomNav activeTab={currentScreen} onTabChange={handleTabChange} role={userRole} />
 

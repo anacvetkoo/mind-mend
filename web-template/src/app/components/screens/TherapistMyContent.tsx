@@ -1,86 +1,26 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { motion } from 'motion/react';
 import { Plus, Eye, Heart, Edit2, Trash2, Bookmark } from 'lucide-react';
 import { OtterMascot } from '../mascot/OtterMascot';
 import { Button } from '../ui/Button';
 import { TherapistContentEditor } from './TherapistContentEditor';
-import { getBookmarkedContentIds, getLikeCount } from '../../utils/contentInteractions';
-
-interface Step {
-  id: number;
-  title: string;
-  description: string;
-}
-
-interface ContentItem {
-  id: number;
-  title: string;
-  category: string;
-  duration: string;
-  gradient: string;
-  views: number;
-  likes: number;
-  isDraft?: boolean;
-  description?: string;
-  difficulty?: 'Easy' | 'Medium' | 'Hard';
-  thumbnailType?: 'color' | 'image';
-  thumbnailImage?: string | null;
-  contentType?: 'video' | 'steps' | 'audio';
-  steps?: Step[];
-  audioFileName?: string;
-  videoFileName?: string;
-}
+import {
+  createContent,
+  deleteContent,
+  getTherapistContent,
+  updateContent,
+  type ContentFiles,
+  type ContentItem
+} from '../../services/content';
+import { ContentDetail } from './ContentDetail';
 
 export function TherapistMyContent() {
   const [selectedFilter, setSelectedFilter] = useState('all');
   const [showEditor, setShowEditor] = useState(false);
   const [editingContent, setEditingContent] = useState<ContentItem | undefined>(undefined);
-  const [drafts, setDrafts] = useState<ContentItem[]>([]);
-
-  // Helper function to count how many users saved a content item
-  const getSavedCount = (contentId: number): number => {
-    const bookmarkedIds = getBookmarkedContentIds();
-    return bookmarkedIds.includes(contentId) ? 1 : 0; // In real app, this would count all users who saved
-  };
-
-  const [publishedContent, setPublishedContent] = useState<ContentItem[]>([
-    {
-      id: 1,
-      title: 'Ocean Waves Meditation',
-      category: 'Sound Therapy',
-      duration: '15 min',
-      gradient: 'from-[var(--muted-blue)] to-[var(--soft-purple)]',
-      views: 1247,
-      likes: 342
-    },
-    {
-      id: 2,
-      title: 'Deep Breathing Exercise',
-      category: 'Breathing',
-      duration: '8 min',
-      gradient: 'from-[var(--soft-mint)] to-[var(--muted-blue)]',
-      views: 892,
-      likes: 215
-    },
-    {
-      id: 3,
-      title: 'Progressive Muscle Relaxation',
-      category: 'Relaxation',
-      duration: '20 min',
-      gradient: 'from-[var(--lavender)] to-[var(--soft-pink)]',
-      views: 2104,
-      likes: 567
-    },
-    {
-      id: 4,
-      title: 'Morning Calm Session',
-      category: 'Relaxation',
-      duration: '12 min',
-      gradient: 'from-[var(--soft-pink)] to-[var(--lavender)]',
-      views: 1653,
-      likes: 421
-    }
-  ]);
+  const [previewContent, setPreviewContent] = useState<ContentItem | undefined>(undefined);
+  const [contentItems, setContentItems] = useState<ContentItem[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
 
   const filters = [
     { id: 'all', label: 'All' },
@@ -90,11 +30,31 @@ export function TherapistMyContent() {
     { id: 'sound', label: 'Sound Therapy' }
   ];
 
-  const filteredContent = selectedFilter === 'drafts'
-    ? drafts
-    : selectedFilter === 'all'
-    ? publishedContent
-    : publishedContent.filter(item => item.category.toLowerCase().includes(selectedFilter));
+  const fetchContent = async () => {
+    try {
+      setIsLoading(true);
+      const therapistContent = await getTherapistContent();
+      setContentItems(therapistContent);
+    } catch (error) {
+      console.error('Error loading therapist content:', error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchContent();
+  }, []);
+
+  const filteredContent = contentItems.filter((item) => {
+    if (selectedFilter === 'drafts') return item.isDraft;
+    if (selectedFilter === 'all') return !item.isDraft;
+    if (selectedFilter === 'relaxation') return !item.isDraft && item.category === 'Relaxation';
+    if (selectedFilter === 'breathing') return !item.isDraft && item.category === 'Breathing';
+    if (selectedFilter === 'sound') return !item.isDraft && item.category === 'Sound Therapy';
+
+    return !item.isDraft;
+  });
 
   const isEmpty = filteredContent.length === 0;
 
@@ -108,65 +68,73 @@ export function TherapistMyContent() {
     setShowEditor(true);
   };
 
-  const handleSave = (content: ContentItem, isDraft: boolean) => {
-    // In a real app, this would save to a database
-    console.log('Saving content:', content, 'isDraft:', isDraft);
+  const handlePreview = (content: ContentItem) => {
+  setPreviewContent(content);
+};
 
-    if (editingContent) {
-      // Editing existing content
-      if (editingContent.isDraft) {
-        // Was a draft
-        if (isDraft) {
-          // Keep as draft - update the draft
-          setDrafts(drafts.map(d => d.id === content.id ? { ...content, isDraft: true } : d));
-        } else {
-          // Publish the draft - remove from drafts, add to published
-          setDrafts(drafts.filter(d => d.id !== content.id));
-          const publishedItem = {
-            ...content,
-            views: 0,
-            likes: 0,
-            isDraft: false
-          };
-          setPublishedContent([...publishedContent, publishedItem]);
-        }
+  const handleSave = async (content: ContentItem, isDraft: boolean, files: ContentFiles) => {
+    try {
+      if (editingContent?.id) {
+        await updateContent(editingContent.id, content, isDraft, files);
       } else {
-        // Editing published content - update it
-        setPublishedContent(publishedContent.map(p =>
-          p.id === content.id ? { ...content, views: p.views, likes: p.likes } : p
-        ));
+        await createContent(content, isDraft, files);
       }
-    } else {
-      // Creating new content
-      if (isDraft) {
-        const newDraft = {
-          ...content,
-          id: Date.now(), // Use timestamp as ID
-          views: 0,
-          likes: 0,
-          isDraft: true
-        };
-        setDrafts([...drafts, newDraft]);
-      } else {
-        const newPublished = {
-          ...content,
-          id: Date.now(), // Use timestamp as ID
-          views: 0,
-          likes: 0,
-          isDraft: false
-        };
-        setPublishedContent([...publishedContent, newPublished]);
-      }
+
+      await fetchContent();
+      setShowEditor(false);
+      setEditingContent(undefined);
+    } catch (error) {
+      console.error('Error saving content:', error);
+      alert('Something went wrong while saving content.');
     }
+  };
 
-    setShowEditor(false);
-    setEditingContent(undefined);
+  const handleDelete = async (contentId?: string) => {
+    if (!contentId) return;
+
+    const confirmed = window.confirm('Are you sure you want to delete this content?');
+
+    if (!confirmed) return;
+
+    try {
+      await deleteContent(contentId);
+      await fetchContent();
+    } catch (error) {
+      console.error('Error deleting content:', error);
+      alert('Something went wrong while deleting content.');
+    }
   };
 
   const handleClose = () => {
     setShowEditor(false);
     setEditingContent(undefined);
   };
+
+const mapToContentDetailItem = (item: ContentItem) => ({
+  id: item.id ? item.id.length : 0,
+  title: item.title,
+  category: item.category,
+  categoryLabel: item.category,
+  duration: item.duration || '',
+  description: item.description || '',
+  difficulty: item.difficulty || 'Easy',
+  therapistName: 'You',
+  therapistAvatar: '',
+  therapistTitle: 'Therapist',
+  therapistBio: '',
+  therapistRating: 0,
+  therapistReviews: 0,
+  image: item.thumbnailUrl || '',
+  thumbnailGradient: item.gradient || '',
+  saved: false,
+  liked: false,
+  rating: 0,
+  reviews: 0,
+  contentType: item.contentType || 'steps',
+  steps: item.steps || [],
+  audioUrl: item.audioUrl || '',
+  videoUrl: item.videoUrl || ''
+});
 
   if (showEditor) {
     return (
@@ -177,6 +145,14 @@ export function TherapistMyContent() {
       />
     );
   }
+  if (previewContent) {
+  return (
+    <ContentDetail
+      content={mapToContentDetailItem(previewContent)}
+      onClose={() => setPreviewContent(undefined)}
+    />
+  );
+}
 
   return (
     <div className="min-h-screen bg-background pb-24">
@@ -226,8 +202,11 @@ export function TherapistMyContent() {
           </div>
         </motion.div>
 
-        {/* Content Grid */}
-        {!isEmpty ? (
+        {isLoading ? (
+          <div className="py-16 text-center text-muted-foreground">
+            Loading content...
+          </div>
+        ) : !isEmpty ? (
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
@@ -240,11 +219,26 @@ export function TherapistMyContent() {
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: 0.05 * idx }}
-                className="bg-card rounded-2xl shadow-md overflow-hidden"
+                className="relative bg-card rounded-2xl shadow-md overflow-hidden"
               >
+                <motion.button
+  whileTap={{ scale: 0.9 }}
+  onClick={() => handlePreview(item)}
+  className="absolute top-3 right-3 w-8 h-8 rounded-full bg-white dark:bg-card border border-[var(--border)] flex items-center justify-center shadow-sm z-10"
+>
+  <Eye className="w-4 h-4 text-[var(--muted-blue)]" />
+</motion.button>
                 <div className="flex gap-4 p-4">
                   {/* Thumbnail */}
-                  <div className={`w-24 h-24 rounded-2xl bg-gradient-to-br ${item.gradient} flex-shrink-0`} />
+                  {item.thumbnailType === 'image' && item.thumbnailUrl ? (
+                    <img
+                      src={item.thumbnailUrl}
+                      alt={item.title}
+                      className="w-24 h-24 rounded-2xl object-cover flex-shrink-0"
+                    />
+                  ) : (
+                    <div className={`w-24 h-24 rounded-2xl bg-gradient-to-br ${item.gradient} flex-shrink-0`} />
+                  )}
 
                   {/* Content Info */}
                   <div className="flex-1 min-w-0">
@@ -254,7 +248,7 @@ export function TherapistMyContent() {
                         {item.category}
                       </span>
                       {item.duration && (
-                        <span className="text-xs text-muted-foreground">{item.duration}</span>
+                        <span className="text-xs text-muted-foreground">{item.duration} min</span>
                       )}
                       {item.isDraft && (
                         <span className="px-2 py-0.5 rounded-full bg-yellow-100 dark:bg-yellow-900/30 text-yellow-700 dark:text-yellow-400 text-xs">
@@ -263,20 +257,19 @@ export function TherapistMyContent() {
                       )}
                     </div>
 
-                    {/* Stats - only for published content */}
                     {!item.isDraft && (
                       <div className="flex items-center gap-3 mb-3">
                         <div className="flex items-center gap-1 text-sm text-muted-foreground">
                           <Eye className="w-4 h-4" />
-                          <span>{item.views.toLocaleString()}</span>
+                          <span>{item.views ?? 0}</span>
                         </div>
                         <div className="flex items-center gap-1 text-sm text-muted-foreground">
                           <Heart className="w-4 h-4" />
-                          <span>{getLikeCount(item.id)}</span>
+                          <span>{item.likes ?? 0}</span>
                         </div>
                         <div className="flex items-center gap-1 text-sm text-muted-foreground">
                           <Bookmark className="w-4 h-4" />
-                          <span>{getSavedCount(item.id)}</span>
+                          <span>0</span>
                         </div>
                       </div>
                     )}
@@ -291,8 +284,10 @@ export function TherapistMyContent() {
                         <Edit2 className="w-3 h-3" />
                         Edit
                       </motion.button>
+                      
                       <motion.button
                         whileTap={{ scale: 0.95 }}
+                        onClick={() => handleDelete(item.id)}
                         className="flex-1 px-3 py-1.5 rounded-xl border-2 border-red-400 text-red-400 text-xs flex items-center justify-center gap-1"
                       >
                         <Trash2 className="w-3 h-3" />
@@ -305,14 +300,13 @@ export function TherapistMyContent() {
             ))}
           </motion.div>
         ) : (
-          /* Empty State */
           <motion.div
             initial={{ opacity: 0, scale: 0.9 }}
             animate={{ opacity: 1, scale: 1 }}
             transition={{ delay: 0.2 }}
             className="flex flex-col items-center justify-center py-16 px-6 text-center"
           >
-            <OtterMascot size="lg" emotion="sad" />
+            <OtterMascot size="lg"  />
             <h3 className="text-xl text-foreground mt-6 mb-2">
               {selectedFilter === 'drafts'
                 ? "You don't have any drafts"

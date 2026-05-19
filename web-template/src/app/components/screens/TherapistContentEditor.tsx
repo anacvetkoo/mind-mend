@@ -1,33 +1,13 @@
 import React, { useState } from 'react';
 import { motion } from 'motion/react';
 import { ArrowLeft, Save, Upload, Plus } from 'lucide-react';
+import type { ContentFiles, ContentItem, ContentStep } from '../../services/content';
 
-interface Step {
-  id: number;
-  title: string;
-  description: string;
-}
 
-interface ContentItem {
-  id?: number;
-  title: string;
-  category: string;
-  duration: string;
-  gradient: string;
-  description?: string;
-  isDraft?: boolean;
-  difficulty?: 'Easy' | 'Medium' | 'Hard';
-  thumbnailType?: 'color' | 'image';
-  thumbnailImage?: string | null;
-  contentType?: 'video' | 'steps' | 'audio';
-  steps?: Step[];
-  audioFileName?: string;
-  videoFileName?: string;
-}
 
 interface TherapistContentEditorProps {
   onClose: () => void;
-  onSave: (content: ContentItem, isDraft: boolean) => void;
+  onSave: (content: ContentItem, isDraft: boolean, files: ContentFiles) => Promise<void>;
   existingContent?: ContentItem;
 }
 
@@ -45,8 +25,10 @@ export function TherapistContentEditor({ onClose, onSave, existingContent }: The
   );
   const [audioFile, setAudioFile] = useState<File | null>(null);
   const [videoFile, setVideoFile] = useState<File | null>(null);
-  const [steps, setSteps] = useState<Step[]>(existingContent?.steps || [{ id: 1, title: '', description: '' }]);
-
+  const [steps, setSteps] = useState<ContentStep[]>(existingContent?.steps || [{ id: 1, title: '', description: '' }]);
+  const [thumbnailFile, setThumbnailFile] = useState<File | null>(null);
+  const [isSaving, setIsSaving] = useState(false);
+  
   const categories = ['Relaxation', 'Breathing', 'Sound Therapy'];
 
   const gradientOptions = [
@@ -57,37 +39,108 @@ export function TherapistContentEditor({ onClose, onSave, existingContent }: The
     { id: 5, gradient: 'from-[var(--soft-purple)] to-[var(--soft-mint)]', name: 'Dream' }
   ];
 
-  const handleThumbnailImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file) {
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        setThumbnailImage(reader.result as string);
-      };
-      reader.readAsDataURL(file);
-    }
+const handleThumbnailImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const file = e.target.files?.[0];
+
+  if (file) {
+    setThumbnailFile(file);
+
+    const reader = new FileReader();
+    reader.onloadend = () => {
+      setThumbnailImage(reader.result as string);
+    };
+    reader.readAsDataURL(file);
+  }
+};
+
+const formatDuration = (durationInSeconds: number) => {
+  if (!Number.isFinite(durationInSeconds) || durationInSeconds <= 0) {
+    return '';
+  }
+
+  const minutes = Math.floor(durationInSeconds / 60);
+  const seconds = Math.round(durationInSeconds % 60);
+
+  if (minutes > 0 && seconds > 0) {
+    return `${minutes} min ${seconds} sec`;
+  }
+
+  if (minutes > 0) {
+    return `${minutes} min`;
+  }
+
+  return `${seconds} sec`;
+};
+
+const formatMediaDuration = (durationInSeconds: number): string => {
+  const totalSeconds = Math.round(durationInSeconds);
+  const minutes = Math.floor(totalSeconds / 60);
+  const seconds = totalSeconds % 60;
+
+  if (minutes > 0 && seconds > 0) {
+    return `${minutes} min ${seconds} sec`;
+  }
+
+  if (minutes > 0) {
+    return `${minutes} min`;
+  }
+
+  return `${seconds} sec`;
+};
+
+const calculateMediaDuration = (file: File, mediaType: 'audio' | 'video') => {
+  const objectUrl = URL.createObjectURL(file);
+  const mediaElement = document.createElement(mediaType) as HTMLMediaElement;
+
+  const cleanup = () => {
+    mediaElement.removeEventListener('loadedmetadata', handleLoadedMetadata);
+    mediaElement.removeEventListener('error', handleError);
+    URL.revokeObjectURL(objectUrl);
+    mediaElement.removeAttribute('src');
+    mediaElement.load();
   };
 
-  const handleAudioUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file) {
-      setAudioFile(file);
-      // Simulate duration calculation
-      setDuration('15 min');
-    }
+  const handleLoadedMetadata = () => {
+    const durationSeconds = mediaElement.duration;
+    setDuration(formatMediaDuration(durationSeconds));
+    cleanup();
   };
 
-  const handleVideoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file) {
-      setVideoFile(file);
-      // Simulate duration calculation
-      setDuration('12 min');
-    }
+  const handleError = () => {
+    console.error('Could not calculate media duration.');
+    setDuration('');
+    cleanup();
   };
+
+  mediaElement.preload = 'metadata';
+  mediaElement.src = objectUrl;
+  mediaElement.addEventListener('loadedmetadata', handleLoadedMetadata);
+  mediaElement.addEventListener('error', handleError);
+  mediaElement.load();
+};
+
+const handleAudioUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const file = e.target.files?.[0];
+
+  if (!file) return;
+
+  setAudioFile(file);
+  setDuration('Calculating...');
+  calculateMediaDuration(file, 'audio');
+};
+
+const handleVideoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const file = e.target.files?.[0];
+
+  if (!file) return;
+
+  setVideoFile(file);
+  setDuration('Calculating...');
+  calculateMediaDuration(file, 'video');
+};
 
   const addStep = () => {
-    const newStep: Step = {
+    const newStep: ContentStep = {
       id: steps.length + 1,
       title: '',
       description: ''
@@ -101,33 +154,46 @@ export function TherapistContentEditor({ onClose, onSave, existingContent }: The
     ));
   };
 
-  const handleSave = (isDraft: boolean = false) => {
-    if (!title) {
-      alert('Please fill in all required fields');
-      return;
-    }
+  const handleSave = async (isDraft: boolean = false) => {
+  if (!title.trim()) {
+    alert('Please fill in all required fields');
+    return;
+  }
 
-    if (!isDraft && contentType === 'steps' && !duration) {
-      alert('Please enter a duration for step-by-step content');
-      return;
-    }
+  if (!isDraft && contentType === 'steps' && !duration.trim()) {
+    alert('Please enter a duration for step-by-step content');
+    return;
+  }
 
-    onSave({
+  try {
+    setIsSaving(true);
+
+    await onSave({
       id: existingContent?.id,
-      title,
+      title: title.trim(),
       category,
-      duration,
+      duration: duration.trim(),
       gradient: selectedGradient,
-      description,
+      description: description.trim(),
       difficulty,
       thumbnailType,
       thumbnailImage,
       contentType,
       steps,
-      audioFileName: audioFile?.name,
-      videoFileName: videoFile?.name
-    }, isDraft);
-  };
+      audioFileName: audioFile?.name || existingContent?.audioFileName,
+      videoFileName: videoFile?.name || existingContent?.videoFileName
+    }, isDraft, {
+      audioFile: audioFile || undefined,
+      videoFile: videoFile || undefined,
+      thumbnailFile: thumbnailFile || undefined
+    });
+  } catch (error) {
+    console.error('Error saving content from editor:', error);
+    alert('Content could not be saved.');
+  } finally {
+    setIsSaving(false);
+  }
+};
 
   return (
     <div className="fixed inset-0 bg-background z-50 overflow-auto">
@@ -234,7 +300,7 @@ export function TherapistContentEditor({ onClose, onSave, existingContent }: The
               </label>
               {(audioFile || existingContent?.audioFileName) && (
                 <p className="text-xs text-[var(--lavender)] mt-2">
-                  Duration: {duration} (auto-calculated)
+                  Duration: {duration || '(auto-calculated)'}
                 </p>
               )}
             </div>
@@ -291,7 +357,7 @@ export function TherapistContentEditor({ onClose, onSave, existingContent }: The
                   </label>
                   {(videoFile || existingContent?.videoFileName) && (
                     <p className="text-xs text-[var(--lavender)] mt-2">
-                      Duration: {duration} (auto-calculated)
+                      Duration: {duration || '(auto-calculated)'}
                     </p>
                   )}
                 </div>
@@ -480,26 +546,29 @@ export function TherapistContentEditor({ onClose, onSave, existingContent }: The
             <motion.button
               whileTap={{ scale: 0.98 }}
               onClick={() => handleSave(false)}
+              disabled={isSaving}
               className="w-full py-4 rounded-2xl bg-gradient-to-r from-[var(--lavender)] to-[var(--soft-purple)] text-white shadow-lg flex items-center justify-center gap-2 mb-6"
             >
               <Save className="w-5 h-5" />
-              <span>Save Changes</span>
+              <span>{isSaving ? 'Saving...' : 'Save Changes'}</span>
             </motion.button>
           ) : (
             <div className="flex gap-3 mb-6">
               <motion.button
                 whileTap={{ scale: 0.98 }}
                 onClick={() => handleSave(false)}
+                disabled={isSaving}
                 className="flex-1 py-4 rounded-2xl bg-gradient-to-r from-[var(--lavender)] to-[var(--soft-purple)] text-white shadow-lg flex items-center justify-center gap-2"
               >
-                <span>Publish Session</span>
+                <span>{isSaving ? 'Saving...' : 'Publish Session'}</span>
               </motion.button>
               <motion.button
                 whileTap={{ scale: 0.98 }}
                 onClick={() => handleSave(true)}
+                disabled={isSaving}
                 className="flex-1 py-4 rounded-2xl bg-card border-2 border-[var(--border)] text-foreground flex items-center justify-center gap-2"
               >
-                <span>Save Draft</span>
+                <span>{isSaving ? 'Saving...' : 'Save Draft'}</span>
               </motion.button>
             </div>
           )}
