@@ -19,6 +19,9 @@ export function UserSignUpForm({ onSignUpSuccess, onBack }: UserSignUpFormProps)
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
 
+  const [showPrivacyModal, setShowPrivacyModal] = useState(false);
+  const [showTermsModal, setShowTermsModal] = useState(false);
+
   const passwordsMatch = password === confirmPassword || confirmPassword === '';
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -146,11 +149,11 @@ export function UserSignUpForm({ onSignUpSuccess, onBack }: UserSignUpFormProps)
               />
               <label htmlFor="terms" className="text-sm text-muted-foreground cursor-pointer">
                 I agree to the{' '}
-                <button type="button" className="text-sm text-[var(--lavender)] underline">
+                <button type="button" onClick={() => setShowTermsModal(true)} className="text-sm text-[var(--lavender)] underline">
                   Terms and Conditions
                 </button>
                 {' '}and{' '}
-                <button type="button" className="text-sm text-[var(--lavender)] underline">
+                <button type="button" onClick={() => setShowPrivacyModal(true)} className="text-sm text-[var(--lavender)] underline">
                   Privacy Policy
                 </button>
               </label>
@@ -192,6 +195,50 @@ export function UserSignUpForm({ onSignUpSuccess, onBack }: UserSignUpFormProps)
           </Button>
         </motion.div>
       </div>
+      {/* MODAL ZA PRIVACY POLICY */}
+      {showPrivacyModal && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-fade-in">
+            <div className="bg-card border border-border rounded-2xl p-6 max-w-sm w-full shadow-2xl max-h-[80vh] overflow-y-auto">
+              <h3 className="text-xl font-bold text-foreground mb-2">Privacy Policy</h3>
+              <p className="text-xs text-muted-foreground mb-4">Effective: May 19, 2026</p>
+              <div className="space-y-3 text-sm text-muted-foreground mb-6">
+                <p><strong>1. Data Collection:</strong> We collect account info via Firebase Auth and daily logs (moods, stress, thoughts) that you voluntarily enter.</p>
+                <p><strong>2. Storage & AI:</strong> Data is stored securely in Firebase Firestore. Recent logs are dynamically analyzed using Firebase AI Logic (Google Gemini API) to provide tailored advice. Your entries are never used to train public models.</p>
+                <p><strong>3. GDPR Rights:</strong> As an EU app, you have the right to access your data or request instant permanent account deletion.</p>
+              </div>
+              <button 
+                type="button" 
+                onClick={() => setShowPrivacyModal(false)}
+                className="w-full py-2 bg-[var(--lavender)] text-white rounded-xl font-medium hover:bg-[var(--soft-purple)] transition-colors"
+              >
+                I Understand & Close
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* MODAL ZA TERMS AND CONDITIONS */}
+        {showTermsModal && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-fade-in">
+            <div className="bg-card border border-border rounded-2xl p-6 max-w-sm w-full shadow-2xl max-h-[80vh] overflow-y-auto">
+              <h3 className="text-xl font-bold text-foreground mb-2">Terms & Conditions</h3>
+              <p className="text-xs text-muted-foreground mb-4">Last Updated: May 19, 2026</p>
+              <div className="space-y-3 text-sm text-muted-foreground mb-6">
+                <p className="text-red-400 font-semibold">⚠️ 1. Medical Disclaimer:</p>
+                <p>MindMend is an AI wellness tool and <strong>does not provide medical advice, diagnosis, or clinical treatment</strong>.</p>
+                <p><strong>Emergency:</strong> MindMend is NOT a crisis application. If you are in distress, please call 112 immediately.</p>
+                <p><strong>2. AI Limitations:</strong> Recommendations are automated. AI can make mistakes; use personal discretion before acting on tips.</p>
+              </div>
+              <button 
+                type="button" 
+                onClick={() => setShowTermsModal(false)}
+                className="w-full py-2 bg-[var(--lavender)] text-white rounded-xl font-medium hover:bg-[var(--soft-purple)] transition-colors"
+              >
+                I Understand & Close
+              </button>
+            </div>
+          </div>
+        )}
     </div>
   );
 }
