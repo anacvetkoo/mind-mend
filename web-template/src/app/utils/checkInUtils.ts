@@ -250,22 +250,33 @@ export function getCompletedDays(month: number, year: number): number[] {
 }
 
 // Get weekly emotional trend
-export function getWeeklyTrend(): string {
-  const recentCheckIns = getRecentCheckIns(7);
+export function getWeeklyTrend(checkIns: any[]): string {
+  const cutoffDate = new Date();
+  cutoffDate.setDate(cutoffDate.getDate() - 7);
+  cutoffDate.setHours(0, 0, 0, 0);
+
+  // 2. Filtriramo samo dnevnike iz zadnjih 7 dni
+  const recentCheckIns = checkIns.filter(checkIn => {
+    const checkInDate = new Date(checkIn.date);
+    checkInDate.setHours(0, 0, 0, 0);
+    return checkInDate >= cutoffDate;
+  });
 
   if (recentCheckIns.length === 0) {
-    return 'Not enough data';
+    return 'Stable'; // Privzeta vrednost, če uporabnik še nima vnosov v tem tednu
   }
 
+  // 3. Izluščimo nivoje stresa
   const stressLevels = recentCheckIns
     .map(c => c.stressLevel)
-    .filter(s => s !== undefined) as number[];
+    .filter(s => s !== undefined && s !== null) as number[];
 
   if (stressLevels.length === 0) {
     return 'Stable';
   }
 
-  const avgStress = stressLevels.reduce((a, b) => a + b, 0) / stressLevels.length;
+  // 4. Izračunamo povprečje stresa v zadnjih 7 dneh
+  const avgStress = stressLevels.reduce((a, b) => Number(a) + Number(b), 0) / stressLevels.length;
 
   if (avgStress >= 7) return 'High stress';
   if (avgStress <= 3) return 'Low stress';

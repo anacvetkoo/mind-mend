@@ -5,10 +5,14 @@ import { Button } from '../ui/Button';
 import { StatCard } from '../ui/StatCard';
 import { Badge } from '../ui/Badge';
 import { Flame, Calendar, Target, TrendingUp, Sparkles, Brain, Heart, UserRound, ChevronRight, Bell, Check, Activity, Moon } from 'lucide-react';
-import { isTodayCompleted, getStreakData, getWeeklyTrend } from '../../utils/checkInUtils';
+import { isTodayCompleted, getStreakData, getWeeklyTrend, getFirebaseCheckIns } from '../../utils/checkInUtils';
 import { getStreakDataFromFirestore } from '../../utils/StreakCalculator';
+import { generateAIWellnessTips } from '../../services/gemini';
+import { doc, getDoc } from 'firebase/firestore';
+import { db } from '../../services/firebaseConfig.js';
 
 interface HomeDashboardProps {
+  userId: string;
   userName: string;
   onCheckIn: () => void;
   onFindTherapist?: () => void;
@@ -16,7 +20,7 @@ interface HomeDashboardProps {
   onViewNotifications?: () => void;
 }
 
-export function HomeDashboard({ userName, onCheckIn, onFindTherapist, onViewAppointments, onViewNotifications }: HomeDashboardProps) {
+export function HomeDashboard({ userId, userName, onCheckIn, onFindTherapist, onViewAppointments, onViewNotifications }: HomeDashboardProps) {
   const currentHour = new Date().getHours();
   const greeting =
     currentHour < 12 ? 'Good morning' : currentHour < 18 ? 'Good afternoon' : 'Good evening';
@@ -26,19 +30,49 @@ export function HomeDashboard({ userName, onCheckIn, onFindTherapist, onViewAppo
   const [weeklyTrend, setWeeklyTrend] = useState('Stable');
   const [isLoading, setIsLoading] = useState(true);
 
+  const [aiTips, setAiTips] = useState<string[]>([]);
+
   useEffect(() => {
     const loadDashboardData = async () => {
-      setIsLoading(true);
-      
-      const completedToday = await isTodayCompleted();
-      setTodayCompleted(completedToday);
-      setWeeklyTrend(getWeeklyTrend());
-      
-      try {
-        const incomingStreak = await getStreakDataFromFirestore();
-        setStreakData(incomingStreak);
-      } catch (error) {
+     setIsLoading(true);
+     
+     try {
+       const completedToday = await isTodayCompleted();
+       setTodayCompleted(completedToday);
+
+       const allCheckIns = await getFirebaseCheckIns();
+       setWeeklyTrend(getWeeklyTrend(allCheckIns));
+
+       const incomingStreak = await getStreakDataFromFirestore();
+       setStreakData(incomingStreak);
+
+       if (completedToday && userId) {
+        const userDocRef = doc(db, "users", userId);
+        const userDocSnap = await getDoc(userDocRef);
+
+        if (userDocSnap.exists() && userDocSnap.data().latestAIWellnessTip) {
+          setAiTips(userDocSnap.data().latestAIWellnessTip);
+        } else {
+          // Fallback: Če polja v bazi slučajno še ni, damo privzete nasvete
+          setAiTips([
+            "Take a deep breath and give yourself credit for tracking your mood today. Every step counts! 💜",
+            "Establishing a consistent sleep pattern supports your brain's emotional processing and recovery."
+          ]);
+        }
+      } else {
+        // Če uporabnik danes še NI opravil check-ina, mu pokažemo splošno vzpodbudno obvestilo
+        setAiTips([
+          "Starting a daily check-in routine can help you track your emotional patterns and build self-awareness.",
+          "Quality sleep is essential for emotional wellbeing. Try establishing a calming bedtime routine."
+        ]);
+      }
+
+     } catch (error) {
         console.error("Napaka pri osveževanju nadzorne plošče:", error);
+        setAiTips([
+          "Take a deep breath and give yourself credit for tracking your mood today. Every step counts! 💜",
+          "Establishing a consistent sleep pattern supports your brain's emotional processing and recovery."
+        ]);
       } finally {
         setIsLoading(false);
       }
@@ -192,33 +226,37 @@ export function HomeDashboard({ userName, onCheckIn, onFindTherapist, onViewAppo
             <h3 className="text-xl text-foreground">AI wellness tips just for you</h3>
           </div>
           <div className="space-y-3">
-            <Card variant="glass">
-              <div className="flex items-start gap-3">
-                <div className="w-10 h-10 rounded-full bg-gradient-to-br from-[var(--lavender)] to-[var(--soft-purple)] flex items-center justify-center flex-shrink-0">
-                  <Sparkles className="w-5 h-5 text-white" />
-                </div>
-                <div className="flex-1">
-                  <p className="text-sm text-muted-foreground">
-                    {streakData.current > 0
-                      ? `You've maintained a ${streakData.current}-day check-in streak 💜 Keep up the great work!`
-                      : "Starting a daily check-in routine can help you track your emotional patterns and build self-awareness."}
-                  </p>
-                </div>
-              </div>
-            </Card>
-
-            <Card variant="glass">
-              <div className="flex items-start gap-3">
-                <div className="w-10 h-10 rounded-full bg-gradient-to-br from-[var(--soft-mint)] to-[var(--muted-blue)] flex items-center justify-center flex-shrink-0">
-                  <Moon className="w-5 h-5 text-white" />
-                </div>
-                <div className="flex-1">
-                  <p className="text-sm text-muted-foreground">
-                    Quality sleep is essential for emotional wellbeing. Try establishing a calming bedtime routine.
-                  </p>
-                </div>
-              </div>
-            </Card>
+            {/* 1. KORAK: Preverimo, če se podatki še nalagajo ali pa je tabela z nasveti še prazna */}
+            {isLoading || aiTips.length === 0 ? (
+              <Card variant="glass" className="py-6 text-center text-sm text-muted-foreground animate-pulse">
+                ✨ Gemini is analyzing your journals to generate personalized tips...
+              </Card>
+            ) : (
+              // 2. KORAK: Če so nasveti naloženi, se sprehodimo čez njih s pomočjo .map()
+              aiTips.map((tip, idx) => (
+                <Card variant="glass" key={idx}>
+                  <div className="flex items-start gap-3">
+                    {/* Dinamično spreminjamo barvo ikon: prvi nasvet bo vijoličen, drugi zeleno-moder */}
+                    <div className={`w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0 bg-gradient-to-br ${
+                      idx === 0 
+                        ? 'from-[var(--lavender)] to-[var(--soft-purple)]' 
+                        : 'from-[var(--soft-mint)] to-[var(--muted-blue)]'
+                    }`}>
+                      {/* Prvemu nasvetu damo ikonco Sparkles, drugemu pa Moon */}
+                      {idx === 0 ? (
+                        <Sparkles className="w-5 h-5 text-white" />
+                      ) : (
+                        <Moon className="w-5 h-5 text-white" />
+                      )}
+                    </div>
+                    <div className="flex-1">
+                      {/* Izpis pravega teksta nasveta, ki ga je ustvaril Gemini */}
+                      <p className="text-sm text-muted-foreground">{tip}</p>
+                    </div>
+                  </div>
+                </Card>
+              ))
+            )}
           </div>
         </motion.div>
 

@@ -3,7 +3,8 @@ import { motion, AnimatePresence } from 'motion/react';
 import { useTypingAnimation } from '../../hooks/useTypingAnimation';
 import { X, ChevronRight } from 'lucide-react';
 import { db, auth } from '../../services/firebaseConfig.js'; 
-import { collection, addDoc } from 'firebase/firestore';
+import { collection, addDoc, doc, updateDoc } from 'firebase/firestore';
+import { generateAIWellnessTips } from '../../services/gemini.js'
 
 interface DailyCheckInProps {
   onComplete: (data: any) => void;
@@ -166,6 +167,26 @@ export function DailyCheckIn({ onComplete, onClose }: DailyCheckInProps) {
       try {
         const docRef = await addDoc(collection(db, "dnevniki"), checkInData);//shranimo v kolekcijo "dnevniki" v bazi
         console.log("Check-in uspešno shranjen z ID:", docRef.id);
+
+        try { //klic GEMINI
+          const generatedTips = await generateAIWellnessTips([checkInData]);
+          
+          const uId = checkInData.userId; 
+
+          if (uId) {
+            // Posodobimo dokument uporabnika v zbirki "users"
+            // Shranita se SAMO zadnja dva zgenerirana nasveta (stari se prepišejo)
+            const userDocRef = doc(db, "users", uId);
+            await updateDoc(userDocRef, {
+              latestAIWellnessTip: generatedTips
+            });
+            console.log("Najnovejša AI nasveta uspešno shranjena v zbirko users!");
+          } else {
+            console.warn("Uporabnikov ID (userId) ni najden v checkInData, zato nismo shranili nasvetov.");
+          }
+        } catch (aiError) {
+          console.error("AI del ni uspel, vendar je dnevnik uspešno shranjen:", aiError);
+        }
         
         onComplete(checkInData);
       } catch (error) {

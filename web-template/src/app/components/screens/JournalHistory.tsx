@@ -43,7 +43,7 @@ export function JournalHistory({ onSelectCheckIn }: JournalHistoryProps = {}) {
           .map(checkIn => new Date(checkIn.date).getDate());
         
         setCompletedDays([...new Set(filteredDays)]);
-        setWeeklyTrend(getWeeklyTrend());
+        setWeeklyTrend(getWeeklyTrend(firebaseCheckIns));
       } catch (error) {
         console.error("Napaka pri nalaganju podatkov za JournalHistory:", error);
       }finally {
