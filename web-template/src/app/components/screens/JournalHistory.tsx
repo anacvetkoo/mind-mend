@@ -3,7 +3,11 @@ import { motion } from 'motion/react';
 import { Card } from '../ui/Card';
 import { ProgressGraph } from '../ui/ProgressGraph';
 import { Calendar, Flame, Trophy, ChevronLeft, ChevronRight, Sparkles, Smile } from 'lucide-react';
-import { getAllCheckIns, getStreakData, getCompletedDays, generateAIInsights, getRecentCheckIns, getWeeklyTrend, type CheckInData } from '../../utils/checkInUtils';
+import { countRecentCheckIns, getAllCheckIns, getStreakData, getCompletedDays, generateAIInsights, getRecentCheckIns, getWeeklyTrend, type CheckInData } from '../../utils/checkInUtils';
+import { getStreakDataFromFirestore } from '../../utils/StreakCalculator';
+import { db, auth } from '../../services/firebaseConfig';
+import { collection, query, where, getDocs, orderBy } from 'firebase/firestore';
+import { getFirebaseCheckIns } from '../../utils/checkInUtils.js';
 
 interface JournalHistoryProps {
   onSelectCheckIn?: (checkIn: CheckInData) => void;
@@ -16,16 +20,38 @@ export function JournalHistory({ onSelectCheckIn }: JournalHistoryProps = {}) {
   const [streakData, setStreakData] = useState({ current: 0, longest: 0 });
   const [completedDays, setCompletedDays] = useState<number[]>([]);
   const [weeklyTrend, setWeeklyTrend] = useState('Stable');
+  const [completedThisWeek, setCompletedThisWeek] = useState(0);
+  const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    // Load all check-ins and sort by date descending
-    const allCheckIns = getAllCheckIns().sort((a, b) =>
-      new Date(b.date).getTime() - new Date(a.date).getTime()
-    );
-    setCheckIns(allCheckIns);
-    setStreakData(getStreakData());
-    setCompletedDays(getCompletedDays(currentMonth, currentYear));
-    setWeeklyTrend(getWeeklyTrend());
+    const loadData = async () => {
+      try{
+        const firebaseCheckIns = await getFirebaseCheckIns();//pridobi vse check-ine
+        setCheckIns(firebaseCheckIns);
+  
+        const count7Days = countRecentCheckIns(firebaseCheckIns, 7); //izračunan tedenski napredek
+        setCompletedThisWeek(count7Days);
+  
+        const realStreak = await getStreakDataFromFirestore(); //funkcija za izračun streaka
+        setStreakData(realStreak);
+  
+        const filteredDays = firebaseCheckIns //označenje dni na koledarju
+          .filter(checkIn => {
+            const checkInDate = new Date(checkIn.date);
+            return checkInDate.getMonth() === currentMonth && checkInDate.getFullYear() === currentYear;
+          })
+          .map(checkIn => new Date(checkIn.date).getDate());
+        
+        setCompletedDays([...new Set(filteredDays)]);
+        setWeeklyTrend(getWeeklyTrend());
+      } catch (error) {
+        console.error("Napaka pri nalaganju podatkov za JournalHistory:", error);
+      }finally {
+        setIsLoading(false);
+      }
+    };
+
+    loadData();
   }, [currentMonth, currentYear]);
 
   const monthNames = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
@@ -105,12 +131,12 @@ export function JournalHistory({ onSelectCheckIn }: JournalHistoryProps = {}) {
               <div>
                 <div className="flex justify-between text-sm mb-2">
                   <span className="text-foreground">Check-in Completion</span>
-                  <span className="text-muted-foreground">{getRecentCheckIns(7).length}/7</span>
+                  <span className="text-muted-foreground">{isLoading ? "..." : `${completedThisWeek}/7`}</span>
                 </div>
                 <div className="h-2 bg-[var(--muted)] rounded-full overflow-hidden">
                   <div
                     className="h-full bg-gradient-to-r from-[var(--lavender)] to-[var(--soft-purple)] rounded-full transition-all"
-                    style={{ width: `${(getRecentCheckIns(7).length / 7) * 100}%` }}
+                    style={{ width: `${(completedThisWeek / 7) * 100}%` }}
                   />
                 </div>
               </div>
@@ -223,7 +249,7 @@ export function JournalHistory({ onSelectCheckIn }: JournalHistoryProps = {}) {
           transition={{ delay: 0.4 }}
           className="mb-6"
         >
-          <ProgressGraph />
+          <ProgressGraph firebaseCheckIns={checkIns} />
         </motion.div>
 
         {/* Check-in History */}

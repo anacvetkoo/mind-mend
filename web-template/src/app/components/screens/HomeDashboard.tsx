@@ -6,6 +6,7 @@ import { StatCard } from '../ui/StatCard';
 import { Badge } from '../ui/Badge';
 import { Flame, Calendar, Target, TrendingUp, Sparkles, Brain, Heart, UserRound, ChevronRight, Bell, Check, Activity, Moon } from 'lucide-react';
 import { isTodayCompleted, getStreakData, getWeeklyTrend } from '../../utils/checkInUtils';
+import { getStreakDataFromFirestore } from '../../utils/StreakCalculator';
 
 interface HomeDashboardProps {
   userName: string;
@@ -23,11 +24,26 @@ export function HomeDashboard({ userName, onCheckIn, onFindTherapist, onViewAppo
   const [todayCompleted, setTodayCompleted] = useState(false);
   const [streakData, setStreakData] = useState({ current: 0, longest: 0 });
   const [weeklyTrend, setWeeklyTrend] = useState('Stable');
+  const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    setTodayCompleted(isTodayCompleted());
-    setStreakData(getStreakData());
-    setWeeklyTrend(getWeeklyTrend());
+    const loadDashboardData = async () => {
+      setIsLoading(true);
+      
+      setTodayCompleted(isTodayCompleted());
+      setWeeklyTrend(getWeeklyTrend());
+      
+      try {
+        const incomingStreak = await getStreakDataFromFirestore();
+        setStreakData(incomingStreak);
+      } catch (error) {
+        console.error("Napaka pri osveževanju nadzorne plošče:", error);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    loadDashboardData();
   }, []);
 
   return (
@@ -102,7 +118,12 @@ export function HomeDashboard({ userName, onCheckIn, onFindTherapist, onViewAppo
           transition={{ delay: 0.2 }}
           className="grid grid-cols-2 gap-4 mb-6"
         >
-          <StatCard icon={<Flame className="w-6 h-6" />} value={streakData.current.toString()} label="Day Streak" color="var(--soft-pink)" />
+          <StatCard 
+            icon={<Flame className="w-6 h-6" />} 
+            value={isLoading ? "..." : String(streakData.current || 0)} 
+            label="Day Streak" 
+            color="var(--soft-pink)" 
+          />
           <StatCard icon={<Activity className="w-6 h-6" />} value={weeklyTrend} label="Weekly Trend" color="var(--muted-blue)" />
         </motion.div>
 

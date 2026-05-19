@@ -322,18 +322,20 @@ const handleQuestionnaireComplete = async (data: any) => {
   };
 
   const handleLogout = async () => {
-    await logout();
+    try {
+      await logout();
+      console.log("Uporabnik uspešno odjavljen iz Firebase Auth.");
+    } catch (error) {
+      console.error("Napaka pri Firebase odjavi:", error);
+    }
 
-    localStorage.removeItem('isAuthenticated');
-    localStorage.removeItem('userRole');
-    localStorage.removeItem('hasSeenTherapistTutorial');
-    localStorage.removeItem('therapistProfileComplete');
-    localStorage.removeItem('therapistProfile');
-    localStorage.removeItem('userName');
-    localStorage.removeItem('therapistName');
-    localStorage.removeItem('currentAppState');
-    localStorage.removeItem('hasSeenOnboarding');
-    localStorage.removeItem('hasSeenTutorial'); // ← DODANO
+    const currentDarkMode = localStorage.getItem('darkMode');
+    const hasSeenWelcome = localStorage.getItem('hasSeenWelcome');
+
+    if (currentDarkMode) localStorage.setItem('darkMode', currentDarkMode);
+    if (hasSeenWelcome) localStorage.setItem('hasSeenWelcome', hasSeenWelcome);
+
+    localStorage.clear();
 
     setAppState('auth');
     setUserRole('user');

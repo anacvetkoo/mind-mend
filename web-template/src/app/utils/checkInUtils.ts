@@ -1,4 +1,6 @@
 // Daily check-in utilities for tracking, streaks, and AI analysis
+import { db, auth } from '../services/firebaseConfig';
+import { collection, query, where, getDocs, orderBy } from 'firebase/firestore';
 
 const CHECK_INS_KEY = 'daily_check_ins';
 const CURRENT_STREAK_KEY = 'current_streak';
@@ -23,6 +25,38 @@ export interface CheckInData {
 export interface StreakData {
   current: number;
   longest: number;
+}
+
+//Pridobi vse check in-e iz baze
+export async function getFirebaseCheckIns(): Promise<any[]> {
+  const currentUser = auth.currentUser;
+  
+  if (!currentUser) {
+    return [];
+  }
+
+  try {
+    const q = query(
+      collection(db, "dnevniki"),
+      where("userId", "==", currentUser.uid),
+      orderBy("date", "desc")
+    );
+
+    const querySnapshot = await getDocs(q);
+    const checkIns: any[] = [];
+
+    querySnapshot.forEach((doc) => {
+      checkIns.push({
+        id: doc.id,
+        ...doc.data()
+      });
+    });
+
+    return checkIns;
+  } catch (error) {
+    console.error("Napaka v getFirebaseCheckIns:", error);
+    return [];
+  }
 }
 
 // Get all check-ins
@@ -50,14 +84,12 @@ export function saveCheckIn(data: Omit<CheckInData, 'id'>): CheckInData {
 }
 
 // Check if today's check-in is completed
-export function isTodayCompleted(): boolean {
-  const checkIns = getAllCheckIns();
-  const today = new Date().toDateString();
+export async function isTodayCompleted(): Promise<boolean> {
+  const checkIns = await getFirebaseCheckIns();
+  
+  const todayStr = new Date().toISOString().split('T')[0];
 
-  return checkIns.some(checkIn => {
-    const checkInDate = new Date(checkIn.date).toDateString();
-    return checkInDate === today;
-  });
+  return checkIns.some(checkIn => checkIn.date === todayStr);
 }
 
 // Get today's check-in if it exists
@@ -147,6 +179,22 @@ export function getRecentCheckIns(days: number): CheckInData[] {
   startDate.setDate(startDate.getDate() - days);
 
   return getCheckInsInRange(startDate, endDate);
+}
+
+// Funkcija, ki sprejme že naložene dnevnike in prešteje, koliko jih je znotraj zadnjih N dni
+export function countRecentCheckIns(checkIns: any[], days: number): number {
+  const cutoffDate = new Date();
+  cutoffDate.setDate(cutoffDate.getDate() - days);
+  
+  // Nastavimo uro na polnoč, da natančno primerjamo samo datume
+  cutoffDate.setHours(0, 0, 0, 0);
+
+  const recentCheckIns = checkIns.filter(checkIn => {
+    const checkInDate = new Date(checkIn.date);
+    return checkInDate >= cutoffDate;
+  });
+
+  return recentCheckIns.length;
 }
 
 // Mock AI analysis based on check-in data

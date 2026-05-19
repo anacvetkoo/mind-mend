@@ -2,15 +2,15 @@ import React, { useState, useMemo } from 'react';
 import { motion } from 'motion/react';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Area, AreaChart } from 'recharts';
 import { Card } from './Card';
-import { getRecentCheckIns, type CheckInData } from '../../utils/checkInUtils';
 
 type TimePeriod = '7days' | '30days' | '6months' | '1year';
 
 interface ProgressGraphProps {
   className?: string;
+  firebaseCheckIns: any[];
 }
 
-export function ProgressGraph({ className = '' }: ProgressGraphProps) {
+export function ProgressGraph({ className = '', firebaseCheckIns = [] }: ProgressGraphProps) {
   const [selectedPeriod, setSelectedPeriod] = useState<TimePeriod>('7days');
 
   const periods: { value: TimePeriod; label: string; days: number }[] = [
@@ -35,22 +35,21 @@ export function ProgressGraph({ className = '' }: ProgressGraphProps) {
   };
 
   const graphData = useMemo(() => {
-    const checkIns = getRecentCheckIns(selectedPeriodData.days);
+    const checkIns = firebaseCheckIns;
 
-    // Create a map of dates to stress levels
     const dataMap = new Map<string, { stress: number; count: number }>();
 
     checkIns.forEach(checkIn => {
-      if (checkIn.stressLevel !== undefined) {
+      if (checkIn.stressLevel !== undefined && checkIn.stressLevel !== null) {
         const date = new Date(checkIn.date);
         const dateKey = date.toISOString().split('T')[0];
 
         const existing = dataMap.get(dateKey);
         if (existing) {
-          existing.stress += checkIn.stressLevel;
+          existing.stress += Number(checkIn.stressLevel);
           existing.count += 1;
         } else {
-          dataMap.set(dateKey, { stress: checkIn.stressLevel, count: 1 });
+          dataMap.set(dateKey, { stress: Number(checkIn.stressLevel), count: 1 });
         }
       }
     });
@@ -91,7 +90,7 @@ export function ProgressGraph({ className = '' }: ProgressGraphProps) {
     }
 
     return result;
-  }, [selectedPeriod, selectedPeriodData.days]);
+  }, [selectedPeriod, selectedPeriodData.days, firebaseCheckIns]);
 
   const hasData = graphData.some(d => d.stress !== null);
 

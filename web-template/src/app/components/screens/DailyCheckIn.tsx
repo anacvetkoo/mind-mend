@@ -2,6 +2,8 @@ import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { useTypingAnimation } from '../../hooks/useTypingAnimation';
 import { X, ChevronRight } from 'lucide-react';
+import { db, auth } from '../../services/firebaseConfig.js'; 
+import { collection, addDoc } from 'firebase/firestore';
 
 interface DailyCheckInProps {
   onComplete: (data: any) => void;
@@ -11,6 +13,7 @@ interface DailyCheckInProps {
 export function DailyCheckIn({ onComplete, onClose }: DailyCheckInProps) {
   const [currentQuestion, setCurrentQuestion] = useState(0);
   const [answers, setAnswers] = useState<Record<string, any>>({});
+  const [isSaving, setIsSaving] = useState(false); // Stanje za loading med shranjevanjem
 
   const questions = [
     {
@@ -138,8 +141,7 @@ export function DailyCheckIn({ onComplete, onClose }: DailyCheckInProps) {
     setAnswers({ ...answers, [question.id]: value });
   };
 
-  const handleNext = () => {
-    // If current question is a slider and no answer was given, set default value of 5
+  const handleNext = async () => {
     if (question.type === 'slider' && answers[question.id] === undefined) {
       setAnswers({ ...answers, [question.id]: 5 });
     }
@@ -148,17 +150,30 @@ export function DailyCheckIn({ onComplete, onClose }: DailyCheckInProps) {
       setCurrentQuestion(currentQuestion + 1);
     } else {
       const finalAnswers = { ...answers };
-      // Ensure slider questions have a default value if not answered
       if (question.type === 'slider' && finalAnswers[question.id] === undefined) {
         finalAnswers[question.id] = 5;
       }
 
+      // Tukaj zberemo vse odgovore
       const checkInData = {
+        userId: auth.currentUser?.uid || "anonymous_user", // Povežemo s trenutno prijavljenim uporabnikom
         ...finalAnswers,
-        date: new Date().toISOString(),
-        timestamp: Date.now()
+        date: new Date().toISOString().split('T')[0], // YYYY-MM-DD format
+        timestamp: new Date().toISOString()
       };
-      onComplete(checkInData);
+
+      setIsSaving(true);
+      try {
+        const docRef = await addDoc(collection(db, "dnevniki"), checkInData);//shranimo v kolekcijo "dnevniki" v bazi
+        console.log("Check-in uspešno shranjen z ID:", docRef.id);
+        
+        onComplete(checkInData);
+      } catch (error) {
+        console.error("Napaka pri shranjevanju v Firestore:", error);
+        alert("Nekaj je šlo narobe pri shranjevanju. Poskusi znova!");
+      } finally {
+        setIsSaving(false);
+      }
     }
   };
 
@@ -169,12 +184,12 @@ export function DailyCheckIn({ onComplete, onClose }: DailyCheckInProps) {
   };
 
   const canProceed = () => {
+    if (isSaving) return false;// da se prepreči klikanje gumbov med shranjevanjem
     const answer = answers[question.id];
     if (question.optional) return true;
     if (question.type === 'multi-select-chips') {
       return Array.isArray(answer) && answer.length > 0;
     }
-    // Slider questions can proceed with default value (5)
     if (question.type === 'slider') {
       return true;
     }
