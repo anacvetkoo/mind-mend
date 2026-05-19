@@ -16,7 +16,14 @@ export async function generateAIWellnessTips(checkIns: any[]): Promise<string[]>
     date: c.date,
     mood: c.emotionalState || 'neutral',
     emotions: Array.isArray(c.dominantEmotion) ? c.dominantEmotion.join(', ') : c.dominantEmotion || 'none',
-    stress: c.stressLevel ?? 'unknown'
+    stress: c.stressLevel ?? 'unknown',
+    sleepQuality: c.sleepQuality || 'not specified',
+    difficulties: c.difficulties || 'none reported',
+    thoughtsToday: c.thoughtsToday || 'none reported',
+    gratitude: c.gratitude || 'none reported',
+    tomorrowHelp: c.tomorrowHelp || 'none reported',
+    energySource: c.energySource || 'not specified',
+    socialConnection: c.socialConnection ?? 'not specified'
   }));
 
   const prompt = `
