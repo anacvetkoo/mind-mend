@@ -390,7 +390,7 @@ export function ProfileScreen({ onLogout, userName = 'Alex', userRole = 'User', 
         >
           <h3 className="text-xl text-foreground mb-4">Settings</h3>
           <Card className="divide-y divide-[var(--border)]">
-            <div className="py-1">
+            <div className="border-b border-[var(--border)] pb-3 mb-3">
               <button onClick={handleNotificationsToggle} className="flex items-center justify-between w-full py-3 hover:bg-[var(--muted)] transition-colors px-2 -mx-2 rounded-xl">
                 <div className="flex items-center gap-3">
                   <Bell className="w-5 h-5 text-muted-foreground" />
@@ -400,22 +400,27 @@ export function ProfileScreen({ onLogout, userName = 'Alex', userRole = 'User', 
                   <div className={`absolute top-1 w-4 h-4 bg-card rounded-full shadow-sm transition-all duration-300 ease-in-out ${notificationsEnabled && notificationPermission !== 'denied' ? 'right-1' : 'left-1'}`} />
                 </div>
               </button>
+
               {notificationPermission === 'denied' && (
                 <p className="text-xs text-[var(--destructive)] px-2 pb-2">
                   Notifications so blokirane. Dovoli jih ročno v nastavitvah telefona.
                 </p>
               )}
             </div>
-            <button onClick={onToggleDarkMode} className="flex items-center justify-between w-full py-4 hover:bg-[var(--muted)] transition-colors px-2 -mx-2 rounded-xl">
-              <div className="flex items-center gap-3">
-                <Moon className="w-5 h-5 text-muted-foreground" />
-                <span>Dark Mode</span>
-              </div>
-              <div className={`w-12 h-6 rounded-full relative transition-colors duration-300 ease-in-out ${darkMode ? 'bg-gradient-to-r from-[var(--lavender)] to-[var(--soft-purple)]' : 'bg-[var(--muted)]'}`}>
-                <div className={`absolute top-1 w-4 h-4 bg-card rounded-full shadow-sm transition-all duration-300 ease-in-out ${darkMode ? 'right-1' : 'left-1'}`} />
-              </div>
-            </button>
-            <button onClick={handleBiometricToggle} className="flex items-center justify-between w-full py-4 hover:bg-[var(--muted)] transition-colors px-2 -mx-2 rounded-xl">
+
+            <div className="border-b border-[var(--border)] pb-3 mb-3">
+              <button onClick={onToggleDarkMode} className="flex items-center justify-between w-full py-3 hover:bg-[var(--muted)] transition-colors px-2 -mx-2 rounded-xl">
+                <div className="flex items-center gap-3">
+                  <Moon className="w-5 h-5 text-muted-foreground" />
+                  <span>Dark Mode</span>
+                </div>
+                <div className={`w-12 h-6 rounded-full relative transition-colors duration-300 ease-in-out ${darkMode ? 'bg-gradient-to-r from-[var(--lavender)] to-[var(--soft-purple)]' : 'bg-[var(--muted)]'}`}>
+                  <div className={`absolute top-1 w-4 h-4 bg-card rounded-full shadow-sm transition-all duration-300 ease-in-out ${darkMode ? 'right-1' : 'left-1'}`} />
+                </div>
+              </button>
+            </div>
+
+            <button onClick={handleBiometricToggle} className="flex items-center justify-between w-full py-3 hover:bg-[var(--muted)] transition-colors px-2 -mx-2 rounded-xl">
               <div className="flex items-center gap-3">
                 <Fingerprint className="w-5 h-5 text-muted-foreground" />
                 <span>Biometric Auth</span>
