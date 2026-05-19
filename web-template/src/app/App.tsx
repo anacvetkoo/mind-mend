@@ -39,6 +39,8 @@ import { onAuthChange, logout } from './services/auth';
 import { getUserDocument, updateUserDisplayName, updateTherapistProfile, updateTherapistAvailability, getTherapistAvailability, getUserDarkMode, updateUserDarkMode, getUserNotificationsEnabled, updateUserNotificationsEnabled, getUserBiometricAuthEnabled, updateUserBiometricAuthEnabled } from './services/users';
 import { completeUserOnboarding } from './services/onboarding';
 import { getAuth } from 'firebase/auth';
+import { PrivacyPolicyPage } from './components/screens/PrivacyPolicy.js';
+import { TermsConditionsPage } from './components/screens/TermsAndConditions.js';
 
 type AppState = 'splash' | 'welcome' | 'auth' | 'questionnaire' | 'therapist-profile-setup' | 'app';
 
@@ -734,6 +736,8 @@ const handleQuestionnaireComplete = async (data: any) => {
               onFindTherapist={() => setCurrentScreen('therapists')}
               onViewAppointments={() => setCurrentScreen('appointments')}
               onViewNotifications={() => setCurrentScreen('notifications')}
+              onViewPrivacy={() => setCurrentScreen('privacy-policy')}
+              onViewTerms={() => setCurrentScreen('terms-conditions')}
             />
           )}
           {currentScreen === 'journal' && (
@@ -772,6 +776,12 @@ const handleQuestionnaireComplete = async (data: any) => {
             />
           )}
           {currentScreen === 'notifications' && <NotificationsScreen onClose={() => setCurrentScreen('home')} />}
+          {currentScreen === 'privacy-policy' && (
+            <PrivacyPolicyPage onBack={() => setCurrentScreen('home')} />
+          )}
+          {currentScreen === 'terms-conditions' && (
+            <TermsConditionsPage onBack={() => setCurrentScreen('home')} />
+          )}
           {currentScreen === 'profile' && (
             <ProfileScreen
               onLogout={handleLogout}

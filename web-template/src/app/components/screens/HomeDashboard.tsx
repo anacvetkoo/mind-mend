@@ -4,6 +4,7 @@ import { Card } from '../ui/Card';
 import { Button } from '../ui/Button';
 import { StatCard } from '../ui/StatCard';
 import { Badge } from '../ui/Badge';
+import { ShieldCheck, ClipboardList } from 'lucide-react';
 import { Flame, Calendar, Target, TrendingUp, Sparkles, Brain, Heart, UserRound, ChevronRight, Bell, Check, Activity, Moon } from 'lucide-react';
 import { isTodayCompleted, getStreakData, getWeeklyTrend, getFirebaseCheckIns } from '../../utils/checkInUtils';
 import { getStreakDataFromFirestore } from '../../utils/StreakCalculator';
@@ -18,9 +19,11 @@ interface HomeDashboardProps {
   onFindTherapist?: () => void;
   onViewAppointments?: () => void;
   onViewNotifications?: () => void;
+  onViewPrivacy?: () => void;
+  onViewTerms?: () => void;
 }
 
-export function HomeDashboard({ userId, userName, onCheckIn, onFindTherapist, onViewAppointments, onViewNotifications }: HomeDashboardProps) {
+export function HomeDashboard({ userId, userName, onCheckIn, onFindTherapist, onViewAppointments, onViewNotifications, onViewPrivacy, onViewTerms }: HomeDashboardProps) {
   const currentHour = new Date().getHours();
   const greeting =
     currentHour < 12 ? 'Good morning' : currentHour < 18 ? 'Good afternoon' : 'Good evening';
@@ -320,6 +323,41 @@ export function HomeDashboard({ userId, userName, onCheckIn, onFindTherapist, on
           </div>
         </motion.div>
 
+        {/* Terms and conditions in privacy policy */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.4 }}
+          className="mb-6"
+        >
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="text-xl text-foreground">Get informed about our policy</h3>
+          </div>
+          <div className="space-y-3 mt-3">
+          <Card className="hover:shadow-xl transition-shadow cursor-pointer" onClick={onViewPrivacy}>
+              <div className="flex items-center gap-4">
+                <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-[var(--muted-blue)] to-[var(--soft-mint)] flex items-center justify-center flex-shrink-0">
+                  <ShieldCheck className="w-8 h-8 text-white" />
+                </div>
+                <div className="flex-1">
+                  <h4 className="mt-2">Privacy Policy</h4>
+                  <p className="text-sm text-muted-foreground">Click here to read</p>
+                </div>
+              </div>
+            </Card>
+            <Card className="hover:shadow-xl transition-shadow cursor-pointer" onClick={onViewTerms}>
+              <div className="flex items-center gap-4">
+                <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-[var(--muted-blue)] to-[var(--soft-mint)] flex items-center justify-center flex-shrink-0">
+                  <ClipboardList className="w-8 h-8 text-white" />
+                </div>
+                <div className="flex-1">
+                  <h4 className="mt-2">Terms and Conditions</h4>
+                  <p className="text-sm text-muted-foreground">Click here to read</p>
+                </div>
+              </div>
+            </Card>
+          </div>
+        </motion.div>
       </div>
     </div>
   );
