@@ -138,7 +138,9 @@ export const getBlockedTimes = async (
   const therapistRef = doc(db, 'users', uid);
   const snapshot = await getDoc(therapistRef);
   if (!snapshot.exists()) return [];
-  return snapshot.data().blockedTimes ?? [];
+  const result = snapshot.data().blockedTimes ?? [];
+  console.log('[getBlockedTimes] uid:', uid, '| blockedTimes:', JSON.stringify(result));
+  return result;
 };
 
 // ─── Dark Mode (per-user) ─────────────────────────────────────────────────────
@@ -205,6 +207,7 @@ export interface TherapistProfileData {
   yearsExperience: number;
   sessionsCompleted: number;
   content: TherapistContentPreview[];
+  isAvailable: boolean;
 }
 
 const getStringValue = (...values: unknown[]): string => {
@@ -254,6 +257,7 @@ const mapTherapistData = (id: string, data: any): TherapistProfileData => {
     tags: data.specializations || data.tags || [],
     yearsExperience: Number(data.yearsOfExperience || data.yearsExperience || 0),
     sessionsCompleted: Number(data.sessionsCompleted || 0),
+    isAvailable: !!(data.availability?.isSetupComplete),
     content: []
   };
 };

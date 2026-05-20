@@ -62,7 +62,7 @@ export default function App() {
   const [showDailyCheckIn, setShowDailyCheckIn] = useState(false);
   const [selectedCheckIn, setSelectedCheckIn] = useState<any>(null);
   const [selectedContent, setSelectedContent] = useState<any>(null);
-  const [selectedTherapistId, setSelectedTherapistId] = useState<string |number | null>(null);
+  const [selectedTherapistId, setSelectedTherapistId] = useState<string | null>(null);
   const [contentBeforeTherapistProfile, setContentBeforeTherapistProfile] = useState<any>(null);
   const [showChatConversation, setShowChatConversation] = useState(false);
   const [chatTarget, setChatTarget] = useState<{ name: string; avatar: string; isAI: boolean } | null>(null);
@@ -74,6 +74,8 @@ export default function App() {
   const [showPaymentCheckout, setShowPaymentCheckout] = useState(false);
   const [showCustomRequestConfirmation, setShowCustomRequestConfirmation] = useState(false);
   const [bookingData, setBookingData] = useState<any>(null);
+  const [bookingTherapistAvailability, setBookingTherapistAvailability] = useState<TherapistAvailability | null>(null);
+  const [bookingTherapistName, setBookingTherapistName] = useState('');
 
   const [showTutorial, setShowTutorial] = useState(false);
   const [showTherapistTutorial, setShowTherapistTutorial] = useState(false);
@@ -83,23 +85,6 @@ export default function App() {
 
   const [showTherapistProfileEdit, setShowTherapistProfileEdit] = useState(false);
 
-  const mockTherapistAvailability: TherapistAvailability = {
-    therapistId: 'therapist-1',
-    workingHours: [
-      { day: 'Monday', enabled: true, startTime: '09:00', endTime: '17:00' },
-      { day: 'Tuesday', enabled: true, startTime: '09:00', endTime: '17:00' },
-      { day: 'Wednesday', enabled: true, startTime: '09:00', endTime: '17:00' },
-      { day: 'Thursday', enabled: true, startTime: '09:00', endTime: '17:00' },
-      { day: 'Friday', enabled: true, startTime: '09:00', endTime: '17:00' },
-      { day: 'Saturday', enabled: false, startTime: '09:00', endTime: '17:00' },
-      { day: 'Sunday', enabled: false, startTime: '09:00', endTime: '17:00' }
-    ],
-    appointmentDuration: 50,
-    breakDuration: 10,
-    enabledTypes: ['Chat', 'Voice Call', 'Video Call', 'In Person'],
-    inPersonAddress: '123 Wellness Street, Suite 200, San Francisco, CA 94102',
-    isSetupComplete: true
-  };
 
   const sendNativeMessage = (data: any) => {
     if ((window as any).ReactNativeWebView) {
@@ -415,6 +400,8 @@ const handleQuestionnaireComplete = async (data: any) => {
     setShowCustomRequestConfirmation(false);
     setShowLikedContent(false);
     setShowSavedContent(false);
+    setBookingTherapistAvailability(null);
+    setBookingTherapistName('');
   };
 
   const handleTutorialComplete = () => {
@@ -656,7 +643,10 @@ const handleQuestionnaireComplete = async (data: any) => {
           setShowVideoCallScreen(true);
           setSelectedTherapistId(null);
         }}
-        onBookAppointment={() => {
+        onBookAppointment={(therapistName, availability) => {
+          if (!availability || !availability.isSetupComplete) return;
+          setBookingTherapistName(therapistName);
+          setBookingTherapistAvailability(availability);
           setSelectedTherapistId(null);
           setShowBookingFlow(true);
         }}
@@ -702,12 +692,12 @@ const handleQuestionnaireComplete = async (data: any) => {
     );
   }
 
-  if (showBookingFlow) {
+  if (showBookingFlow && bookingTherapistAvailability) {
     return (
       <BookAppointmentFlow
-        therapistId="therapist-1"
-        therapistName="Dr. Sarah Mitchell"
-        therapistAvailability={mockTherapistAvailability}
+        therapistId={bookingTherapistAvailability.therapistId}
+        therapistName={bookingTherapistName || 'Your Therapist'}
+        therapistAvailability={bookingTherapistAvailability}
         onClose={() => setShowBookingFlow(false)}
         onRequestCustomTime={() => {
           setShowBookingFlow(false);
@@ -725,8 +715,8 @@ const handleQuestionnaireComplete = async (data: any) => {
   if (showCustomRequest) {
     return (
       <CustomAppointmentRequest
-        therapistId="therapist-1"
-        therapistName="Dr. Sarah Mitchell"
+        therapistId={bookingTherapistAvailability?.therapistId ?? ''}
+        therapistName={bookingTherapistName || 'Your Therapist'}
         onClose={() => setShowCustomRequest(false)}
         onSubmit={(data) => {
           console.log('Custom request submitted:', data);
