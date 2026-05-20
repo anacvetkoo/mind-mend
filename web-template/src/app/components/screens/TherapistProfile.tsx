@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { motion } from 'motion/react';
 import { ArrowLeft, Star, Award, Users, Calendar, MessageCircle, Phone, Video } from 'lucide-react';
-import { getTherapistById, type TherapistProfileData } from '../../services/therapists';
+import { getTherapistById, type TherapistProfileData, type TherapistContentPreview } from '../../services/users';
 
 interface TherapistProfileProps {
   therapistId: string | number;
@@ -10,6 +10,7 @@ interface TherapistProfileProps {
   onVoiceCall: () => void;
   onVideoCall: () => void;
   onBookAppointment?: () => void;
+  onSelectContent?: (content: TherapistContentPreview) => void;
 }
 
 const defaultTherapist: TherapistProfileData = {
@@ -33,7 +34,8 @@ export function TherapistProfile({
   onMessage,
   onVoiceCall,
   onVideoCall,
-  onBookAppointment
+  onBookAppointment,
+  onSelectContent
 }: TherapistProfileProps) {
   const [userRating, setUserRating] = useState(0);
   const [hoveredRating, setHoveredRating] = useState(0);
@@ -166,11 +168,45 @@ export function TherapistProfile({
 
             {/* Messaging and call buttons removed as requested */}
           </motion.div>
+<br/>
 
+{therapist.content.length > 0 && (
+  <motion.div
+    initial={{ opacity: 0, y: 20 }}
+    animate={{ opacity: 1, y: 0 }}
+    transition={{ delay: 0.2 }}
+    className="mb-4"
+  >
+    <h3 className="text-lg mb-3 text-foreground">Their Content</h3>
+
+    <div className="flex gap-3 overflow-x-auto scrollbar-hide -mx-4 px-4">
+      {therapist.content.map((item) => (
+        <button
+          key={item.id}
+          type="button"
+          onClick={() => onSelectContent?.(item)}
+          className="flex-shrink-0 w-[160px] bg-card rounded-2xl p-4 shadow-md text-left"
+        >
+          <div className="w-full h-20 bg-gradient-to-br from-[var(--soft-purple)]/20 to-[var(--soft-mint)]/20 rounded-xl mb-3 flex items-center justify-center">
+            <Calendar className="w-8 h-8 text-[var(--lavender)]" />
+          </div>
+
+          <h4 className="text-sm mb-1 text-foreground line-clamp-1">
+            {item.title}
+          </h4>
+
+          <p className="text-xs text-muted-foreground">
+            {item.duration || item.category || 'Content'}
+          </p>
+        </button>
+      ))}
+    </div>
+  </motion.div>
+)}
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.4 }}
+            transition={{ delay: 0.5 }}
             className="mt-6 mb-4"
           >
             <div className="bg-card rounded-2xl p-6 shadow-lg">

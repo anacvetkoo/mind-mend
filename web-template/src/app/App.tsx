@@ -660,6 +660,10 @@ const handleQuestionnaireComplete = async (data: any) => {
           setSelectedTherapistId(null);
           setShowBookingFlow(true);
         }}
+        onSelectContent={(content) => {
+  setSelectedTherapistId(null);
+  setSelectedContent(content);
+}}
       />
     );
   }

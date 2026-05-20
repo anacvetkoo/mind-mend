@@ -3,6 +3,9 @@ import {
   setDoc,
   getDoc,
   serverTimestamp,
+  collection, getDocs,
+  query,
+  where,
 } from 'firebase/firestore';
 import { db } from './firebaseConfig';
 import type { UserRole } from './auth';
@@ -178,4 +181,124 @@ export const getUserBiometricAuthEnabled = async (uid: string): Promise<boolean>
 export const updateUserBiometricAuthEnabled = async (uid: string, biometricAuthEnabled: boolean): Promise<void> => {
   const userRef = doc(db, 'users', uid);
   await setDoc(userRef, { biometricAuthEnabled }, { merge: true });
+};
+
+
+export interface TherapistContentPreview {
+  id: string;
+  title: string;
+  category?: string;
+  duration?: string;
+  
+}
+
+export interface TherapistProfileData {
+  id: string;
+  name: string;
+  avatar: string;
+  title: string;
+  specialization: string;
+  rating: number;
+  reviews: number;
+  bio: string;
+  tags: string[];
+  yearsExperience: number;
+  sessionsCompleted: number;
+  content: TherapistContentPreview[];
+}
+
+const getStringValue = (...values: unknown[]): string => {
+  const value = values.find((item) => typeof item === 'string' && item.trim() !== '');
+
+  return typeof value === 'string' ? value.trim() : '';
+};
+
+const mapTherapistData = (id: string, data: any): TherapistProfileData => {
+  const firstName = getStringValue(data.firstName);
+  const lastName = getStringValue(data.lastName);
+
+  return {
+    id,
+    name:
+      getStringValue(
+        data.displayName,
+        data.fullName,
+        data.name,
+        `${firstName} ${lastName}`.trim()
+      ) || 'Therapist',
+    avatar:
+      getStringValue(
+        data.photoURL,
+        data.profileImage,
+        data.profileImageUrl
+      ),
+    title:
+      getStringValue(
+        data.title,
+        data.fieldOfWork,
+        data.profession
+      ) || 'Mental health professional',
+    specialization:
+      getStringValue(
+        data.fieldOfWork,
+        data.specialization
+      ),
+    rating: data.rating || 5,
+    reviews: data.reviews || data.reviewCount || 0,
+    bio:
+      getStringValue(
+        data.bio,
+        data.about,
+        data.description
+      ) || 'This therapist creates supportive mental health and wellness content.',
+    tags: data.specializations || data.tags || [],
+    yearsExperience: Number(data.yearsOfExperience || data.yearsExperience || 0),
+    sessionsCompleted: Number(data.sessionsCompleted || 0),
+    content: []
+  };
+};
+
+const getTherapistContent = async (therapistId: string): Promise<TherapistContentPreview[]> => {
+  const contentQuery = query(
+    collection(db, 'content'),
+    where('therapistId', '==', therapistId)
+  );
+
+  const snapshot = await getDocs(contentQuery);
+
+  return snapshot.docs.map((contentDocument) => {
+  const data = contentDocument.data();
+
+  return {
+    id: contentDocument.id,
+    title: getStringValue(data.title) || 'Untitled content',
+    category: getStringValue(data.category, data.contentType),
+    duration: getStringValue(data.duration),
+    ...data,
+  };
+});
+};
+
+export const getTherapistById = async (therapistId: string): Promise<TherapistProfileData | null> => {
+  const therapistRef = doc(db, 'users', therapistId);
+  const snapshot = await getDoc(therapistRef);
+
+  if (!snapshot.exists()) return null;
+
+  const therapist = mapTherapistData(snapshot.id, snapshot.data());
+  const content = await getTherapistContent(therapistId);
+
+  return {
+    ...therapist,
+    content,
+  };
+};
+
+export const getTherapists = async (): Promise<TherapistProfileData[]> => {
+  const therapistsQuery = query(collection(db, 'users'), where('role', '==', 'therapist'));
+  const snapshot = await getDocs(therapistsQuery);
+
+  return snapshot.docs.map((therapistDocument) =>
+    mapTherapistData(therapistDocument.id, therapistDocument.data())
+  );
 };
