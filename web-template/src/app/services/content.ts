@@ -239,18 +239,30 @@ const getCategoryData = (category: string, contentType?: string) => {
 
 const getCssGradient = (gradient?: string) => {
   if (!gradient) {
-    return 'linear-gradient(135deg, #C4B5FD 0%, #7C3AED 100%)';
+    return 'linear-gradient(135deg, var(--muted-blue) 0%, var(--soft-purple) 100%)';
   }
 
-  if (gradient.includes('soft-mint')) {
-    return 'linear-gradient(135deg, #86EFAC 0%, #93C5FD 100%)';
+  if (gradient === 'from-[var(--muted-blue)] to-[var(--soft-purple)]') {
+    return 'linear-gradient(135deg, var(--muted-blue) 0%, var(--soft-purple) 100%)';
   }
 
-  if (gradient.includes('soft-pink')) {
-    return 'linear-gradient(135deg, #FBCFE8 0%, #C4B5FD 100%)';
+  if (gradient === 'from-[var(--soft-mint)] to-[var(--muted-blue)]') {
+    return 'linear-gradient(135deg, var(--soft-mint) 0%, var(--muted-blue) 100%)';
   }
 
-  return 'linear-gradient(135deg, #C4B5FD 0%, #7C3AED 100%)';
+  if (gradient === 'from-[var(--lavender)] to-[var(--soft-pink)]') {
+    return 'linear-gradient(135deg, var(--lavender) 0%, var(--soft-pink) 100%)';
+  }
+
+  if (gradient === 'from-[var(--soft-pink)] to-[var(--lavender)]') {
+    return 'linear-gradient(135deg, var(--soft-pink) 0%, var(--lavender) 100%)';
+  }
+
+  if (gradient === 'from-[var(--soft-purple)] to-[var(--soft-mint)]') {
+    return 'linear-gradient(135deg, var(--soft-purple) 0%, var(--soft-mint) 100%)';
+  }
+
+  return 'linear-gradient(135deg, var(--muted-blue) 0%, var(--soft-purple) 100%)';
 };
 
 const getFirstStringValue = (...values: unknown[]): string => {

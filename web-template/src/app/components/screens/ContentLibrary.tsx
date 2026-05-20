@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState, useRef } from 'react';
 import { motion } from 'motion/react';
 import {
   Bookmark,
@@ -28,7 +28,7 @@ import {
   toggleLike
 } from '../../utils/contentInteractions';
 
-type ContentType = 'relaxation' | 'breathing' | 'sound';
+type ContentType = 'all' | 'relaxation' | 'breathing' | 'sound';
 type SortOption = 'newest' | 'likes' | 'views';
 
 interface ContentLibraryProps {
@@ -39,6 +39,7 @@ interface ContentLibraryProps {
 const itemsPerPage = 5;
 
 const categories: Array<{ id: ContentType; label: string }> = [
+  { id: 'all', label: 'All' },
   { id: 'relaxation', label: 'Relaxation Exercises' },
   { id: 'breathing', label: 'Breathing Techniques' },
   { id: 'sound', label: 'Sound Therapy' }
@@ -84,19 +85,50 @@ const getEngagementScore = (content: LibraryContentItem) => {
   return getContentLikes(content) + (content.views || 0);
 };
 
+const formatDurationFromSeconds = (durationInSeconds: number) => {
+  if (!Number.isFinite(durationInSeconds) || durationInSeconds <= 0) return '';
+
+  const minutes = Math.max(1, Math.ceil(durationInSeconds / 60));
+
+  return `${minutes} min`;
+};
+
+const formatStoredDuration = (duration?: string | number) => {
+  if (!duration) return '';
+
+  const durationText = String(duration).trim();
+
+  if (!durationText) return '';
+
+  if (durationText.toLowerCase().includes('min')) {
+    return durationText;
+  }
+
+  return `${durationText} min`;
+};
+
+const getMediaUrl = (content: LibraryContentItem) => {
+  if (content.contentType === 'video') return content.videoUrl;
+  if (content.contentType === 'audio') return content.audioUrl;
+
+  return '';
+};
+
 export function ContentLibrary({
   onSelectContent,
   onViewTherapist
 }: ContentLibraryProps = {}) {
   const [contentItems, setContentItems] = useState<LibraryContentItem[]>([]);
-  const [selectedCategory, setSelectedCategory] = useState<ContentType>('relaxation');
+  const [selectedCategory, setSelectedCategory] = useState<ContentType>('all');
   const [selectedContent, setSelectedContent] = useState<LibraryContentItem | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [sortBy, setSortBy] = useState<SortOption>('newest');
   const [showTodayOnly, setShowTodayOnly] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
   const [isLoading, setIsLoading] = useState(true);
+  const [mediaDurations, setMediaDurations] = useState<Record<string, string>>({});
   const [, forceUpdate] = useState({});
+  const resultsSectionRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
     const fetchContent = async () => {
@@ -115,6 +147,47 @@ export function ContentLibrary({
 
     fetchContent();
   }, []);
+
+  useEffect(() => {
+  let isMounted = true;
+
+  contentItems.forEach((content) => {
+    const mediaUrl = getMediaUrl(content);
+
+    if (!mediaUrl || mediaDurations[content.id]) return;
+
+    const mediaElement = document.createElement(
+      content.contentType === 'video' ? 'video' : 'audio'
+    );
+
+    mediaElement.preload = 'metadata';
+    mediaElement.src = mediaUrl;
+
+    mediaElement.onloadedmetadata = () => {
+      const durationLabel = formatDurationFromSeconds(mediaElement.duration);
+
+      if (!durationLabel || !isMounted) return;
+
+      setMediaDurations((previousDurations) => ({
+        ...previousDurations,
+        [content.id]: durationLabel
+      }));
+    };
+  });
+
+  return () => {
+    isMounted = false;
+  };
+}, [contentItems, mediaDurations]);
+
+  const scrollToResults = () => {
+  setTimeout(() => {
+    resultsSectionRef.current?.scrollIntoView({
+      behavior: 'smooth',
+      block: 'start'
+    });
+  }, 100);
+};
 
   const featuredToday = useMemo(() => {
     return contentItems
@@ -138,9 +211,9 @@ export function ContentLibrary({
 
     if (showTodayOnly) {
       items = items.filter((item) => isCreatedToday(item.createdAt));
-    } else if (!normalizedSearch) {
-      items = items.filter((item) => item.category === selectedCategory);
-    }
+    } else if (!normalizedSearch && selectedCategory !== 'all') {
+  items = items.filter((item) => item.category === selectedCategory);
+}
 
     if (normalizedSearch) {
       items = items.filter((item) => {
@@ -188,17 +261,21 @@ export function ContentLibrary({
   };
 
   const handleCategoryClick = (category: ContentType) => {
-    setSelectedCategory(category);
-    setShowTodayOnly(false);
-    setSearchTerm('');
-    setCurrentPage(1);
-  };
+  setSelectedCategory(category);
+  setSearchTerm('');
+  setShowTodayOnly(false);
+  setCurrentPage(1);
+
+  scrollToResults();
+};
 
   const handleSeeAllToday = () => {
-    setShowTodayOnly(true);
-    setSearchTerm('');
-    setCurrentPage(1);
-  };
+  setShowTodayOnly(true);
+  setSearchTerm('');
+  setCurrentPage(1);
+
+  scrollToResults();
+};
 
   const handleBookmark = (contentId: string) => {
     toggleBookmark(contentId);
@@ -210,96 +287,174 @@ export function ContentLibrary({
     forceUpdate({});
   };
 
-  const renderContentCard = (content: LibraryContentItem) => {
-    const Icon = getCategoryIcon(content.category);
-    const itemIsBookmarked = isBookmarked(content.id);
-    const itemIsLiked = isLiked(content.id);
-    const likeCount = getContentLikes(content);
+  const getContentDuration = (content: LibraryContentItem) => {
+  if (content.contentType === 'video' || content.contentType === 'audio') {
+    return mediaDurations[content.id] || '';
+  }
 
-    return (
-      <motion.div
-        key={content.id}
-        whileTap={{ scale: 0.98 }}
-        onClick={() => handleOpenContent(content)}
-        className="bg-card rounded-3xl shadow-md overflow-hidden cursor-pointer hover:shadow-lg transition-shadow"
-      >
-        <div className="flex gap-4 p-4">
-          <div className="relative w-24 h-24 rounded-2xl overflow-hidden flex-shrink-0">
-            {content.thumbnailType === 'image' && content.thumbnailImage ? (
-              <img
-                src={content.thumbnailImage}
-                alt={content.title}
-                className="w-full h-full object-cover brightness-75"
-              />
-            ) : (
-              <div
-                className="w-full h-full flex items-center justify-center"
-                style={{ background: content.thumbnailGradient }}
-              >
-                <Icon className="w-9 h-9 text-white" />
-              </div>
-            )}
+  return formatStoredDuration(content.duration);
+};
 
+  const renderFeaturedContentCard = (content: LibraryContentItem) => {
+  const Icon = getCategoryIcon(content.category);
+
+  return (
+    <motion.div
+      key={content.id}
+      whileTap={{ scale: 0.98 }}
+      onClick={() => handleOpenContent(content)}
+      className="flex-shrink-0 w-[280px] h-[140px] rounded-2xl p-5 cursor-pointer shadow-lg relative overflow-hidden"
+      style={{
+        background:
+          content.thumbnailType === 'image' && content.thumbnailImage
+            ? `linear-gradient(135deg, rgba(196, 181, 253, 0.55), rgba(124, 58, 237, 0.55)), url(${content.thumbnailImage}) center/cover`
+            : content.thumbnailGradient
+      }}
+    >
+      <div className="relative z-10">
+        <span className="inline-block px-3 py-1 rounded-full bg-white/30 backdrop-blur-sm text-white text-xs mb-2">
+          {content.categoryLabel}
+        </span>
+        <h4 className="text-white text-lg mb-1 line-clamp-2">{content.title}</h4>
+        <div className="flex items-center gap-2 text-white/90 text-xs">
+          <span>{getContentDuration(content)}</span>
+          <span>•</span>
+          <span className="line-clamp-1">{content.therapistName}</span>
+        </div>
+      </div>
+
+      <Icon className="absolute bottom-4 right-4 w-8 h-8 text-white/30" />
+    </motion.div>
+  );
+};
+
+const renderContentCard = (content: LibraryContentItem, index = 0) => {
+  const Icon = getCategoryIcon(content.category);
+  const itemIsBookmarked = isBookmarked(content.id);
+  const itemIsLiked = isLiked(content.id);
+  const likeCount = getContentLikes(content);
+
+  return (
+    <motion.div
+      key={content.id}
+      initial={{ opacity: 0, x: -20 }}
+      animate={{ opacity: 1, x: 0 }}
+      transition={{ delay: 0.05 * index }}
+      whileTap={{ scale: 0.98 }}
+      onClick={() => handleOpenContent(content)}
+      className="bg-card rounded-2xl p-4 shadow-md hover:shadow-xl transition-all cursor-pointer relative"
+    >
+      <div className="flex gap-4">
+        <div
+          className="w-20 h-20 rounded-2xl flex items-center justify-center flex-shrink-0 relative overflow-hidden"
+          style={{
+            background:
+              content.thumbnailType === 'image' && content.thumbnailImage
+                ? `url(${content.thumbnailImage}) center/cover`
+                : content.thumbnailGradient
+          }}
+        >
+          {content.thumbnailType === 'image' && content.thumbnailImage ? (
             <div className="absolute inset-0 bg-black/10" />
+          ) : (
+            <Icon className="w-8 h-8 text-white/90" />
+          )}
+        </div>
 
-            <div className="absolute bottom-2 right-2 w-8 h-8 rounded-full bg-white/90 backdrop-blur-sm flex items-center justify-center">
-              <Play className="w-4 h-4 text-[var(--lavender)] fill-[var(--lavender)] ml-0.5" />
-            </div>
-          </div>
+        <div className="flex-1 min-w-0">
+          <div className="flex items-start justify-between gap-2 mb-1">
+            <span className="inline-block px-2 py-0.5 rounded-full bg-[var(--soft-purple)]/20 text-[var(--lavender)] text-xs">
+              {content.categoryLabel}
+            </span>
 
-          <div className="flex-1 min-w-0">
-            <div className="flex items-start justify-between gap-2 mb-1">
-              <div className="min-w-0">
-                <span className="inline-block px-2 py-0.5 rounded-full bg-[var(--lavender)]/10 text-[var(--lavender)] text-xs mb-2">
-                  {content.categoryLabel}
-                </span>
-                <h3 className="text-foreground mb-1 line-clamp-1">{content.title}</h3>
-              </div>
+            <div className="flex items-center gap-1">
+              <motion.button
+                whileTap={{ scale: 0.9 }}
+                onClick={(event) => {
+                  event.stopPropagation();
+                  handleLike(content.id);
+                }}
+                className="flex items-center gap-1 p-1"
+              >
+                <motion.div
+                  animate={itemIsLiked ? { scale: [1, 1.2, 1] } : {}}
+                  transition={{ duration: 0.3 }}
+                >
+                  <Heart
+                    className={`w-5 h-5 ${
+                      itemIsLiked
+                        ? 'text-red-500 fill-red-500'
+                        : 'text-muted-foreground'
+                    }`}
+                  />
+                </motion.div>
+                <span className="text-xs text-muted-foreground">{likeCount}</span>
+              </motion.button>
 
-              <button
+              <motion.button
+                whileTap={{ scale: 0.9 }}
                 onClick={(event) => {
                   event.stopPropagation();
                   handleBookmark(content.id);
                 }}
-                className="w-8 h-8 rounded-full bg-[var(--muted)] flex items-center justify-center flex-shrink-0"
+                className="flex-shrink-0 p-1"
               >
                 {itemIsBookmarked ? (
-                  <Bookmark className="w-4 h-4 text-[var(--lavender)] fill-[var(--lavender)]" />
+                  <Bookmark className="w-5 h-5 text-[var(--lavender)] fill-[var(--lavender)]" />
                 ) : (
-                  <BookmarkPlus className="w-4 h-4 text-muted-foreground" />
+                  <BookmarkPlus className="w-5 h-5 text-muted-foreground" />
                 )}
-              </button>
-            </div>
-
-            <p className="text-sm text-muted-foreground line-clamp-2 mb-3">
-              {content.description}
-            </p>
-
-            <div className="flex items-center justify-between text-xs text-muted-foreground">
-              <span>{content.therapistName}</span>
-              <div className="flex items-center gap-3">
-                <button
-                  onClick={(event) => {
-                    event.stopPropagation();
-                    handleLike(content.id);
-                  }}
-                  className="flex items-center gap-1"
-                >
-                  <Heart
-                    className={`w-4 h-4 ${
-                      itemIsLiked ? 'text-red-500 fill-red-500' : 'text-muted-foreground'
-                    }`}
-                  />
-                  <span>{likeCount}</span>
-                </button>
-                <span>{content.views || 0} views</span>
-              </div>
+              </motion.button>
             </div>
           </div>
+
+          <h4 className="text-foreground mb-1 line-clamp-1">{content.title}</h4>
+          <p className="text-xs text-muted-foreground mb-2 line-clamp-2">
+            {content.description}
+          </p>
+
+          <div className="flex items-center gap-2 mb-2">
+            {content.therapistAvatar ? (
+              <img
+                src={content.therapistAvatar}
+                alt={content.therapistName}
+                className="w-5 h-5 rounded-full object-cover"
+              />
+            ) : (
+              <div className="w-5 h-5 rounded-full bg-[var(--lavender)]/20 flex items-center justify-center">
+                <span className="text-[10px] text-[var(--lavender)]">
+                  {content.therapistName?.charAt(0) || 'T'}
+                </span>
+              </div>
+            )}
+
+            <span className="text-xs text-muted-foreground line-clamp-1">
+              {content.therapistName}
+            </span>
+          </div>
+
+          <div className="flex items-center justify-between">
+            <span className="inline-block px-3 py-1 rounded-full bg-[var(--muted)] text-foreground text-xs">
+              {getContentDuration(content)}
+            </span>
+
+            <motion.button
+              whileTap={{ scale: 0.95 }}
+              onClick={(event) => {
+                event.stopPropagation();
+                handleOpenContent(content);
+              }}
+              className="px-4 py-1.5 rounded-full bg-gradient-to-r from-[var(--lavender)] to-[var(--soft-purple)] text-white text-xs flex items-center gap-1.5 shadow-sm"
+            >
+              <Play className="w-3 h-3" />
+              Start
+            </motion.button>
+          </div>
         </div>
-      </motion.div>
-    );
-  };
+      </div>
+    </motion.div>
+  );
+};
 
   if (selectedContent) {
     return (
@@ -325,20 +480,7 @@ export function ContentLibrary({
           </p>
         </div>
 
-        <div className="relative mb-6">
-          <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
-          <input
-            type="text"
-            value={searchTerm}
-            onChange={(event) => {
-              setSearchTerm(event.target.value);
-              setShowTodayOnly(false);
-              setCurrentPage(1);
-            }}
-            placeholder="Search by title, therapist, category..."
-            className="w-full pl-12 pr-4 py-4 rounded-2xl bg-card border-2 border-[var(--border)] text-foreground placeholder:text-muted-foreground focus:border-[var(--lavender)] outline-none transition-colors"
-          />
-        </div>
+        
 
         <div className="mb-6">
           <div className="flex items-center gap-2 mb-3">
@@ -369,10 +511,10 @@ export function ContentLibrary({
           </div>
 
           {featuredToday.length > 0 ? (
-            <div className="space-y-3">
-              {featuredToday.map(renderContentCard)}
-            </div>
-          ) : (
+  <div className="flex gap-4 overflow-x-auto scrollbar-hide -mx-6 px-6">
+    {featuredToday.map(renderFeaturedContentCard)}
+  </div>
+) : (
             <div className="rounded-2xl bg-card p-4 shadow-sm">
               <p className="text-sm text-muted-foreground">
                 No content has been published today yet.
@@ -401,7 +543,22 @@ export function ContentLibrary({
           </div>
         </div>
 
-        <div className="flex items-center justify-between gap-3 mb-4">
+        <div className="relative mb-6">
+          <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
+          <input
+            type="text"
+            value={searchTerm}
+            onChange={(event) => {
+  setSearchTerm(event.target.value);
+  setShowTodayOnly(false);
+  setCurrentPage(1);
+}}
+            placeholder="Search by title, therapist, category..."
+            className="w-full pl-12 pr-4 py-4 rounded-2xl bg-card border-2 border-[var(--border)] text-foreground placeholder:text-muted-foreground focus:border-[var(--lavender)] outline-none transition-colors"
+          />
+        </div>
+
+        <div ref={resultsSectionRef}className="flex items-center justify-between gap-3 mb-4">
           <h2 className="text-lg text-foreground">
             {searchTerm
               ? 'Search results'
@@ -429,9 +586,9 @@ export function ContentLibrary({
             <p className="text-sm text-muted-foreground">Loading content...</p>
           </div>
         ) : paginatedContent.length > 0 ? (
-          <div className="space-y-3 mb-6">
-            {paginatedContent.map(renderContentCard)}
-          </div>
+          <div className="space-y-4 mb-6">
+  {paginatedContent.map((content, index) => renderContentCard(content, index))}
+</div>
         ) : (
           <div className="rounded-2xl bg-card p-6 shadow-sm text-center">
             <p className="text-sm text-muted-foreground">
