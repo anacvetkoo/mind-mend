@@ -164,38 +164,39 @@ export function DailyCheckIn({ onComplete, onClose }: DailyCheckInProps) {
       };
 
       setIsSaving(true);
-      try {
-        const docRef = await addDoc(collection(db, "dnevniki"), checkInData);//shranimo v kolekcijo "dnevniki" v bazi
-        console.log("Check-in uspešno shranjen z ID:", docRef.id);
-
-        try { //klic GEMINI
+    try {
+      const docRef = await addDoc(collection(db, "dnevniki"), checkInData);
+      console.log("Check-in uspešno shranjen z ID:", docRef.id);
+      
+      const runAIInBackground = async () => {
+        try {
           const generatedTips = await generateAIWellnessTips([checkInData]);
-          
           const uId = checkInData.userId; 
 
           if (uId) {
-            // Posodobimo dokument uporabnika v zbirki "users"
-            // Shranita se SAMO zadnja dva zgenerirana nasveta (stari se prepišejo)
             const userDocRef = doc(db, "users", uId);
             await updateDoc(userDocRef, {
               latestAIWellnessTip: generatedTips
             });
-            console.log("Najnovejša AI nasveta uspešno shranjena v zbirko users!");
+            console.log("🔥 [Ozadje] Najnovejša AI nasveta uspešno shranjena v zbirko users!");
           } else {
-            console.warn("Uporabnikov ID (userId) ni najden v checkInData, zato nismo shranili nasvetov.");
+            console.warn("[Ozadje] Uporabnikov ID (userId) ni najden v checkInData.");
           }
         } catch (aiError) {
-          console.error("AI del ni uspel, vendar je dnevnik uspešno shranjen:", aiError);
+          console.error("[Ozadje] AI generiranje v ozadju ni uspelo:", aiError);
         }
-        
-        onComplete(checkInData);
-      } catch (error) {
-        console.error("Napaka pri shranjevanju v Firestore:", error);
-        alert("Nekaj je šlo narobe pri shranjevanju. Poskusi znova!");
-      } finally {
-        setIsSaving(false);
-      }
+      };
+      runAIInBackground();
+
+      onComplete(checkInData);
+      
+    } catch (error) {
+      console.error("Napaka pri shranjevanju v Firestore:", error);
+      alert("Nekaj je šlo narobe pri shranjevanju. Poskusi znova!");
+    } finally {
+      setIsSaving(false);
     }
+  };
   };
 
   const handleBack = () => {
