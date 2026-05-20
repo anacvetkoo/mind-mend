@@ -207,6 +207,7 @@ export interface TherapistProfileData {
   yearsExperience: number;
   sessionsCompleted: number;
   content: TherapistContentPreview[];
+  isAvailable: boolean;
 }
 
 const getStringValue = (...values: unknown[]): string => {
@@ -256,6 +257,7 @@ const mapTherapistData = (id: string, data: any): TherapistProfileData => {
     tags: data.specializations || data.tags || [],
     yearsExperience: Number(data.yearsOfExperience || data.yearsExperience || 0),
     sessionsCompleted: Number(data.sessionsCompleted || 0),
+    isAvailable: !!(data.availability?.isSetupComplete),
     content: []
   };
 };

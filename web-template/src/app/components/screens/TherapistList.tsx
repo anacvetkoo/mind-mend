@@ -203,8 +203,12 @@ export function TherapistList({ onSelectTherapist }: TherapistListProps) {
                           {therapist.specialization || therapist.title || 'Licensed Therapist'}
                         </p>
                       </div>
-                      <span className="px-2 py-1 rounded-full text-xs bg-[var(--soft-mint)]/20 text-[var(--soft-mint)] whitespace-nowrap flex-shrink-0">
-                        Available
+                      <span className={`px-2 py-1 rounded-full text-xs whitespace-nowrap flex-shrink-0 ${
+                        therapist.isAvailable
+                          ? 'bg-[var(--soft-mint)]/20 text-[var(--soft-mint)]'
+                          : 'bg-red-100 dark:bg-red-900/20 text-red-400'
+                      }`}>
+                        {therapist.isAvailable ? 'Available' : 'Not available'}
                       </span>
                     </div>
 
