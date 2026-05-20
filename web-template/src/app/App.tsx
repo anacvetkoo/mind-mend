@@ -41,6 +41,7 @@ import { completeUserOnboarding } from './services/onboarding';
 import { getAuth } from 'firebase/auth';
 import { PrivacyPolicyPage } from './components/screens/PrivacyPolicy.js';
 import { TermsConditionsPage } from './components/screens/TermsAndConditions.js';
+import { AiInsightsScreen } from './components/screens/AiInsightsScreen.js';
 
 type AppState = 'splash' | 'welcome' | 'auth' | 'questionnaire' | 'therapist-profile-setup' | 'app';
 
@@ -769,6 +770,7 @@ const handleQuestionnaireComplete = async (data: any) => {
               userId={getAuth().currentUser?.uid || ""}
               userName={userData.name}
               onCheckIn={() => setShowDailyCheckIn(true)}
+              onViewAiInsights={() => setCurrentScreen('ai-insights')}
               onFindTherapist={() => setCurrentScreen('therapists')}
               onViewAppointments={() => setCurrentScreen('appointments')}
               onViewNotifications={() => setCurrentScreen('notifications')}
@@ -818,6 +820,16 @@ const handleQuestionnaireComplete = async (data: any) => {
             />
           )}
           {currentScreen === 'notifications' && <NotificationsScreen onClose={() => setCurrentScreen('home')} />}
+          {currentScreen === 'ai-insights' && (
+            <AiInsightsScreen 
+              userId={getAuth().currentUser?.uid || ""}
+              onBack={() => setCurrentScreen('home')}
+              onCheckIn={() => {
+                setCurrentScreen('home');
+                setShowDailyCheckIn(true); // Odpre check-in okno
+              }}
+            />
+          )}
           {currentScreen === 'privacy-policy' && (
             <PrivacyPolicyPage onBack={() => setCurrentScreen('home')} />
           )}
