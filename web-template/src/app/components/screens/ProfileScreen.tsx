@@ -48,71 +48,34 @@ export function ProfileScreen({ onLogout, userName = 'Alex', userRole = 'User', 
   const [availability, setAvailability] = useState<TherapistAvailability | null>(null);
   const [showAvailabilitySetup, setShowAvailabilitySetup] = useState(false);
   const [showBlockedTimeManagement, setShowBlockedTimeManagement] = useState(false);
-
   const [currentTherapistId, setCurrentTherapistId] = useState('');
-
-  useEffect(() => {
-    import('../../services/firebaseConfig').then(({ auth }) => {
-      if (auth.currentUser?.uid) {
-        setCurrentTherapistId(auth.currentUser.uid);
-      }
-    });
-  }, []);
-
   const [showNameEditor, setShowNameEditor] = useState(false);
   const [editedName, setEditedName] = useState(userName);
   const [userEmail, setUserEmail] = useState('');
+  const [userPhotoURL, setUserPhotoURL] = useState(''); // ← NOVO
 
   const isTherapist = userRole === 'Therapist';
   const therapistProfile = therapistProfileProp ?? null;
-
-  useEffect(() => {
-    import('../../services/firebaseConfig').then(({ auth }) => {
-      if (auth.currentUser?.email) {
-        setUserEmail(auth.currentUser.email);
-      }
-    });
-  }, []);
 
   const [notificationPermission, setNotificationPermission] = useState<NotificationPermission>(() => {
     if ('Notification' in window) return Notification.permission;
     return 'default';
   });
-  // const [cameraPermission, setCameraPermission] = useState(() => localStorage.getItem('cameraPermission') === 'true');
-  // const [microphonePermission, setMicrophonePermission] = useState(() => localStorage.getItem('microphonePermission') === 'true');
 
-  const handleNotificationsToggle = async () => {
-    // Če želimo vklopiti — zaprosi za dovoljenje
-    if (!notificationsEnabled && 'Notification' in window) {
-      if (Notification.permission === 'default') {
-        const permission = await Notification.requestPermission();
-        setNotificationPermission(permission);
-        if (permission !== 'granted') return; // User je zavrnil — ne vklopi
-      } else if (Notification.permission === 'denied') {
-        setNotificationPermission('denied');
-        return; // Ne moremo vklopiti — user mora ročno dovoliti v nastavitvah
+  // ← ZDRUŽEN useEffect za uid, email in photoURL
+  useEffect(() => {
+    import('../../services/firebaseConfig').then(({ auth }) => {
+      if (auth.currentUser?.uid) {
+        setCurrentTherapistId(auth.currentUser.uid);
       }
-    }
-    const newValue = !notificationsEnabled;
-    onToggleNotifications?.(newValue); // Shrani v Firestore prek App.tsx
-  };
-
-  // const handleCameraToggle = () => {
-  //   const newValue = !cameraPermission;
-  //   setCameraPermission(newValue);
-  //   localStorage.setItem('cameraPermission', String(newValue));
-  // };
-
-  // const handleMicrophoneToggle = () => {
-  //   const newValue = !microphonePermission;
-  //   setMicrophonePermission(newValue);
-  //   localStorage.setItem('microphonePermission', String(newValue));
-  // };
-
-  const handleBiometricToggle = () => {
-    const newValue = !biometricAuthEnabled;
-    onToggleBiometricAuth?.(newValue); // Shrani v Firestore prek App.tsx
-  };
+      if (auth.currentUser?.email) {
+        setUserEmail(auth.currentUser.email);
+      }
+      if (auth.currentUser?.photoURL) {
+        setUserPhotoURL(auth.currentUser.photoURL);
+      }
+    });
+  }, []);
 
   useEffect(() => {
     if (isTherapist) {
@@ -131,23 +94,39 @@ export function ProfileScreen({ onLogout, userName = 'Alex', userRole = 'User', 
     }
   }, [isTherapist]);
 
+  const handleNotificationsToggle = async () => {
+    if (!notificationsEnabled && 'Notification' in window) {
+      if (Notification.permission === 'default') {
+        const permission = await Notification.requestPermission();
+        setNotificationPermission(permission);
+        if (permission !== 'granted') return;
+      } else if (Notification.permission === 'denied') {
+        setNotificationPermission('denied');
+        return;
+      }
+    }
+    const newValue = !notificationsEnabled;
+    onToggleNotifications?.(newValue);
+  };
+
+  const handleBiometricToggle = () => {
+    const newValue = !biometricAuthEnabled;
+    onToggleBiometricAuth?.(newValue);
+  };
+
   const handleSaveAvailability = async (newAvailability: TherapistAvailability) => {
-    // Počisti undefined vrednosti — Firebase ne sprejme undefined
     const cleanAvailability = {
       ...newAvailability,
       inPersonAddress: newAvailability.inPersonAddress ?? '',
     };
-
     setAvailability(cleanAvailability);
     localStorage.setItem('therapistAvailability', JSON.stringify(cleanAvailability));
-
     const { auth } = await import('../../services/firebaseConfig');
     const currentUser = auth.currentUser;
     if (currentUser) {
       const { updateTherapistAvailability } = await import('../../services/users');
       await updateTherapistAvailability(currentUser.uid, cleanAvailability);
     }
-
     setShowAvailabilitySetup(false);
   };
 
@@ -238,6 +217,8 @@ export function ProfileScreen({ onLogout, userName = 'Alex', userRole = 'User', 
           <div className="w-24 h-24 bg-gradient-to-br from-[var(--lavender)] to-[var(--soft-purple)] rounded-full mx-auto mb-4 flex items-center justify-center overflow-hidden">
             {isTherapist && therapistProfile?.profileImage ? (
               <img src={therapistProfile.profileImage} alt="Profile" className="w-full h-full object-cover" />
+            ) : userPhotoURL ? ( // ← NOVO
+              <img src={userPhotoURL} alt="Profile" className="w-full h-full object-cover" />
             ) : (
               <User className="w-12 h-12 text-white" />
             )}
@@ -390,7 +371,7 @@ export function ProfileScreen({ onLogout, userName = 'Alex', userRole = 'User', 
         >
           <h3 className="text-xl text-foreground mb-4">Settings</h3>
           <Card className="divide-y divide-[var(--border)]">
-            <div className="py-1">
+            <div className="border-b border-[var(--border)] pb-3 mb-3">
               <button onClick={handleNotificationsToggle} className="flex items-center justify-between w-full py-3 hover:bg-[var(--muted)] transition-colors px-2 -mx-2 rounded-xl">
                 <div className="flex items-center gap-3">
                   <Bell className="w-5 h-5 text-muted-foreground" />
@@ -406,16 +387,18 @@ export function ProfileScreen({ onLogout, userName = 'Alex', userRole = 'User', 
                 </p>
               )}
             </div>
-            <button onClick={onToggleDarkMode} className="flex items-center justify-between w-full py-4 hover:bg-[var(--muted)] transition-colors px-2 -mx-2 rounded-xl">
-              <div className="flex items-center gap-3">
-                <Moon className="w-5 h-5 text-muted-foreground" />
-                <span>Dark Mode</span>
-              </div>
-              <div className={`w-12 h-6 rounded-full relative transition-colors duration-300 ease-in-out ${darkMode ? 'bg-gradient-to-r from-[var(--lavender)] to-[var(--soft-purple)]' : 'bg-[var(--muted)]'}`}>
-                <div className={`absolute top-1 w-4 h-4 bg-card rounded-full shadow-sm transition-all duration-300 ease-in-out ${darkMode ? 'right-1' : 'left-1'}`} />
-              </div>
-            </button>
-            <button onClick={handleBiometricToggle} className="flex items-center justify-between w-full py-4 hover:bg-[var(--muted)] transition-colors px-2 -mx-2 rounded-xl">
+            <div className="border-b border-[var(--border)] pb-3 mb-3">
+              <button onClick={onToggleDarkMode} className="flex items-center justify-between w-full py-3 hover:bg-[var(--muted)] transition-colors px-2 -mx-2 rounded-xl">
+                <div className="flex items-center gap-3">
+                  <Moon className="w-5 h-5 text-muted-foreground" />
+                  <span>Dark Mode</span>
+                </div>
+                <div className={`w-12 h-6 rounded-full relative transition-colors duration-300 ease-in-out ${darkMode ? 'bg-gradient-to-r from-[var(--lavender)] to-[var(--soft-purple)]' : 'bg-[var(--muted)]'}`}>
+                  <div className={`absolute top-1 w-4 h-4 bg-card rounded-full shadow-sm transition-all duration-300 ease-in-out ${darkMode ? 'right-1' : 'left-1'}`} />
+                </div>
+              </button>
+            </div>
+            <button onClick={handleBiometricToggle} className="flex items-center justify-between w-full py-3 hover:bg-[var(--muted)] transition-colors px-2 -mx-2 rounded-xl">
               <div className="flex items-center gap-3">
                 <Fingerprint className="w-5 h-5 text-muted-foreground" />
                 <span>Biometric Auth</span>
@@ -424,34 +407,6 @@ export function ProfileScreen({ onLogout, userName = 'Alex', userRole = 'User', 
                 <div className={`absolute top-1 w-4 h-4 bg-card rounded-full shadow-sm transition-all duration-300 ease-in-out ${biometricAuthEnabled ? 'right-1' : 'left-1'}`} />
               </div>
             </button>
-            {/* Camera Access — zakomentirano: klici so delegirani na zunanjo app, permission ni potreben
-            <button onClick={handleCameraToggle} className="flex items-center justify-between w-full py-4 hover:bg-[var(--muted)] transition-colors px-2 -mx-2 rounded-xl">
-              <div className="flex items-center gap-3">
-                <Camera className="w-5 h-5 text-muted-foreground" />
-                <div className="flex flex-col items-start">
-                  <span>Camera Access</span>
-                  <span className="text-xs text-muted-foreground">For video calls and appointments</span>
-                </div>
-              </div>
-              <div className={`w-12 h-6 rounded-full relative transition-colors duration-300 ease-in-out ${cameraPermission ? 'bg-gradient-to-r from-[var(--lavender)] to-[var(--soft-purple)]' : 'bg-[var(--muted)]'}`}>
-                <div className={`absolute top-1 w-4 h-4 bg-card rounded-full shadow-sm transition-all duration-300 ease-in-out ${cameraPermission ? 'right-1' : 'left-1'}`} />
-              </div>
-            </button>
-            */}
-            {/* Microphone Access — zakomentirano: klici so delegirani na zunanjo app, permission ni potreben
-            <button onClick={handleMicrophoneToggle} className="flex items-center justify-between w-full py-4 hover:bg-[var(--muted)] transition-colors px-2 -mx-2 rounded-xl">
-              <div className="flex items-center gap-3">
-                <Mic className="w-5 h-5 text-muted-foreground" />
-                <div className="flex flex-col items-start">
-                  <span>Microphone Access</span>
-                  <span className="text-xs text-muted-foreground">For voice and video calls</span>
-                </div>
-              </div>
-              <div className={`w-12 h-6 rounded-full relative transition-colors duration-300 ease-in-out ${microphonePermission ? 'bg-gradient-to-r from-[var(--lavender)] to-[var(--soft-purple)]' : 'bg-[var(--muted)]'}`}>
-                <div className={`absolute top-1 w-4 h-4 bg-card rounded-full shadow-sm transition-all duration-300 ease-in-out ${microphonePermission ? 'right-1' : 'left-1'}`} />
-              </div>
-            </button>
-            */}
           </Card>
         </motion.div>
 

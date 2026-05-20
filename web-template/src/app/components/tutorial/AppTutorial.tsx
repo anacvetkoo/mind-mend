@@ -126,39 +126,46 @@ export function AppTutorial({ onComplete, onSkip }: AppTutorialProps) {
   };
 
   const getTooltipPosition = () => {
+    const padding = 16;
+    const tooltipWidth = 450;
+
+    const tooltipStyle = {
+      width: 'calc(100vw - 32px)',
+      maxWidth: `${tooltipWidth}px`
+    };
+
     if (!targetRect || step.position === 'center') {
       return {
         top: '50%',
         left: '50%',
-        transform: 'translate(-50%, -50%)'
+        transform: 'translate(-50%, -50%)',
+        ...tooltipStyle
       };
     }
 
-    const padding = 16;
-    const tooltipWidth = 450;
-
     if (step.position === 'bottom' || step.highlightBottom) {
-      // Position above the element
       return {
         bottom: `${window.innerHeight - targetRect.top + 16}px`,
         left: '50%',
         transform: 'translateX(-50%)',
-        maxWidth: `${tooltipWidth}px`
+        ...tooltipStyle
       };
-    } else if (step.position === 'top') {
-      // Position below the element
+    }
+
+    if (step.position === 'top') {
       return {
         top: `${targetRect.bottom + padding}px`,
         left: '50%',
         transform: 'translateX(-50%)',
-        maxWidth: `${tooltipWidth}px`
+        ...tooltipStyle
       };
     }
 
     return {
       top: '50%',
       left: '50%',
-      transform: 'translate(-50%, -50%)'
+      transform: 'translate(-50%, -50%)',
+      ...tooltipStyle
     };
   };
 
@@ -251,7 +258,7 @@ export function AppTutorial({ onComplete, onSkip }: AppTutorialProps) {
 
       {/* Tutorial tooltip card */}
       <div
-        className="absolute pointer-events-auto px-4"
+        className="absolute pointer-events-auto"
         style={getTooltipPosition()}
       >
         <AnimatePresence mode="wait">

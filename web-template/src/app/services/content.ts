@@ -30,7 +30,7 @@ export interface ContentItem {
   therapistId?: string;
   title: string;
   category: string;
-  duration: string;
+  duration?: string;
   gradient: string;
   views?: number;
   likes?: number;

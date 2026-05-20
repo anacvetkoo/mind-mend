@@ -3,8 +3,6 @@ import { motion } from 'motion/react';
 import { ArrowLeft, Save, Upload, Plus } from 'lucide-react';
 import type { ContentFiles, ContentItem, ContentStep } from '../../services/content';
 
-
-
 interface TherapistContentEditorProps {
   onClose: () => void;
   onSave: (content: ContentItem, isDraft: boolean, files: ContentFiles) => Promise<void>;
@@ -15,7 +13,6 @@ export function TherapistContentEditor({ onClose, onSave, existingContent }: The
   const [title, setTitle] = useState(existingContent?.title || '');
   const [category, setCategory] = useState(existingContent?.category || 'Relaxation');
   const [difficulty, setDifficulty] = useState<'Easy' | 'Medium' | 'Hard'>(existingContent?.difficulty || 'Easy');
-  const [duration, setDuration] = useState(existingContent?.duration || '');
   const [description, setDescription] = useState(existingContent?.description || '');
   const [selectedGradient, setSelectedGradient] = useState(existingContent?.gradient || 'from-[var(--muted-blue)] to-[var(--soft-purple)]');
   const [thumbnailType, setThumbnailType] = useState<'color' | 'image'>(existingContent?.thumbnailType || 'color');
@@ -27,7 +24,7 @@ export function TherapistContentEditor({ onClose, onSave, existingContent }: The
   const [videoFile, setVideoFile] = useState<File | null>(null);
   const [steps, setSteps] = useState<ContentStep[]>(existingContent?.steps || [{ id: 1, title: '', description: '' }]);
   const [thumbnailFile, setThumbnailFile] = useState<File | null>(null);
-  const [isSaving, setIsSaving] = useState(false);
+  const [savingAction, setSavingAction] = useState<'publish' | 'draft' | 'changes' | null>(null);
   
   const categories = ['Relaxation', 'Breathing', 'Sound Therapy'];
 
@@ -39,105 +36,35 @@ export function TherapistContentEditor({ onClose, onSave, existingContent }: The
     { id: 5, gradient: 'from-[var(--soft-purple)] to-[var(--soft-mint)]', name: 'Dream' }
   ];
 
-const handleThumbnailImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-  const file = e.target.files?.[0];
+  const handleThumbnailImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
 
-  if (file) {
-    setThumbnailFile(file);
+    if (file) {
+      setThumbnailFile(file);
 
-    const reader = new FileReader();
-    reader.onloadend = () => {
-      setThumbnailImage(reader.result as string);
-    };
-    reader.readAsDataURL(file);
-  }
-};
-
-const formatDuration = (durationInSeconds: number) => {
-  if (!Number.isFinite(durationInSeconds) || durationInSeconds <= 0) {
-    return '';
-  }
-
-  const minutes = Math.floor(durationInSeconds / 60);
-  const seconds = Math.round(durationInSeconds % 60);
-
-  if (minutes > 0 && seconds > 0) {
-    return `${minutes} min ${seconds} sec`;
-  }
-
-  if (minutes > 0) {
-    return `${minutes} min`;
-  }
-
-  return `${seconds} sec`;
-};
-
-const formatMediaDuration = (durationInSeconds: number): string => {
-  const totalSeconds = Math.round(durationInSeconds);
-  const minutes = Math.floor(totalSeconds / 60);
-  const seconds = totalSeconds % 60;
-
-  if (minutes > 0 && seconds > 0) {
-    return `${minutes} min ${seconds} sec`;
-  }
-
-  if (minutes > 0) {
-    return `${minutes} min`;
-  }
-
-  return `${seconds} sec`;
-};
-
-const calculateMediaDuration = (file: File, mediaType: 'audio' | 'video') => {
-  const objectUrl = URL.createObjectURL(file);
-  const mediaElement = document.createElement(mediaType) as HTMLMediaElement;
-
-  const cleanup = () => {
-    mediaElement.removeEventListener('loadedmetadata', handleLoadedMetadata);
-    mediaElement.removeEventListener('error', handleError);
-    URL.revokeObjectURL(objectUrl);
-    mediaElement.removeAttribute('src');
-    mediaElement.load();
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setThumbnailImage(reader.result as string);
+      };
+      reader.readAsDataURL(file);
+    }
   };
 
-  const handleLoadedMetadata = () => {
-    const durationSeconds = mediaElement.duration;
-    setDuration(formatMediaDuration(durationSeconds));
-    cleanup();
+  const handleAudioUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+
+    if (!file) return;
+
+    setAudioFile(file);
   };
 
-  const handleError = () => {
-    console.error('Could not calculate media duration.');
-    setDuration('');
-    cleanup();
+  const handleVideoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+
+    if (!file) return;
+
+    setVideoFile(file);
   };
-
-  mediaElement.preload = 'metadata';
-  mediaElement.src = objectUrl;
-  mediaElement.addEventListener('loadedmetadata', handleLoadedMetadata);
-  mediaElement.addEventListener('error', handleError);
-  mediaElement.load();
-};
-
-const handleAudioUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-  const file = e.target.files?.[0];
-
-  if (!file) return;
-
-  setAudioFile(file);
-  setDuration('Calculating...');
-  calculateMediaDuration(file, 'audio');
-};
-
-const handleVideoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-  const file = e.target.files?.[0];
-
-  if (!file) return;
-
-  setVideoFile(file);
-  setDuration('Calculating...');
-  calculateMediaDuration(file, 'video');
-};
 
   const addStep = () => {
     const newStep: ContentStep = {
@@ -155,45 +82,39 @@ const handleVideoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
   };
 
   const handleSave = async (isDraft: boolean = false) => {
-  if (!title.trim()) {
-    alert('Please fill in all required fields');
-    return;
-  }
+    if (!title.trim()) {
+      alert('Please fill in all required fields');
+      return;
+    }
 
-  if (!isDraft && contentType === 'steps' && !duration.trim()) {
-    alert('Please enter a duration for step-by-step content');
-    return;
-  }
+    try {
+      setSavingAction(existingContent && !existingContent.isDraft ? 'changes' : isDraft ? 'draft' : 'publish');
 
-  try {
-    setIsSaving(true);
-
-    await onSave({
-      id: existingContent?.id,
-      title: title.trim(),
-      category,
-      duration: duration.trim(),
-      gradient: selectedGradient,
-      description: description.trim(),
-      difficulty,
-      thumbnailType,
-      thumbnailImage,
-      contentType,
-      steps,
-      audioFileName: audioFile?.name || existingContent?.audioFileName,
-      videoFileName: videoFile?.name || existingContent?.videoFileName
-    }, isDraft, {
-      audioFile: audioFile || undefined,
-      videoFile: videoFile || undefined,
-      thumbnailFile: thumbnailFile || undefined
-    });
-  } catch (error) {
-    console.error('Error saving content from editor:', error);
-    alert('Content could not be saved.');
-  } finally {
-    setIsSaving(false);
-  }
-};
+      await onSave({
+        id: existingContent?.id,
+        title: title.trim(),
+        category,
+        gradient: selectedGradient,
+        description: description.trim(),
+        difficulty,
+        thumbnailType,
+        thumbnailImage,
+        contentType,
+        steps,
+        audioFileName: audioFile?.name || existingContent?.audioFileName,
+        videoFileName: videoFile?.name || existingContent?.videoFileName
+      }, isDraft, {
+        audioFile: audioFile || undefined,
+        videoFile: videoFile || undefined,
+        thumbnailFile: thumbnailFile || undefined
+      });
+    } catch (error) {
+      console.error('Error saving content from editor:', error);
+      alert('Content could not be saved.');
+    } finally {
+      setSavingAction(null);
+    }
+  };
 
   return (
     <div className="fixed inset-0 bg-background z-50 overflow-auto">
@@ -298,11 +219,6 @@ const handleVideoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
                   className="hidden"
                 />
               </label>
-              {(audioFile || existingContent?.audioFileName) && (
-                <p className="text-xs text-[var(--lavender)] mt-2">
-                  Duration: {duration || '(auto-calculated)'}
-                </p>
-              )}
             </div>
           ) : (
             <>
@@ -355,27 +271,9 @@ const handleVideoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
                       className="hidden"
                     />
                   </label>
-                  {(videoFile || existingContent?.videoFileName) && (
-                    <p className="text-xs text-[var(--lavender)] mt-2">
-                      Duration: {duration || '(auto-calculated)'}
-                    </p>
-                  )}
                 </div>
               ) : (
                 <>
-                  <div className="mb-6">
-                    <label className="block text-sm text-foreground mb-2">
-                      Duration <span className="text-red-400">*</span>
-                    </label>
-                    <input
-                      type="text"
-                      value={duration}
-                      onChange={(e) => setDuration(e.target.value)}
-                      placeholder="e.g., 15 min"
-                      className="w-full px-4 py-3 rounded-xl bg-[var(--input-background)] border-2 border-[var(--border)] text-foreground placeholder:text-muted-foreground focus:border-[var(--lavender)] outline-none transition-colors"
-                    />
-                  </div>
-
                   {/* Steps Section */}
                   <div className="mb-6">
                     <div className="flex items-center justify-between mb-4">
@@ -525,11 +423,6 @@ const handleVideoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
                     <span className="px-2 py-0.5 rounded-full bg-[var(--soft-mint)]/10 text-[var(--soft-mint)] text-xs">
                       {difficulty}
                     </span>
-                    {duration && (
-                      <span className="text-xs text-muted-foreground">
-                        {duration}
-                      </span>
-                    )}
                   </div>
                   {description && (
                     <p className="text-xs text-muted-foreground line-clamp-2">
@@ -546,29 +439,29 @@ const handleVideoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
             <motion.button
               whileTap={{ scale: 0.98 }}
               onClick={() => handleSave(false)}
-              disabled={isSaving}
+              disabled={savingAction !== null}
               className="w-full py-4 rounded-2xl bg-gradient-to-r from-[var(--lavender)] to-[var(--soft-purple)] text-white shadow-lg flex items-center justify-center gap-2 mb-6"
             >
               <Save className="w-5 h-5" />
-              <span>{isSaving ? 'Saving...' : 'Save Changes'}</span>
+              <span>{savingAction === 'changes' ? 'Saving...' : 'Save Changes'}</span>
             </motion.button>
           ) : (
             <div className="flex gap-3 mb-6">
               <motion.button
                 whileTap={{ scale: 0.98 }}
                 onClick={() => handleSave(false)}
-                disabled={isSaving}
+                disabled={savingAction !== null}
                 className="flex-1 py-4 rounded-2xl bg-gradient-to-r from-[var(--lavender)] to-[var(--soft-purple)] text-white shadow-lg flex items-center justify-center gap-2"
               >
-                <span>{isSaving ? 'Saving...' : 'Publish Session'}</span>
+                <span>{<span>{savingAction === 'publish' ? 'Publishing...' : 'Publish Session'}</span>}</span>
               </motion.button>
               <motion.button
                 whileTap={{ scale: 0.98 }}
                 onClick={() => handleSave(true)}
-                disabled={isSaving}
+                disabled={savingAction !== null}
                 className="flex-1 py-4 rounded-2xl bg-card border-2 border-[var(--border)] text-foreground flex items-center justify-center gap-2"
               >
-                <span>{isSaving ? 'Saving...' : 'Save Draft'}</span>
+                <span>{savingAction === 'draft' ? 'Saving...' : 'Save Draft'}</span>
               </motion.button>
             </div>
           )}
