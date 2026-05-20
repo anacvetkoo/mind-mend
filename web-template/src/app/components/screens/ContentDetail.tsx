@@ -2,41 +2,133 @@ import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { ArrowLeft, Bookmark, BookmarkPlus, Play, Pause, Star, ChevronRight, Wind, Volume2, Brain, Heart, Calendar } from 'lucide-react';
 import { toggleLike, toggleBookmark, isLiked, isBookmarked, getLikeCount } from '../../utils/contentInteractions';
+import {getMoreContentFromTherapist, type LibraryContentItem } from '../../services/content';
 
-interface ContentItem {
-  id: number;
-  title: string;
-  category: string;
-  categoryLabel: string;
-  duration: string;
-  description: string;
-  therapistName: string;
-  therapistAvatar: string;
-  therapistTitle: string;
-  therapistBio: string;
-  therapistRating: number;
-  therapistReviews: number;
-  thumbnailGradient: string;
-  difficulty?: string;
-  steps?: Array<{ title: string; description: string }>;
-}
+type ContentItem = LibraryContentItem;
 
 interface ContentDetailProps {
   content: ContentItem;
   onClose: () => void;
+  onOpenContent?: (content: ContentItem) => void | Promise<void>;
+  onViewTherapist?: (therapistId: string) => void;
+  moreFromTherapist?: ContentItem[];
 }
 
-export function ContentDetail({ content, onClose }: ContentDetailProps) {
+export function ContentDetail({
+  content,
+  onClose,
+  onOpenContent,
+  onViewTherapist,
+  moreFromTherapist = []
+}: ContentDetailProps) {
   const [, forceUpdate] = useState({});
   const [isPlaying, setIsPlaying] = useState(false);
   const [progress, setProgress] = useState(0);
   const [currentStep, setCurrentStep] = useState(1);
   const [breathPhase, setBreathPhase] = useState<'inhale' | 'hold' | 'exhale'>('inhale');
   const [breathCount, setBreathCount] = useState(4);
-
+  const [mediaDuration, setMediaDuration] = useState('');
+  const [therapistContent, setTherapistContent] = useState<ContentItem[]>(moreFromTherapist);
   const itemIsLiked = isLiked(content.id);
   const itemIsBookmarked = isBookmarked(content.id);
   const likeCount = getLikeCount(content.id);
+
+  const getContentType = () => {
+  if (content.contentType) return content.contentType;
+  if (content.category === 'sound') return 'audio';
+  if (content.category === 'breathing' || content.category === 'relaxation') return 'steps';
+  return 'steps';
+};
+
+const formatMediaDuration = (seconds: number) => {
+  if (!seconds || Number.isNaN(seconds)) return '';
+
+  const minutes = Math.floor(seconds / 60);
+  const remainingSeconds = Math.floor(seconds % 60);
+
+  if (minutes > 0 && remainingSeconds > 0) {
+    return `${minutes} min ${remainingSeconds} sec`;
+  }
+
+  if (minutes > 0) {
+    return `${minutes} min`;
+  }
+
+  return `${remainingSeconds} sec`;
+};
+
+const getDuration = () => {
+  if (getContentType() === 'steps') {
+    return content.duration || '';
+  }
+
+  return mediaDuration || content.duration || '';
+};
+
+const getCreatedAtText = () => {
+  if (!content.createdAt) return '';
+
+  const date = content.createdAt?.toDate ? content.createdAt.toDate() : new Date(content.createdAt);
+  return date.toLocaleDateString('en-US', {
+    day: 'numeric',
+    month: 'short',
+    year: 'numeric'
+  });
+};
+
+const therapistName = content.therapistName || 'Therapist';
+const therapistTitle = content.therapistTitle || 'Wellness Coach';
+const therapistBio = content.therapistBio || 'A trusted guide for your wellness journey.';
+
+const headerBackground = content.thumbnailImage && content.thumbnailType === 'image'
+  ? {
+      backgroundImage: `linear-gradient(rgba(0, 0, 0, 0.55), rgba(0, 0, 0, 0.75)), url(${content.thumbnailImage})`,
+      backgroundSize: 'cover',
+      backgroundPosition: 'center'
+    }
+  : {
+      background: content.thumbnailGradient || content.gradient || 'linear-gradient(135deg, var(--lavender), var(--soft-purple))'
+    };
+
+
+ useEffect(() => {
+  let isMounted = true;
+
+  const fetchMoreFromTherapist = async () => {
+    if (!content.therapistId) {
+      if (isMounted) setTherapistContent([]);
+      return;
+    }
+
+    if (moreFromTherapist.length > 0) {
+      if (isMounted) setTherapistContent(moreFromTherapist);
+      return;
+    }
+
+    try {
+      const contentFromTherapist = await getMoreContentFromTherapist(
+        content.therapistId,
+        content.id
+      );
+
+      if (isMounted) {
+        setTherapistContent(contentFromTherapist);
+      }
+    } catch (error) {
+      console.error('Error loading more content from therapist:', error);
+
+      if (isMounted) {
+        setTherapistContent([]);
+      }
+    }
+  };
+
+  fetchMoreFromTherapist();
+
+  return () => {
+    isMounted = false;
+  };
+}, [content.id, content.therapistId]);
 
   // Breathing animation logic
   useEffect(() => {
@@ -144,6 +236,55 @@ export function ContentDetail({ content, onClose }: ContentDetailProps) {
       );
     }
 
+    if (content.contentType === 'video') {
+      return (
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.2 }}
+          className="bg-card rounded-2xl p-6 shadow-lg mb-4"
+        >
+          <div className="space-y-4 mb-4">
+            <div className="flex items-center justify-between text-sm text-muted-foreground">
+              <span>{Math.floor(progress / 5)}:00</span>
+              <span>{getDuration()}</span>
+            </div>
+            <div className="overflow-hidden rounded-3xl bg-[var(--muted)] mb-4">
+              <video
+                src={content.videoUrl}
+                controls
+                className="w-full h-full rounded-3xl"
+                onLoadedMetadata={(e) => {
+                  const durationSeconds = e.currentTarget.duration;
+                  if (Number.isFinite(durationSeconds)) {
+                    setMediaDuration(formatMediaDuration(durationSeconds));
+                  }
+                }}
+              />
+            </div>
+          </div>
+
+          <motion.button
+            whileTap={{ scale: 0.95 }}
+            onClick={() => setIsPlaying(!isPlaying)}
+            className="w-full py-4 rounded-2xl bg-gradient-to-r from-[var(--lavender)] to-[var(--soft-purple)] text-white flex items-center justify-center gap-2 shadow-lg"
+          >
+            {isPlaying ? (
+              <>
+                <Pause className="w-5 h-5" />
+                <span>Pause Video</span>
+              </>
+            ) : (
+              <>
+                <Play className="w-5 h-5" />
+                <span>Play Video</span>
+              </>
+            )}
+          </motion.button>
+        </motion.div>
+      );
+    }
+
     if (content.category === 'sound') {
       return (
         <motion.div
@@ -152,6 +293,18 @@ export function ContentDetail({ content, onClose }: ContentDetailProps) {
           transition={{ delay: 0.2 }}
           className="bg-card rounded-2xl p-6 shadow-lg mb-4"
         >
+          <audio
+            src={content.audioUrl}
+            preload="metadata"
+            className="hidden"
+            onLoadedMetadata={(e) => {
+              const durationSeconds = e.currentTarget.duration;
+              if (Number.isFinite(durationSeconds)) {
+                setMediaDuration(formatMediaDuration(durationSeconds));
+              }
+            }}
+          />
+
           {/* Waveform Visualization */}
           <div className="flex items-center justify-center gap-1 h-32 mb-6">
             {Array.from({ length: 40 }).map((_, i) => (
@@ -176,7 +329,7 @@ export function ContentDetail({ content, onClose }: ContentDetailProps) {
           <div className="space-y-4 mb-4">
             <div className="flex items-center justify-between text-sm text-muted-foreground">
               <span>{Math.floor(progress / 5)}:00</span>
-              <span>{content.duration}</span>
+              <span>{getDuration()}</span>
             </div>
             <div className="h-2 bg-[var(--muted)] rounded-full overflow-hidden">
               <motion.div
@@ -280,15 +433,12 @@ export function ContentDetail({ content, onClose }: ContentDetailProps) {
     return null;
   };
 
-  const moreFromTherapist = [
-    { title: 'Box Breathing', duration: '8 min' },
-    { title: 'Morning Mindfulness', duration: '10 min' }
-  ];
-
   const youMightLike = [
     { title: 'Ocean Waves', category: 'Sound Therapy', duration: '20 min' },
     { title: 'Body Scan', category: 'Relaxation', duration: '15 min' }
   ];
+
+
 
   return (
     <div className="fixed inset-0 bg-background z-50 overflow-auto">
@@ -297,7 +447,7 @@ export function ContentDetail({ content, onClose }: ContentDetailProps) {
         {/* Top Section - Fullscreen Gradient Header */}
         <div
           className="relative h-[320px] flex flex-col items-center justify-center px-6 pt-12"
-          style={{ background: content.thumbnailGradient }}
+          style={headerBackground}
         >
           {/* Back button, Like, and Bookmark buttons */}
           <button
@@ -348,19 +498,25 @@ export function ContentDetail({ content, onClose }: ContentDetailProps) {
             </span>
             <h1 className="text-3xl mb-3">{content.title}</h1>
             <div className="flex items-center justify-center gap-2 mb-2">
-              <img
-                src={content.therapistAvatar}
-                alt={content.therapistName}
-                className="w-8 h-8 rounded-full border-2 border-white/50"
-              />
+              {content.therapistAvatar ? (
+                <img
+                  src={content.therapistAvatar}
+                  alt={therapistName}
+                  className="w-8 h-8 rounded-full border-2 border-white/50"
+                />
+              ) : (
+                <div className="w-8 h-8 rounded-full border-2 border-white/50 bg-white/20 flex items-center justify-center text-xs text-white">
+                  {therapistName.charAt(0)}
+                </div>
+              )}
               <div className="text-left">
-                <p className="text-sm">{content.therapistName}</p>
-                <p className="text-xs text-white/80">{content.therapistTitle}</p>
+                <p className="text-sm">{therapistName}</p>
+                <p className="text-xs text-white/80">{therapistTitle}</p>
               </div>
             </div>
             <div className="flex flex-col items-center gap-1">
               <div className="flex items-center justify-center gap-3 text-sm text-white/90">
-                <span>{content.duration}</span>
+                {getDuration() && <span>{getDuration()}</span>}
                 {content.difficulty && (
                   <>
                     <span>•</span>
@@ -370,7 +526,7 @@ export function ContentDetail({ content, onClose }: ContentDetailProps) {
               </div>
               <div className="flex items-center gap-1.5 text-xs text-white/70">
                 <Calendar className="w-3.5 h-3.5" />
-                <span>Posted 2 weeks ago</span>
+                <span>{getCreatedAtText() || 'Recently posted'}</span>
               </div>
             </div>
           </div>
@@ -471,30 +627,52 @@ export function ContentDetail({ content, onClose }: ContentDetailProps) {
           >
             <h3 className="text-lg mb-4 text-foreground">About the Therapist</h3>
             <div className="flex gap-4 mb-4">
-              <img
-                src={content.therapistAvatar}
-                alt={content.therapistName}
-                className="w-16 h-16 rounded-full object-cover shadow-md"
-              />
-              <div className="flex-1">
-                <h4 className="text-foreground mb-1">{content.therapistName}</h4>
-                <p className="text-sm text-muted-foreground mb-2">{content.therapistTitle}</p>
-                <div className="flex items-center gap-2">
-                  <div className="flex items-center gap-1">
-                    <Star className="w-4 h-4 text-yellow-500 fill-yellow-500" />
-                    <span className="text-sm">{content.therapistRating}</span>
-                  </div>
-                  <span className="text-xs text-muted-foreground">
-                    ({content.therapistReviews} reviews)
-                  </span>
+              {content.therapistAvatar ? (
+                <img
+                  src={content.therapistAvatar}
+                  alt={therapistName}
+                  className="w-16 h-16 rounded-full object-cover shadow-md"
+                />
+              ) : (
+                <div className="w-16 h-16 rounded-full bg-[var(--muted)] shadow-md flex items-center justify-center text-xl text-white">
+                  {therapistName.charAt(0)}
                 </div>
+              )}
+              <div className="flex-1">
+                <h4 className="text-foreground mb-1">{therapistName}</h4>
+                <p className="text-sm text-muted-foreground mb-2">{therapistTitle}</p>
+                <div className="flex items-center gap-2">
+  {(content.therapistReviews ?? 0) > 0 ? (
+    <>
+      <div className="flex items-center gap-1">
+        <Star className="w-4 h-4 text-yellow-500 fill-yellow-500" />
+        <span className="text-sm">
+          {content.therapistRating ?? '5.0'}
+        </span>
+      </div>
+
+      <span className="text-xs text-muted-foreground">
+        ({content.therapistReviews} reviews)
+      </span>
+    </>
+  ) : (
+    <span className="text-xs text-muted-foreground">
+      0 reviews
+    </span>
+  )}
+</div>
               </div>
             </div>
-            <p className="text-sm text-muted-foreground leading-relaxed mb-4">{content.therapistBio}</p>
+            <p className="text-sm text-muted-foreground leading-relaxed mb-4">{therapistBio}</p>
             <motion.button
-              whileTap={{ scale: 0.98 }}
-              className="w-full py-3 rounded-2xl border-2 border-[var(--lavender)] text-[var(--lavender)] flex items-center justify-center gap-2 transition-all hover:bg-[var(--lavender)]/5"
-            >
+  whileTap={{ scale: 0.98 }}
+  onClick={() => {
+    if (content.therapistId) {
+      onViewTherapist?.(content.therapistId);
+    }
+  }}
+  className="w-full py-3 rounded-2xl border-2 border-[var(--lavender)] text-[var(--lavender)] flex items-center justify-center gap-2 transition-all hover:bg-[var(--lavender)]/5"
+>
               View Profile
               <ChevronRight className="w-4 h-4" />
             </motion.button>
@@ -509,14 +687,25 @@ export function ContentDetail({ content, onClose }: ContentDetailProps) {
           >
             <h3 className="text-lg mb-3 text-foreground">More from this therapist</h3>
             <div className="flex gap-3 overflow-x-auto scrollbar-hide pb-2">
-              {moreFromTherapist.map((item, idx) => (
+              {therapistContent.slice(0, 4).map((item) => (
                 <motion.div
-                  key={idx}
+                  key={item.id}
                   whileTap={{ scale: 0.98 }}
+                  onClick={() => onOpenContent?.(item)}
                   className="flex-shrink-0 w-[160px] bg-card rounded-2xl p-4 shadow-md cursor-pointer hover:shadow-lg transition-shadow"
                 >
-                  <div className="w-full h-20 bg-gradient-to-br from-[var(--soft-purple)]/20 to-[var(--soft-mint)]/20 rounded-xl mb-3 flex items-center justify-center">
-                    <Brain className="w-8 h-8 text-[var(--lavender)]" />
+                  <div className="w-full h-20 rounded-xl overflow-hidden mb-3">
+                    {item.thumbnailType === 'image' && item.thumbnailImage ? (
+                      <img
+                        src={item.thumbnailImage}
+                        alt={item.title}
+                        className="w-full h-full object-cover"
+                      />
+                    ) : (
+                      <div className={`w-full h-full bg-gradient-to-br ${item.thumbnailGradient || item.gradient || 'from-[var(--soft-purple)]/20 to-[var(--soft-mint)]/20'} flex items-center justify-center`}>
+                        <Brain className="w-8 h-8 text-[var(--lavender)]" />
+                      </div>
+                    )}
                   </div>
                   <h4 className="text-sm mb-1 text-foreground line-clamp-1">{item.title}</h4>
                   <p className="text-xs text-muted-foreground">{item.duration}</p>

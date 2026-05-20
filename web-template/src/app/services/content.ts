@@ -3,7 +3,9 @@ import {
   deleteDoc,
   deleteField,
   doc,
+  getDoc,
   getDocs,
+  increment,
   query,
   serverTimestamp,
   setDoc,
@@ -47,8 +49,8 @@ export interface ContentItem {
   audioFileName?: string;
   videoFileName?: string;
   createdAt?: any;
-updatedAt?: any;
-publishedAt?: any;
+  updatedAt?: any;
+  publishedAt?: any;
 }
 
 const removeEmptyValues = <T extends Record<string, unknown>>(data: T): Partial<T> => {
@@ -192,4 +194,192 @@ export const getTherapistContent = async (): Promise<ContentItem[]> => {
 
     return secondDate - firstDate;
   });
+};
+
+export interface LibraryContentItem {
+  id: string;
+  title: string;
+  category: 'relaxation' | 'breathing' | 'sound';
+  categoryLabel: string;
+  duration?: string;
+  description: string;
+  therapistId?: string;
+  therapistName?: string;
+  therapistAvatar?: string;
+  therapistTitle?: string;
+  therapistBio?: string;
+  therapistRating?: number;
+  therapistReviews?: number;
+  thumbnailGradient?: string;
+  gradient?: string;
+  thumbnailType?: 'color' | 'image';
+  thumbnailImage?: string | null;
+  contentType?: 'steps' | 'video' | 'audio';
+  steps?: Array<{ title: string; description: string }>;
+  difficulty?: string;
+  audioUrl?: string;
+  videoUrl?: string;
+  createdAt?: any;
+  likes?: number;
+  views?: number;
+  isDraft?: true;
+}
+
+const getCategoryData = (category: string, contentType?: string) => {
+  if (category === 'Sound Therapy' || category === 'sound' || contentType === 'audio') {
+    return { category: 'sound' as const, categoryLabel: 'Sound Therapy' };
+  }
+
+  if (category === 'Breathing' || category === 'breathing') {
+    return { category: 'breathing' as const, categoryLabel: 'Breathing Technique' };
+  }
+
+  return { category: 'relaxation' as const, categoryLabel: 'Relaxation Exercise' };
+};
+
+const getCssGradient = (gradient?: string) => {
+  if (!gradient) {
+    return 'linear-gradient(135deg, #C4B5FD 0%, #7C3AED 100%)';
+  }
+
+  if (gradient.includes('soft-mint')) {
+    return 'linear-gradient(135deg, #86EFAC 0%, #93C5FD 100%)';
+  }
+
+  if (gradient.includes('soft-pink')) {
+    return 'linear-gradient(135deg, #FBCFE8 0%, #C4B5FD 100%)';
+  }
+
+  return 'linear-gradient(135deg, #C4B5FD 0%, #7C3AED 100%)';
+};
+
+const getFirstStringValue = (...values: unknown[]): string => {
+  const value = values.find((item) => typeof item === 'string' && item.trim() !== '');
+
+  return typeof value === 'string' ? value.trim() : '';
+};
+
+const getTherapistFullName = (therapistData: any, contentData: any): string => {
+  const fullName = getFirstStringValue(
+    therapistData.displayName,
+    therapistData.fullName,
+    therapistData.name,
+    therapistData.username,
+    contentData.therapistName
+  );
+
+  if (fullName) return fullName;
+
+  const firstName = getFirstStringValue(
+    therapistData.firstName,
+    therapistData.ime
+  );
+
+  const lastName = getFirstStringValue(
+    therapistData.lastName,
+    therapistData.priimek
+  );
+
+  const combinedName = `${firstName} ${lastName}`.trim();
+
+  return combinedName || 'Therapist';
+};
+
+const mapTherapistData = (therapistId: string | undefined, therapistData: any, contentData: any) => {
+  return {
+    therapistId,
+    therapistName: getTherapistFullName(therapistData, contentData),
+    therapistAvatar: getFirstStringValue(
+      therapistData.avatar,
+      therapistData.photoURL,
+      therapistData.profileImage,
+      therapistData.profileImageUrl,
+      therapistData.imageUrl,
+      therapistData.avatarUrl,
+      contentData.therapistAvatar
+    ),
+    therapistTitle: getFirstStringValue(
+      therapistData.title,
+      therapistData.specialization,
+      therapistData.profession,
+      therapistData.roleTitle,
+      therapistData.occupation,
+      contentData.therapistTitle
+    ) || 'Mental health professional',
+    therapistBio: getFirstStringValue(
+      therapistData.bio,
+      therapistData.about,
+      therapistData.description,
+      therapistData.profileDescription,
+      contentData.therapistBio
+    ) || 'This therapist creates supportive mental health and wellness content.',
+    therapistRating: therapistData.rating || contentData.therapistRating || 5,
+    therapistReviews: therapistData.reviews || therapistData.reviewCount || contentData.therapistReviews || 0
+  };
+};
+
+export const getLibraryContent = async (): Promise<LibraryContentItem[]> => {
+  const snapshot = await getDocs(collection(db, 'content'));
+
+  const contentItems = await Promise.all(
+    snapshot.docs.map(async (contentDocument) => {
+      const data = contentDocument.data();
+      const categoryData = getCategoryData(data.category, data.contentType);
+      const therapistId = getFirstStringValue(data.therapistId, data.createdBy, data.authorId);
+
+      let therapistData: any = {};
+
+      if (therapistId) {
+        const therapistSnapshot = await getDoc(doc(db, 'users', therapistId));
+
+        if (therapistSnapshot.exists()) {
+          therapistData = therapistSnapshot.data();
+        }
+      }
+
+      const therapist = mapTherapistData(therapistId, therapistData, data);
+
+      return {
+        id: contentDocument.id,
+        title: data.title || '',
+        category: categoryData.category,
+        categoryLabel: categoryData.categoryLabel,
+        duration: data.duration,
+        description: data.description || '',
+        ...therapist,
+        thumbnailGradient: getCssGradient(data.gradient),
+        gradient: data.gradient,
+        thumbnailType: data.thumbnailType || 'color',
+        thumbnailImage: data.thumbnailUrl || data.thumbnailImage || null,
+        contentType: data.contentType || (categoryData.category === 'sound' ? 'audio' : 'steps'),
+        steps: data.steps || [],
+        difficulty: data.difficulty,
+        audioUrl: data.audioUrl,
+        videoUrl: data.videoUrl,
+        createdAt: data.createdAt,
+        likes: data.likes || data.likeCount || 0,
+        views: data.views || data.viewCount || 0,
+        isDraft: data.isDraft
+      };
+    })
+  );
+
+  return contentItems.filter((item) => item.isDraft !== true);
+};
+
+export const incrementContentViews = async (contentId: string): Promise<void> => {
+  await updateDoc(doc(db, 'content', contentId), {
+    views: increment(1)
+  });
+};
+
+export const getMoreContentFromTherapist = async (
+  therapistId: string,
+  currentContentId: string
+): Promise<LibraryContentItem[]> => {
+  const contentItems = await getLibraryContent();
+
+  return contentItems
+    .filter((item) => item.therapistId === therapistId && item.id !== currentContentId)
+    .slice(0, 4);
 };

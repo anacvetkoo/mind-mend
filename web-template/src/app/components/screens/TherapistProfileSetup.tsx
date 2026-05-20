@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Card } from '../ui/Card';
+
 import { Button } from '../ui/Button';
 import { Camera, ChevronRight, ChevronLeft, User } from 'lucide-react';
 import { useTypingAnimation } from '../../hooks/useTypingAnimation';

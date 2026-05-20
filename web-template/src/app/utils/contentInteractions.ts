@@ -4,20 +4,22 @@ const LIKES_KEY = 'content_likes';
 const BOOKMARKS_KEY = 'content_bookmarks';
 const LIKE_COUNTS_KEY = 'content_like_counts';
 
+type ContentId = string | number;
+
 export interface ContentInteractions {
-  likedContent: Set<number>;
-  bookmarkedContent: Set<number>;
-  likeCounts: Map<number, number>;
+  likedContent: Set<string>;
+  bookmarkedContent: Set<string>;
+  likeCounts: Map<string, number>;
 }
 
 // Initialize default like counts for demo content
-const defaultLikeCounts: Record<number, number> = {
-  1: 234,
-  2: 189,
-  3: 412,
-  4: 156,
-  5: 298,
-  6: 345
+const defaultLikeCounts: Record<string, number> = {
+  '1': 234,
+  '2': 189,
+  '3': 412,
+  '4': 156,
+  '5': 298,
+  '6': 345
 };
 
 export function getContentInteractions(): ContentInteractions {
@@ -25,84 +27,123 @@ export function getContentInteractions(): ContentInteractions {
   const bookmarksStr = localStorage.getItem(BOOKMARKS_KEY);
   const likeCountsStr = localStorage.getItem(LIKE_COUNTS_KEY);
 
-  const likedContent = likesStr ? new Set<number>(JSON.parse(likesStr)) : new Set<number>();
-  const bookmarkedContent = bookmarksStr ? new Set<number>(JSON.parse(bookmarksStr)) : new Set<number>();
+  const likedContent = likesStr
+    ? new Set<string>(JSON.parse(likesStr))
+    : new Set<string>();
 
-  let likeCounts: Map<number, number>;
+  const bookmarkedContent = bookmarksStr
+    ? new Set<string>(JSON.parse(bookmarksStr))
+    : new Set<string>();
+
+  let likeCounts: Map<string, number>;
+
   if (likeCountsStr) {
     likeCounts = new Map(JSON.parse(likeCountsStr));
   } else {
     // Initialize with defaults
-    likeCounts = new Map(Object.entries(defaultLikeCounts).map(([k, v]) => [Number(k), v]));
-    localStorage.setItem(LIKE_COUNTS_KEY, JSON.stringify(Array.from(likeCounts.entries())));
+    likeCounts = new Map(Object.entries(defaultLikeCounts));
+
+    localStorage.setItem(
+      LIKE_COUNTS_KEY,
+      JSON.stringify(Array.from(likeCounts.entries()))
+    );
   }
 
   return { likedContent, bookmarkedContent, likeCounts };
 }
 
-export function toggleLike(contentId: number): { liked: boolean; newCount: number } {
+export function toggleLike(contentId: ContentId): { liked: boolean; newCount: number } {
+  const normalizedId = String(contentId);
+
   const { likedContent, likeCounts } = getContentInteractions();
 
-  const isLiked = likedContent.has(contentId);
+  const liked = likedContent.has(normalizedId);
 
-  if (isLiked) {
-    likedContent.delete(contentId);
-    const currentCount = likeCounts.get(contentId) || 0;
-    likeCounts.set(contentId, Math.max(0, currentCount - 1));
+  if (liked) {
+    likedContent.delete(normalizedId);
+
+    const currentCount = likeCounts.get(normalizedId) || 0;
+
+    likeCounts.set(normalizedId, Math.max(0, currentCount - 1));
   } else {
-    likedContent.add(contentId);
-    const currentCount = likeCounts.get(contentId) || 0;
-    likeCounts.set(contentId, currentCount + 1);
+    likedContent.add(normalizedId);
+
+    const currentCount = likeCounts.get(normalizedId) || 0;
+
+    likeCounts.set(normalizedId, currentCount + 1);
   }
 
   // Save to localStorage
-  localStorage.setItem(LIKES_KEY, JSON.stringify(Array.from(likedContent)));
-  localStorage.setItem(LIKE_COUNTS_KEY, JSON.stringify(Array.from(likeCounts.entries())));
+  localStorage.setItem(
+    LIKES_KEY,
+    JSON.stringify(Array.from(likedContent))
+  );
+
+  localStorage.setItem(
+    LIKE_COUNTS_KEY,
+    JSON.stringify(Array.from(likeCounts.entries()))
+  );
 
   return {
-    liked: !isLiked,
-    newCount: likeCounts.get(contentId) || 0
+    liked: !liked,
+    newCount: likeCounts.get(normalizedId) || 0
   };
 }
 
-export function toggleBookmark(contentId: number): boolean {
+export function toggleBookmark(contentId: ContentId): boolean {
+  const normalizedId = String(contentId);
+
   const { bookmarkedContent } = getContentInteractions();
 
-  const isBookmarked = bookmarkedContent.has(contentId);
+  const bookmarked = bookmarkedContent.has(normalizedId);
 
-  if (isBookmarked) {
-    bookmarkedContent.delete(contentId);
+  if (bookmarked) {
+    bookmarkedContent.delete(normalizedId);
   } else {
-    bookmarkedContent.add(contentId);
+    bookmarkedContent.add(normalizedId);
   }
 
   // Save to localStorage
-  localStorage.setItem(BOOKMARKS_KEY, JSON.stringify(Array.from(bookmarkedContent)));
+  localStorage.setItem(
+    BOOKMARKS_KEY,
+    JSON.stringify(Array.from(bookmarkedContent))
+  );
 
-  return !isBookmarked;
+  return !bookmarked;
 }
 
-export function isLiked(contentId: number): boolean {
+export function isLiked(contentId: ContentId): boolean {
+  const normalizedId = String(contentId);
+
   const { likedContent } = getContentInteractions();
-  return likedContent.has(contentId);
+
+  return likedContent.has(normalizedId);
 }
 
-export function isBookmarked(contentId: number): boolean {
+export function isBookmarked(contentId: ContentId): boolean {
+  const normalizedId = String(contentId);
+
   const { bookmarkedContent } = getContentInteractions();
-  return bookmarkedContent.has(contentId);
+
+  return bookmarkedContent.has(normalizedId);
 }
 
-export function getLikeCount(contentId: number): number {
+export function getLikeCount(contentId: ContentId): number {
+  const normalizedId = String(contentId);
+
   const { likeCounts } = getContentInteractions();
-  return likeCounts.get(contentId) || 0;
+
+  return likeCounts.get(normalizedId) || 0;
 }
 
-export function getLikedContentIds(): number[] {
+export function getLikedContentIds(): string[] {
   const { likedContent } = getContentInteractions();
+
   return Array.from(likedContent);
 }
 
-export function getBookmarkedContentIds(): number[] {
+export function getBookmarkedContentIds(): string[] {
   const { bookmarkedContent } = getContentInteractions();
+
   return Array.from(bookmarkedContent);
 }

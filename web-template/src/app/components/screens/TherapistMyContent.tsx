@@ -10,7 +10,8 @@ import {
   getTherapistContent,
   updateContent,
   type ContentFiles,
-  type ContentItem
+  type ContentItem,
+  type LibraryContentItem
 } from '../../services/content';
 import { ContentDetail } from './ContentDetail';
 
@@ -110,31 +111,43 @@ export function TherapistMyContent() {
     setEditingContent(undefined);
   };
 
-const mapToContentDetailItem = (item: ContentItem) => ({
-  id: item.id ? item.id.length : 0,
-  title: item.title,
-  category: item.category,
-  categoryLabel: item.category,
-  duration: item.duration || '',
-  description: item.description || '',
-  difficulty: item.difficulty || 'Easy',
-  therapistName: 'You',
-  therapistAvatar: '',
-  therapistTitle: 'Therapist',
-  therapistBio: '',
-  therapistRating: 0,
-  therapistReviews: 0,
-  image: item.thumbnailUrl || '',
-  thumbnailGradient: item.gradient || '',
-  saved: false,
-  liked: false,
-  rating: 0,
-  reviews: 0,
-  contentType: item.contentType || 'steps',
-  steps: item.steps || [],
-  audioUrl: item.audioUrl || '',
-  videoUrl: item.videoUrl || ''
-});
+const mapToContentDetailItem = (item: ContentItem): LibraryContentItem => {
+  const categoryData =
+    item.category === 'Sound Therapy'
+      ? { category: 'sound' as const, categoryLabel: 'Sound Therapy' }
+      : item.category === 'Breathing'
+        ? { category: 'breathing' as const, categoryLabel: 'Breathing Technique' }
+        : { category: 'relaxation' as const, categoryLabel: 'Relaxation Exercise' };
+
+  return {
+    id: item.id || '',
+    title: item.title,
+    category: categoryData.category,
+    categoryLabel: categoryData.categoryLabel,
+    duration: item.duration,
+    description: item.description || '',
+    difficulty: item.difficulty || 'Easy',
+    therapistId: item.therapistId,
+    therapistName: 'You',
+    therapistAvatar: '',
+    therapistTitle: 'Therapist',
+    therapistBio: '',
+    therapistRating: 0,
+    therapistReviews: 0,
+    thumbnailGradient: item.gradient,
+    gradient: item.gradient,
+    thumbnailType: item.thumbnailType || 'color',
+    thumbnailImage: item.thumbnailUrl || item.thumbnailImage || null,
+    contentType: item.contentType || 'steps',
+    steps: item.steps || [],
+    audioUrl: item.audioUrl,
+    videoUrl: item.videoUrl,
+    createdAt: item.createdAt,
+    likes: item.likes || 0,
+    views: item.views || 0,
+    isDraft: item.isDraft
+  };
+};
 
   if (showEditor) {
     return (

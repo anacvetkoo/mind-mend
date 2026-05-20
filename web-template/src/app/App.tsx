@@ -61,7 +61,8 @@ export default function App() {
   const [showDailyCheckIn, setShowDailyCheckIn] = useState(false);
   const [selectedCheckIn, setSelectedCheckIn] = useState<any>(null);
   const [selectedContent, setSelectedContent] = useState<any>(null);
-  const [selectedTherapistId, setSelectedTherapistId] = useState<number | null>(null);
+  const [selectedTherapistId, setSelectedTherapistId] = useState<string |number | null>(null);
+  const [contentBeforeTherapistProfile, setContentBeforeTherapistProfile] = useState<any>(null);
   const [showChatConversation, setShowChatConversation] = useState(false);
   const [chatTarget, setChatTarget] = useState<{ name: string; avatar: string; isAI: boolean } | null>(null);
   const [showCallScreen, setShowCallScreen] = useState(false);
@@ -568,8 +569,18 @@ const handleQuestionnaireComplete = async (data: any) => {
   }
 
   if (selectedContent) {
-    return <ContentDetail content={selectedContent} onClose={() => setSelectedContent(null)} />;
-  }
+  return (
+    <ContentDetail
+      content={selectedContent}
+      onClose={() => setSelectedContent(null)}
+      onViewTherapist={(therapistId) => {
+        setContentBeforeTherapistProfile(selectedContent);
+        setSelectedContent(null);
+        setSelectedTherapistId(therapistId);
+      }}
+    />
+  );
+}
 
   if (showLikedContent) {
     return (
@@ -619,7 +630,14 @@ const handleQuestionnaireComplete = async (data: any) => {
     return (
       <TherapistProfile
         therapistId={selectedTherapistId}
-        onClose={() => setSelectedTherapistId(null)}
+        onClose={() => {
+  setSelectedTherapistId(null);
+
+  if (contentBeforeTherapistProfile) {
+    setSelectedContent(contentBeforeTherapistProfile);
+    setContentBeforeTherapistProfile(null);
+  }
+}}
         onMessage={() => {
           setChatTarget({
             name: 'Dr. Sarah Mitchell',
@@ -762,7 +780,13 @@ const handleQuestionnaireComplete = async (data: any) => {
             <JournalHistory onSelectCheckIn={(checkIn) => setSelectedCheckIn(checkIn)} />
           )}
           {currentScreen === 'explore' && (
-            <ContentLibrary onSelectContent={(content) => setSelectedContent(content)} />
+            <ContentLibrary
+  onSelectContent={(content) => setSelectedContent(content)}
+  onViewTherapist={(therapistId) => {
+    setSelectedTherapistId(therapistId);
+    setCurrentScreen('therapistProfile');
+  }}
+/>
           )}
           {currentScreen === 'therapists' && (
             <TherapistList onSelectTherapist={(id) => setSelectedTherapistId(id)} />
