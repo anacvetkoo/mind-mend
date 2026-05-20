@@ -1,127 +1,87 @@
 import type { TherapistAvailability, AppointmentSlot, BlockedTime, Appointment } from '../types/appointments';
 
-/**
- * Generates available appointment slots for a specific date based on therapist availability
- */
 export function generateSlotsForDate(
   date: string,
   availability: TherapistAvailability,
   blockedTimes: BlockedTime[],
   existingAppointments: Appointment[]
 ): AppointmentSlot[] {
-  const dateObj = new Date(date);
-  const dayName = dateObj.toLocaleDateString('en-US', { weekday: 'long' }) as any;
 
-  // Find working hours for this day
+  // T12:00:00 prepreči UTC shift — brez tega je dayName napačen v +1/+2 conah
+  const dateObj = new Date(date + 'T12:00:00');
+  const dayName = dateObj.toLocaleDateString('en-US', { weekday: 'long' });
+
+  // Preveri ali je delovni dan
   const workingHours = availability.workingHours.find(wh => wh.day === dayName);
-
   if (!workingHours || !workingHours.enabled) {
-    return []; // Not a working day
+    return [];
   }
 
-  // Check if date is blocked
-  const isBlocked = blockedTimes.some(bt => {
-    const blockStart = new Date(bt.startDate);
-    const blockEnd = new Date(bt.endDate);
-    const currentDate = new Date(date);
-
-    if (bt.isFullDay) {
-      return currentDate >= blockStart && currentDate <= blockEnd;
-    } else {
-      // Check if specific time range is blocked
-      return currentDate.toDateString() === blockStart.toDateString() &&
-             bt.startTime && bt.endTime;
-    }
-  });
-
-  if (isBlocked) {
-    const relevantBlock = blockedTimes.find(bt => {
-      const blockStart = new Date(bt.startDate);
-      const currentDate = new Date(date);
-      return !bt.isFullDay && currentDate.toDateString() === blockStart.toDateString();
-    });
-
-    if (relevantBlock?.isFullDay) {
-      return []; // Fully blocked day
-    }
+  // Preveri ali je cel dan blokiran — primerjava stringov, timezone safe
+  const isFullDayBlocked = blockedTimes.some(
+    bt => bt.isFullDay && date >= bt.startDate && date <= bt.endDate
+  );
+  if (isFullDayBlocked) {
+    return [];
   }
 
+  // Generiraj slote
   const slots: AppointmentSlot[] = [];
   const { appointmentDuration, breakDuration } = availability;
 
-  // Parse start and end times
   const [startHour, startMin] = workingHours.startTime.split(':').map(Number);
   const [endHour, endMin] = workingHours.endTime.split(':').map(Number);
 
-  let currentTime = startHour * 60 + startMin; // Convert to minutes
+  let currentTime = startHour * 60 + startMin;
   const endTime = endHour * 60 + endMin;
 
   while (currentTime + appointmentDuration <= endTime) {
-    const slotStartHour = Math.floor(currentTime / 60);
-    const slotStartMin = currentTime % 60;
-    const slotEndTime = currentTime + appointmentDuration;
-    const slotEndHour = Math.floor(slotEndTime / 60);
-    const slotEndMin = slotEndTime % 60;
+    const slotEnd = currentTime + appointmentDuration;
 
-    const startTimeStr = `${String(slotStartHour).padStart(2, '0')}:${String(slotStartMin).padStart(2, '0')}`;
-    const endTimeStr = `${String(slotEndHour).padStart(2, '0')}:${String(slotEndMin).padStart(2, '0')}`;
+    const startStr = `${String(Math.floor(currentTime / 60)).padStart(2, '0')}:${String(currentTime % 60).padStart(2, '0')}`;
+    const endStr = `${String(Math.floor(slotEnd / 60)).padStart(2, '0')}:${String(slotEnd % 60).padStart(2, '0')}`;
 
-    // Check if slot overlaps with blocked time
-    let isSlotBlocked = false;
-    for (const bt of blockedTimes) {
-      if (!bt.isFullDay && bt.startTime && bt.endTime) {
-        const blockStart = new Date(bt.startDate);
-        const currentDate = new Date(date);
+    // Preveri ali slot pade v partial-day blokado — string primerjava za datum
+    const isSlotBlocked = blockedTimes.some(bt => {
+      if (bt.isFullDay || !bt.startTime || !bt.endTime) return false;
+      if (date < bt.startDate || date > bt.endDate) return false;
 
-        if (currentDate.toDateString() === blockStart.toDateString()) {
-          const [blockStartHour, blockStartMin] = bt.startTime.split(':').map(Number);
-          const [blockEndHour, blockEndMin] = bt.endTime.split(':').map(Number);
-          const blockStartMinutes = blockStartHour * 60 + blockStartMin;
-          const blockEndMinutes = blockEndHour * 60 + blockEndMin;
+      const [bsh, bsm] = bt.startTime.split(':').map(Number);
+      const [beh, bem] = bt.endTime.split(':').map(Number);
+      const bStart = bsh * 60 + bsm;
+      const bEnd = beh * 60 + bem;
 
-          // Check if slot overlaps with blocked time
-          if (!(slotEndTime <= blockStartMinutes || currentTime >= blockEndMinutes)) {
-            isSlotBlocked = true;
-            break;
-          }
-        }
-      }
-    }
+      // Overlap: slot se prepleta z blokado
+      return !(slotEnd <= bStart || currentTime >= bEnd);
+    });
 
-    // Check if slot overlaps with existing appointment
+    // Preveri ali slot ni zaseden z obstoječim appointmentom
     const hasConflict = existingAppointments.some(apt => {
       if (apt.date !== date) return false;
-
-      const [aptStartHour, aptStartMin] = apt.startTime.split(':').map(Number);
-      const [aptEndHour, aptEndMin] = apt.endTime.split(':').map(Number);
-      const aptStartMinutes = aptStartHour * 60 + aptStartMin;
-      const aptEndMinutes = aptEndHour * 60 + aptEndMin;
-
-      // Check if slot overlaps
-      return !(slotEndTime <= aptStartMinutes || currentTime >= aptEndMinutes);
+      const [ash, asm] = apt.startTime.split(':').map(Number);
+      const [aeh, aem] = apt.endTime.split(':').map(Number);
+      const aStart = ash * 60 + asm;
+      const aEnd = aeh * 60 + aem;
+      return !(slotEnd <= aStart || currentTime >= aEnd);
     });
 
     if (!isSlotBlocked && !hasConflict) {
       slots.push({
-        id: `${date}-${startTimeStr}`,
+        id: `${date}-${startStr}`,
         therapistId: availability.therapistId,
         date,
-        startTime: startTimeStr,
-        endTime: endTimeStr,
-        isAvailable: true
+        startTime: startStr,
+        endTime: endStr,
+        isAvailable: true,
       });
     }
 
-    // Move to next slot (appointment duration + break)
     currentTime += appointmentDuration + breakDuration;
   }
 
   return slots;
 }
 
-/**
- * Generates slots for multiple dates
- */
 export function generateSlotsForDateRange(
   startDate: string,
   endDate: string,
@@ -130,21 +90,17 @@ export function generateSlotsForDateRange(
   existingAppointments: Appointment[]
 ): AppointmentSlot[] {
   const slots: AppointmentSlot[] = [];
-  const start = new Date(startDate);
-  const end = new Date(endDate);
+  const start = new Date(startDate + 'T12:00:00');
+  const end = new Date(endDate + 'T12:00:00');
 
   for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
-    const dateStr = d.toISOString().split('T')[0];
-    const daySlots = generateSlotsForDate(dateStr, availability, blockedTimes, existingAppointments);
-    slots.push(...daySlots);
+    const dateStr = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+    slots.push(...generateSlotsForDate(dateStr, availability, blockedTimes, existingAppointments));
   }
 
   return slots;
 }
 
-/**
- * Check if a specific time slot is available
- */
 export function isSlotAvailable(
   date: string,
   startTime: string,
