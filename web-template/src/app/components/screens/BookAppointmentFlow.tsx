@@ -34,15 +34,22 @@ export function BookAppointmentFlow({
 
   useEffect(() => {
     const fetchData = async () => {
+      // Ločena fetcha — napaka pri appointments ne sme pokvariti blocked times
       try {
-        const [blocked, appointments] = await Promise.all([
-          getBlockedTimes(therapistId),
-          getAppointmentsForTherapist(therapistId),
-        ]);
+        const blocked = await getBlockedTimes(therapistId);
+        console.log('[BookAppointmentFlow] therapistId:', therapistId);
+        console.log('[BookAppointmentFlow] blockedTimes:', JSON.stringify(blocked));
         setBlockedTimes(blocked);
+      } catch (error) {
+        console.error('Error fetching blocked times:', error);
+      }
+
+      try {
+        const appointments = await getAppointmentsForTherapist(therapistId);
         setExistingAppointments(appointments.filter(a => a.status === 'CONFIRMED'));
       } catch (error) {
-        console.error('Error fetching booking data:', error);
+        console.error('Error fetching appointments (index missing?):', error);
+        // Appointments ne moremo naložiti — nadaljujemo brez njih
       }
     };
     fetchData();
@@ -57,6 +64,11 @@ export function BookAppointmentFlow({
   const isDateBlocked = (date: Date): boolean => {
     const dateStr = toLocalDateStr(date);
     return blockedTimes.some(bt => bt.isFullDay && dateStr >= bt.startDate && dateStr <= bt.endDate);
+  };
+
+  const isPartialDayBlocked = (date: Date): boolean => {
+    const dateStr = toLocalDateStr(date);
+    return blockedTimes.some(bt => !bt.isFullDay && dateStr >= bt.startDate && dateStr <= bt.endDate);
   };
 
   const isWorkingDay = (date: Date): boolean => {
@@ -247,7 +259,7 @@ export function BookAppointmentFlow({
                           : isPast
                           ? 'text-muted-foreground opacity-25 cursor-not-allowed'
                           : isBlocked
-                          ? 'bg-red-50 dark:bg-red-900/20 text-red-400 opacity-70 cursor-not-allowed line-through'
+                          ? 'bg-pink-100 dark:bg-pink-900/20 text-pink-400 opacity-80 cursor-not-allowed line-through'
                           : isNonWorking
                           ? 'text-muted-foreground opacity-30 cursor-not-allowed'
                           : 'bg-card border-2 border-[var(--border)] text-foreground hover:border-[var(--lavender)]'
@@ -266,11 +278,11 @@ export function BookAppointmentFlow({
                   <span className="text-xs text-muted-foreground">Selected</span>
                 </div>
                 <div className="flex items-center gap-1.5">
-                  <div className="w-3 h-3 rounded-full bg-red-100 dark:bg-red-900/40" />
+                  <div className="w-3 h-3 rounded-full bg-pink-200 dark:bg-pink-800" />
                   <span className="text-xs text-muted-foreground">Time off</span>
                 </div>
                 <div className="flex items-center gap-1.5">
-                  <div className="w-3 h-3 rounded-full bg-[var(--border)]" />
+                  <div className="w-3 h-3 rounded-full bg-[var(--muted)]" />
                   <span className="text-xs text-muted-foreground">Unavailable</span>
                 </div>
               </div>

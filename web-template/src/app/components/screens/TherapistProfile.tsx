@@ -301,8 +301,11 @@ export function TherapistProfile({
                             <div key={bt.id} className="flex items-center gap-2 px-3 py-2 rounded-xl bg-red-50 dark:bg-red-900/20">
                               <BanIcon className="w-3.5 h-3.5 text-red-400 flex-shrink-0" />
                               <span className="text-xs text-red-500 dark:text-red-400 font-medium">{dateLabel}</span>
+                              <span className="text-xs text-muted-foreground">
+                                {bt.isFullDay ? 'All day' : `${bt.startTime}–${bt.endTime}`}
+                              </span>
                               {bt.reason ? (
-                                <span className="text-xs text-muted-foreground ml-auto truncate max-w-[120px]">{bt.reason}</span>
+                                <span className="text-xs text-muted-foreground ml-auto truncate max-w-[80px]">{bt.reason}</span>
                               ) : null}
                             </div>
                           );

@@ -138,7 +138,9 @@ export const getBlockedTimes = async (
   const therapistRef = doc(db, 'users', uid);
   const snapshot = await getDoc(therapistRef);
   if (!snapshot.exists()) return [];
-  return snapshot.data().blockedTimes ?? [];
+  const result = snapshot.data().blockedTimes ?? [];
+  console.log('[getBlockedTimes] uid:', uid, '| blockedTimes:', JSON.stringify(result));
+  return result;
 };
 
 // ─── Dark Mode (per-user) ─────────────────────────────────────────────────────
