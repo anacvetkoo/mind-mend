@@ -16,6 +16,7 @@ interface HomeDashboardProps {
   userId: string;
   userName: string;
   onCheckIn: () => void;
+  onViewAiInsights: () => void;
   onFindTherapist?: () => void;
   onViewAppointments?: () => void;
   onViewNotifications?: () => void;
@@ -23,7 +24,7 @@ interface HomeDashboardProps {
   onViewTerms?: () => void;
 }
 
-export function HomeDashboard({ userId, userName, onCheckIn, onFindTherapist, onViewAppointments, onViewNotifications, onViewPrivacy, onViewTerms }: HomeDashboardProps) {
+export function HomeDashboard({ userId, userName, onCheckIn, onViewAiInsights, onFindTherapist, onViewAppointments, onViewNotifications, onViewPrivacy, onViewTerms }: HomeDashboardProps) {
   const currentHour = new Date().getHours();
   const greeting =
     currentHour < 12 ? 'Good morning' : currentHour < 18 ? 'Good afternoon' : 'Good evening';
@@ -269,6 +270,26 @@ export function HomeDashboard({ userId, userName, onCheckIn, onFindTherapist, on
                 </Card>
               ))
             )}
+            {/* KARTICA ZA PREUSMERITEV NA DOVRŠENO REZULTATNO ANALIZO */}
+                <Card 
+                  onClick={onViewAiInsights} // Preveri, da ima tvoj HomeDashboard prop onViewAiInsights
+                  className="mt-2 cursor-pointer border border-[var(--lavender)]/30 bg-gradient-to-r from-[var(--lavender)]/5 to-transparent hover:from-[var(--lavender)]/10 transition-all p-3 flex items-center justify-between group"
+                >
+                  <div className="flex items-center gap-2.5">
+                    <div className="w-8 h-8 rounded-lg bg-[var(--lavender)]/10 flex items-center justify-center text-[var(--lavender)]">
+                      <Brain className="w-4 h-4" />
+                    </div>
+                    <div>
+                      <h4 className="text-sm font-medium text-foreground group-hover:text-[var(--lavender)] transition-colors">
+                        Deep Cognitive Report
+                      </h4>
+                      <p className="text-xs text-muted-foreground">
+                        Explore core triggers, trends and full analysis across 10 logs
+                      </p>
+                    </div>
+                  </div>
+                  <ChevronRight className="w-4 h-4 text-muted-foreground group-hover:translate-x-0.5 transition-transform" />
+                </Card>
           </div>
         </motion.div>
 
