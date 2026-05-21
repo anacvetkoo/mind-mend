@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { ArrowLeft, Bookmark, BookmarkPlus, Play, Pause, Star, ChevronRight, Wind, Volume2, Brain, Heart, Calendar, Maximize2 } from 'lucide-react';
+import { ArrowLeft, Bookmark, BookmarkPlus, Play, Pause, Star, ChevronRight, Wind, Volume2, Brain, Heart, Calendar } from 'lucide-react';
 import { toggleLike, toggleBookmark, isLiked, isBookmarked, getLikeCount } from '../../utils/contentInteractions';
 import {
   getLibraryContent,
@@ -357,64 +357,7 @@ const handleOpenFullscreen = () => {
 };
 
   const renderDynamicContent = () => {
-    if (content.category === 'breathing') {
-      return (
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.2 }}
-          className="bg-card rounded-2xl p-6 shadow-lg mb-4"
-        >
-          {/* Breathing Circle Animation */}
-          <div className="flex flex-col items-center mb-6">
-            <motion.div
-              className="w-40 h-40 rounded-full bg-gradient-to-br from-[var(--lavender)] to-[var(--soft-purple)] flex items-center justify-center shadow-2xl relative"
-              animate={{
-                scale: breathPhase === 'inhale' ? 1.3 : breathPhase === 'exhale' ? 0.7 : 1,
-              }}
-              transition={{
-                duration: breathPhase === 'inhale' ? 4 : breathPhase === 'hold' ? 0 : 8,
-                ease: 'easeInOut'
-              }}
-            >
-              <div className="absolute inset-0 rounded-full bg-white/20 animate-pulse" />
-              <Wind className="w-16 h-16 text-white" />
-            </motion.div>
-
-            <motion.div
-              className="mt-6 text-center"
-              key={breathPhase}
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-            >
-              <p className="text-2xl text-foreground capitalize mb-1">{breathPhase}...</p>
-              <p className="text-lg text-muted-foreground">{breathCount}s</p>
-            </motion.div>
-          </div>
-
-          <p className="text-center text-sm text-muted-foreground mb-4">4-7-8 Breathing Technique</p>
-
-          {/* Play/Pause Button */}
-          <motion.button
-            whileTap={{ scale: 0.95 }}
-            onClick={() => setIsPlaying(!isPlaying)}
-            className="w-full py-4 rounded-2xl bg-gradient-to-r from-[var(--lavender)] to-[var(--soft-purple)] text-white flex items-center justify-center gap-2 shadow-lg"
-          >
-            {isPlaying ? (
-              <>
-                <Pause className="w-5 h-5" />
-                <span>Pause</span>
-              </>
-            ) : (
-              <>
-                <Play className="w-5 h-5" />
-                <span>Start Breathing</span>
-              </>
-            )}
-          </motion.button>
-        </motion.div>
-      );
-    }
+    
 
   if (getContentType() === 'video') {
   return (
@@ -422,80 +365,31 @@ const handleOpenFullscreen = () => {
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ delay: 0.2 }}
-      className="bg-card rounded-2xl p-6 shadow-lg mb-4"
+      className="bg-card rounded-2xl p-4 shadow-lg mb-4"
     >
       {content.videoUrl ? (
-        <>
-          <div className="overflow-hidden rounded-3xl bg-[var(--muted)] mb-4 relative">
-            <video
-              ref={videoRef}
-              src={content.videoUrl}
-              controls
-              playsInline
-              className="w-full rounded-3xl bg-black"
-              onLoadedMetadata={(event) => {
-  const duration = event.currentTarget.duration;
-
-  if (Number.isFinite(duration)) {
-    setAudioDuration(duration);
-    handleMediaLoadedMetadata(duration);
-  }
-}}
-onTimeUpdate={(event) => {
-  const currentTime = event.currentTarget.currentTime;
-  const duration = event.currentTarget.duration;
-
-  setCurrentAudioTime(currentTime);
-  handleMediaProgress(currentTime, duration);
-}}
-              onPlay={() => setIsPlaying(true)}
-              onPause={() => setIsPlaying(false)}
-              onEnded={() => {
-                setIsPlaying(false);
-                setProgress(100);
-              }}
-            />
-
-            <button
-              onClick={handleOpenFullscreen}
-              className="absolute top-3 right-3 w-10 h-10 rounded-full bg-black/40 backdrop-blur-xl flex items-center justify-center"
-            >
-              <Maximize2 className="w-5 h-5 text-white" />
-            </button>
-          </div>
-
-          <div className="space-y-4 mb-4">
-            <div className="flex items-center justify-between text-sm text-muted-foreground">
-              <span>{getDuration()}</span>
-              <span>{Math.round(progress)}%</span>
-            </div>
-
-            <div className="h-2 bg-[var(--muted)] rounded-full overflow-hidden">
-              <motion.div
-                className="h-full bg-gradient-to-r from-[var(--lavender)] to-[var(--soft-purple)] rounded-full"
-                style={{ width: `${progress}%` }}
-              />
-            </div>
-          </div>
-
-          <motion.button
-            whileTap={{ scale: 0.95 }}
-            onClick={handlePlayVideo}
-            className="w-full py-4 rounded-2xl bg-gradient-to-r from-[var(--lavender)] to-[var(--soft-purple)] text-white flex items-center justify-center gap-2 shadow-lg"
+        <div className="overflow-hidden rounded-2xl bg-black">
+          <video
+            ref={videoRef}
+            src={content.videoUrl}
+            controls
+            playsInline
+            preload="metadata"
+            className="w-full aspect-video bg-black"
+            onLoadedMetadata={(event) => handleMediaLoadedMetadata(event.currentTarget.duration)}
+            onTimeUpdate={(event) => {
+              handleMediaProgress(event.currentTarget.currentTime, event.currentTarget.duration);
+            }}
+            onPlay={() => setIsPlaying(true)}
+            onPause={() => setIsPlaying(false)}
+            onEnded={() => {
+              setIsPlaying(false);
+              setProgress(100);
+            }}
           >
-            {isPlaying ? (
-              <>
-                <Pause className="w-5 h-5" />
-                <span>Pause Video</span>
-              </>
-            ) : (
-              <>
-                <Play className="w-5 h-5" />
-                <span>Play Video</span>
-              </>
-            )}
-          </motion.button>
-        </>
+            Your browser does not support the video tag.
+          </video>
+        </div>
       ) : (
         <p className="text-sm text-muted-foreground text-center">
           Video file is not available.
@@ -799,88 +693,20 @@ if (getContentType() === 'steps' && content.steps && content.steps.length > 0) {
         <div className="px-4 mt-4 relative z-0">
           {/* Dynamic Interactive Player - Primary focus */}
           {renderDynamicContent()}
-
-          {/* How it works / Description */}
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.3 }}
-            className="bg-card rounded-2xl p-6 shadow-lg mb-4"
-          >
-            <h3 className="text-lg mb-4 text-foreground">
-              {content.category === 'breathing' ? 'How it works' : 'About this session'}
-            </h3>
-            {content.category === 'breathing' ? (
-              <div className="space-y-4">
-                <div className="flex gap-3">
-                  <div className="w-8 h-8 rounded-full bg-[var(--lavender)] text-white flex items-center justify-center flex-shrink-0 text-sm">
-                    1
-                  </div>
-                  <div>
-                    <h4 className="mb-1 text-foreground">Breathe in for 4 seconds</h4>
-                    <p className="text-sm text-muted-foreground">
-                      Inhale quietly through your nose
-                    </p>
-                  </div>
-                </div>
-                <div className="flex gap-3">
-                  <div className="w-8 h-8 rounded-full bg-[var(--soft-mint)] text-white flex items-center justify-center flex-shrink-0 text-sm">
-                    2
-                  </div>
-                  <div>
-                    <h4 className="mb-1 text-foreground">Hold for 7 seconds</h4>
-                    <p className="text-sm text-muted-foreground">
-                      Hold your breath and count to seven
-                    </p>
-                  </div>
-                </div>
-                <div className="flex gap-3">
-                  <div className="w-8 h-8 rounded-full bg-[var(--muted-blue)] text-white flex items-center justify-center flex-shrink-0 text-sm">
-                    3
-                  </div>
-                  <div>
-                    <h4 className="mb-1 text-foreground">Breathe out for 8 seconds</h4>
-                    <p className="text-sm text-muted-foreground">
-                      Exhale completely through your mouth
-                    </p>
-                  </div>
-                </div>
-              </div>
-            ) : (
-              <p className="text-sm text-muted-foreground leading-relaxed">{content.description}</p>
-            )}
-          </motion.div>
-
-          {/* Benefits (for breathing) or description continuation */}
-          {content.category === 'breathing' && (
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.4 }}
-              className="bg-card rounded-2xl p-6 shadow-lg mb-4"
-            >
-              <h3 className="text-lg mb-4 text-foreground">Benefits</h3>
-              <ul className="space-y-3 text-muted-foreground">
-                <li className="flex items-start gap-3">
-                  <span className="text-[var(--soft-mint)] text-lg">✓</span>
-                  <span className="text-sm">Reduces anxiety and stress</span>
-                </li>
-                <li className="flex items-start gap-3">
-                  <span className="text-[var(--soft-mint)] text-lg">✓</span>
-                  <span className="text-sm">Helps you fall asleep faster</span>
-                </li>
-                <li className="flex items-start gap-3">
-                  <span className="text-[var(--soft-mint)] text-lg">✓</span>
-                  <span className="text-sm">Manages emotional responses</span>
-                </li>
-                <li className="flex items-start gap-3">
-                  <span className="text-[var(--soft-mint)] text-lg">✓</span>
-                  <span className="text-sm">Improves focus and concentration</span>
-                </li>
-              </ul>
-            </motion.div>
-          )}
-
+          {/* About this session */}
+{content.description && (
+  <motion.div
+    initial={{ opacity: 0, y: 20 }}
+    animate={{ opacity: 1, y: 0 }}
+    transition={{ delay: 0.4 }}
+    className="bg-card rounded-2xl p-6 shadow-lg mb-4"
+  >
+    <h3 className="text-lg mb-3 text-foreground">About this session</h3>
+    <p className="text-sm text-muted-foreground leading-relaxed">
+      {content.description}
+    </p>
+  </motion.div>
+)}
           {/* About the Therapist */}
           <motion.div
             initial={{ opacity: 0, y: 20 }}
