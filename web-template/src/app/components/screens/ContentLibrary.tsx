@@ -125,7 +125,6 @@ export function ContentLibrary({
   const [currentPage, setCurrentPage] = useState(1);
   const [isLoading, setIsLoading] = useState(true);
   const [mediaDurations, setMediaDurations] = useState<Record<string, string>>({});
-  const [, forceUpdate] = useState({});
   const [likedContentIds, setLikedContentIds] = useState<string[]>([]);
 const [savedContentIds, setSavedContentIds] = useState<string[]>([]);
   const resultsSectionRef = useRef<HTMLDivElement | null>(null);
@@ -310,8 +309,7 @@ useEffect(() => {
 
 const handleLike = async (contentId: string) => {
   const isCurrentlyLiked = likedContentIds.includes(contentId);
-
-  await toggleLikedContent(contentId, isCurrentlyLiked);
+  const likesChange = isCurrentlyLiked ? -1 : 1;
 
   setLikedContentIds((previousIds) =>
     isCurrentlyLiked
@@ -319,7 +317,37 @@ const handleLike = async (contentId: string) => {
       : [...previousIds, contentId]
   );
 
-  forceUpdate({});
+  setContentItems((previousItems) =>
+    previousItems.map((item) =>
+      item.id === contentId
+        ? {
+            ...item,
+            likes: Math.max((item.likes || 0) + likesChange, 0)
+          }
+        : item
+    )
+  );
+
+  try {
+    await toggleLikedContent(contentId, isCurrentlyLiked);
+  } catch (error) {
+    setLikedContentIds((previousIds) =>
+      isCurrentlyLiked
+        ? [...previousIds, contentId]
+        : previousIds.filter((id) => id !== contentId)
+    );
+
+    setContentItems((previousItems) =>
+      previousItems.map((item) =>
+        item.id === contentId
+          ? {
+              ...item,
+              likes: Math.max((item.likes || 0) - likesChange, 0)
+            }
+          : item
+      )
+    );
+  }
 };
 
   const getContentDuration = (content: LibraryContentItem) => {

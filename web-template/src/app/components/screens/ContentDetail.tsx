@@ -270,15 +270,27 @@ setAudioDuration(0);
 };
 
 const handleLike = async () => {
-  await toggleLikedContent(content.id, itemIsLiked);
+  const isCurrentlyLiked = likedContentIds.includes(content.id);
 
   setLikedContentIds((previousIds) =>
-    itemIsLiked
+    isCurrentlyLiked
       ? previousIds.filter((id) => id !== content.id)
       : [...previousIds, content.id]
   );
 
-  forceUpdate({});
+  content.likes = Math.max((content.likes || 0) + (isCurrentlyLiked ? -1 : 1), 0);
+
+  try {
+    await toggleLikedContent(content.id, isCurrentlyLiked);
+  } catch (error) {
+    setLikedContentIds((previousIds) =>
+      isCurrentlyLiked
+        ? [...previousIds, content.id]
+        : previousIds.filter((id) => id !== content.id)
+    );
+
+    content.likes = Math.max((content.likes || 0) + (isCurrentlyLiked ? 1 : -1), 0);
+  }
 };
 
   const handleMediaProgress = (currentTime: number, duration: number) => {
