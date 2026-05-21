@@ -45,6 +45,7 @@ import { TermsConditionsPage } from './components/screens/TermsAndConditions.js'
 import { AiInsightsScreen } from './components/screens/AiInsightsScreen.js';
 
 type AppState = 'splash' | 'welcome' | 'auth' | 'questionnaire' | 'therapist-profile-setup' | 'app';
+type ContentReturnScreen = 'likedContent' | 'savedContent' | 'completedContent' | null;
 
 export default function App() {
   const [appState, setAppState] = useState<AppState>('splash');
@@ -63,6 +64,7 @@ export default function App() {
   const [showDailyCheckIn, setShowDailyCheckIn] = useState(false);
   const [selectedCheckIn, setSelectedCheckIn] = useState<any>(null);
   const [selectedContent, setSelectedContent] = useState<any>(null);
+  const [contentReturnScreen, setContentReturnScreen] = useState<'liked' | 'saved' | 'completed' | null>(null);
   const [selectedTherapistId, setSelectedTherapistId] = useState<string | null>(null);
   const [contentBeforeTherapistProfile, setContentBeforeTherapistProfile] = useState<any>(null);
   const [showChatConversation, setShowChatConversation] = useState(false);
@@ -579,7 +581,26 @@ const handleQuestionnaireComplete = async (data: any) => {
   return (
     <ContentDetail
       content={selectedContent}
-      onClose={() => setSelectedContent(null)}
+      onClose={() => {
+  const returnScreen = contentReturnScreen;
+
+  setSelectedContent(null);
+  setContentReturnScreen(null);
+
+  if (returnScreen === 'liked') {
+    setShowLikedContent(true);
+    return;
+  }
+
+  if (returnScreen === 'saved') {
+    setShowSavedContent(true);
+    return;
+  }
+
+  if (returnScreen === 'completed') {
+    setShowCompletedContent(true);
+  }
+}}
       onViewTherapist={(therapistId) => {
         setContentBeforeTherapistProfile(selectedContent);
         setSelectedContent(null);
@@ -594,9 +615,10 @@ const handleQuestionnaireComplete = async (data: any) => {
       <LikedContentScreen
         onBack={() => setShowLikedContent(false)}
         onSelectContent={(content) => {
-          setShowLikedContent(false);
-          setSelectedContent(content);
-        }}
+  setContentReturnScreen('liked');
+  setShowLikedContent(false);
+  setSelectedContent(content);
+}}
       />
     );
   }
@@ -606,9 +628,10 @@ const handleQuestionnaireComplete = async (data: any) => {
       <SavedContentScreen
         onBack={() => setShowSavedContent(false)}
         onSelectContent={(content) => {
-          setShowSavedContent(false);
-          setSelectedContent(content);
-        }}
+  setContentReturnScreen('saved');
+  setShowSavedContent(false);
+  setSelectedContent(content);
+}}
       />
     );
   }
@@ -617,9 +640,10 @@ const handleQuestionnaireComplete = async (data: any) => {
     <CompletedContentScreen
       onBack={() => setShowCompletedContent(false)}
       onSelectContent={(content) => {
-        setShowCompletedContent(false);
-        setSelectedContent(content);
-      }}
+  setContentReturnScreen('completed');
+  setShowCompletedContent(false);
+  setSelectedContent(content);
+}}
     />
   );
 }
