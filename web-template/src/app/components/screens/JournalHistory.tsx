@@ -8,6 +8,7 @@ import { getStreakDataFromFirestore } from '../../utils/StreakCalculator';
 import { db, auth } from '../../services/firebaseConfig';
 import { collection, query, where, getDocs, orderBy } from 'firebase/firestore';
 import { getFirebaseCheckIns } from '../../utils/checkInUtils.js';
+import { Button } from '../ui/Button';
 
 interface JournalHistoryProps {
   onSelectCheckIn?: (checkIn: CheckInData) => void;
@@ -22,6 +23,7 @@ export function JournalHistory({ onSelectCheckIn }: JournalHistoryProps = {}) {
   const [weeklyTrend, setWeeklyTrend] = useState('Stable');
   const [completedThisWeek, setCompletedThisWeek] = useState(0);
   const [isLoading, setIsLoading] = useState(true);
+  const [visibleCheckInCount, setVisibleCheckInCount] = useState(4);
 
   useEffect(() => {
     const loadData = async () => {
@@ -257,6 +259,7 @@ export function JournalHistory({ onSelectCheckIn }: JournalHistoryProps = {}) {
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.5 }}
+          className="mb-6"
         >
           <h3 className="text-xl text-foreground mb-4">Check-In History</h3>
 
@@ -268,7 +271,7 @@ export function JournalHistory({ onSelectCheckIn }: JournalHistoryProps = {}) {
             </Card>
           ) : (
             <div className="space-y-3">
-              {checkIns.map((checkIn, idx) => {
+              {checkIns.slice(0, visibleCheckInCount).map((checkIn, idx) => {
                 const insights = generateAIInsights(checkIn);
                 const preview = insights[0] || 'Thank you for checking in today.';
 
@@ -325,6 +328,22 @@ export function JournalHistory({ onSelectCheckIn }: JournalHistoryProps = {}) {
                   </motion.div>
                 );
               })}
+              {checkIns.length > visibleCheckInCount && (
+                <motion.div 
+                  initial={{ opacity: 0 }} 
+                  animate={{ opacity: 1 }}
+                  className="pt-2 text-center"
+                >
+                  <Button
+                    variant="secondary"
+                    size="sm"
+                    onClick={() => setVisibleCheckInCount(prev => prev + 4)} // Vsak klik naloži naslednje 4
+                    className="w-full text-xs font-medium py-2 border border-[var(--lavender)]/20 text-[var(--lavender)] hover:bg-[var(--lavender)]/5 transition-all"
+                  >
+                    Load More ({checkIns.length - visibleCheckInCount} remaining)
+                  </Button>
+                </motion.div>
+              )}
             </div>
           )}
         </motion.div>

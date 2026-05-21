@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { motion } from 'motion/react';
 import { ArrowLeft, Send, Paperclip, Mic, Smile } from 'lucide-react';
 import otterImage from '../../../imports/vidra.png';
+import { generateAITherapistReply } from '../../services/gemini.js';
 
 interface Message {
   id: number;
@@ -25,9 +26,7 @@ export function ChatConversation({ therapistName = 'Otto AI', therapistAvatar, i
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   const [messages, setMessages] = useState<Message[]>([
-    { id: 1, text: 'Hi! How are you feeling today?', sender: isAI ? 'ai' : 'therapist', timestamp: '10:00 AM' },
-    { id: 2, text: "I'm feeling a bit anxious about work.", sender: 'user', timestamp: '10:02 AM' },
-    { id: 3, text: "I understand. Let's work through that together. Can you tell me more about what's making you anxious?", sender: isAI ? 'ai' : 'therapist', timestamp: '10:03 AM' }
+    { id: 1, text: 'Hi! How are you feeling today?', sender: isAI ? 'ai' : 'therapist', timestamp: '10:00 AM' }
   ]);
 
   const scrollToBottom = () => {
@@ -53,39 +52,62 @@ export function ChatConversation({ therapistName = 'Otto AI', therapistAvatar, i
     }, 30); // Adjust speed here (lower = faster)
   };
 
-  const handleSend = () => {
-    if (!message.trim()) return;
+  const handleSend = async () => {
+    if (!message.trim() || isTyping) return;
 
-    const newMessage: Message = {
+    const userText = message;
+    const currentTimestamp = new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
+
+    const newUserMessage: Message = {
       id: messages.length + 1,
-      text: message,
+      text: userText,
       sender: 'user',
-      timestamp: new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })
+      timestamp: currentTimestamp
     };
 
-    setMessages([...messages, newMessage]);
+    const updatedMessages = [...messages, newUserMessage];
+    setMessages(updatedMessages);
     setMessage('');
 
-    // Simulate typing indicator
     setIsTyping(true);
-    setTimeout(() => {
+
+    try {
+      let replyText = '';
+
+      if (isAI) {
+        const chatHistoryForAI = updatedMessages.map(m => ({
+          sender: m.sender,
+          text: m.text
+        }));
+        
+        const { generateAITherapistReply } = await import('../../services/gemini.js');
+        replyText = await generateAITherapistReply(chatHistoryForAI);
+      } else {
+        //fallback na simulacijo
+        replyText = 'Thank you for sharing that with me. As your therapist, I am here to assist you through this session.';
+      }
+
       setIsTyping(false);
-      const replyId = messages.length + 2;
-      const replyText = 'Thank you for sharing that with me. How can I support you?';
-      const reply: Message = {
+
+      const replyId = updatedMessages.length + 1;
+      const aiReplyMessage: Message = {
         id: replyId,
         text: replyText,
         sender: isAI ? 'ai' : 'therapist',
         timestamp: new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })
       };
-      setMessages(prev => [...prev, reply]);
 
-      // Start typewriter effect for AI messages
+      setMessages(prev => [...prev, aiReplyMessage]);
+
       if (isAI) {
         setTypingMessageId(replyId);
         typewriterEffect(replyId, replyText);
       }
-    }, 2000);
+
+    } catch (error) {
+      console.error("Napaka pri pridobivanju odgovora terapevta:", error);
+      setIsTyping(false);
+    }
   };
 
   return (

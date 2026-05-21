@@ -101,3 +101,39 @@ What would help tomorrow: "${log.tomorrowHelp}"
     return "We were unable to compile your cognitive report at this moment. Please log another entry tomorrow or try reloading the screen shortly.";
   }
 }
+
+
+//chat z otto
+export async function generateAITherapistReply(chatHistory: { sender: string; text: string }[]): Promise<string> {
+  const formattedHistory = chatHistory.map(msg => {
+    const role = msg.sender === 'user' ? 'User' : 'MindMend AI Therapist';
+    return `${role}: ${msg.text}`;
+  }).join('\n');
+
+  const prompt = `
+    You are Otto, an empathetic, supportive, and professional AI therapist for the mental health app MindMend. 
+    Your goal is to guide the user using gentle cognitive-behavioral insights, active listening, and grounding techniques.
+
+    Rules for your persona:
+    - Keep your answers relatively short, conversational, and warm (1-3 sentences maximum).
+    - Never sound like a rigid machine; sound like a compassionate counselor.
+    - Ask open-ended questions when appropriate to let the user express themselves.
+    - Do not give clinical medical diagnoses.
+
+    Here is the conversation history so far:
+    ${formattedHistory}
+
+    Provide the next logical, caring response as Otto:
+  `;
+
+  try {
+    const result = await model.generateContent(prompt);
+    const response = result.response;
+    const text = response.text().trim();
+
+    return text || "I am here and listening. Tell me more.";
+  } catch (error) {
+    console.error("Napaka znotraj Firebase AI servisa (Chat):", error);
+    return "I hear you, and I'm so sorry you're dealing with this. Can you expand a little bit more on how that makes you feel?";
+  }
+}
