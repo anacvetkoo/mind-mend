@@ -10,6 +10,7 @@ interface CompletedContentScreenProps {
 
 export function CompletedContentScreen({ onBack, onSelectContent }: CompletedContentScreenProps) {
   const [completedContent, setCompletedContent] = useState<any[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
     let isMounted = true;
@@ -20,6 +21,7 @@ export function CompletedContentScreen({ onBack, onSelectContent }: CompletedCon
       if (!isMounted) return;
 
       setCompletedContent(content);
+      setIsLoading(false);
     };
 
     loadCompletedContent();
@@ -41,11 +43,28 @@ export function CompletedContentScreen({ onBack, onSelectContent }: CompletedCon
           </button>
           <div>
             <h1 className="text-2xl text-foreground">Completed Content</h1>
-            <p className="text-sm text-muted-foreground">{completedContent.length} items</p>
+            <p className="text-sm text-muted-foreground">
+  {isLoading ? 'Loading...' : `${completedContent.length} items`}
+</p>
           </div>
         </div>
 
-        {completedContent.length === 0 ? (
+        {isLoading ? (
+  <div className="space-y-4">
+    {[1, 2, 3].map((item) => (
+      <div key={item} className="bg-card rounded-2xl p-4 shadow-md animate-pulse">
+        <div className="flex gap-4">
+          <div className="w-20 h-20 rounded-2xl bg-muted flex-shrink-0" />
+          <div className="flex-1">
+            <div className="w-20 h-4 bg-muted rounded-full mb-3" />
+            <div className="w-full h-4 bg-muted rounded-full mb-2" />
+            <div className="w-24 h-3 bg-muted rounded-full" />
+          </div>
+        </div>
+      </div>
+    ))}
+  </div>
+) : completedContent.length === 0 ? (
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
