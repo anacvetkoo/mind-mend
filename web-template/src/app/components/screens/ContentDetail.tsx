@@ -2,7 +2,11 @@ import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { ArrowLeft, Bookmark, BookmarkPlus, Play, Pause, Star, ChevronRight, Wind, Volume2, Brain, Heart, Calendar } from 'lucide-react';
 import { toggleLike, toggleBookmark, isLiked, isBookmarked, getLikeCount } from '../../utils/contentInteractions';
-import {getMoreContentFromTherapist, type LibraryContentItem } from '../../services/content';
+import {
+  getLibraryContent,
+  getMoreContentFromTherapist,
+  type LibraryContentItem
+} from '../../services/content';
 
 type ContentItem = LibraryContentItem;
 
@@ -25,10 +29,12 @@ export function ContentDetail({
   const [isPlaying, setIsPlaying] = useState(false);
   const [progress, setProgress] = useState(0);
   const [currentStep, setCurrentStep] = useState(1);
+  const [hasFinishedSteps, setHasFinishedSteps] = useState(false);
   const [breathPhase, setBreathPhase] = useState<'inhale' | 'hold' | 'exhale'>('inhale');
   const [breathCount, setBreathCount] = useState(4);
   const [mediaDuration, setMediaDuration] = useState('');
   const [therapistContent, setTherapistContent] = useState<ContentItem[]>(moreFromTherapist);
+  const [youMightLikeContent, setYouMightLikeContent] = useState<ContentItem[]>([]);
   const itemIsLiked = isLiked(content.id);
   const itemIsBookmarked = isBookmarked(content.id);
   const likeCount = getLikeCount(content.id);
@@ -90,6 +96,16 @@ const headerBackground = content.thumbnailImage && content.thumbnailType === 'im
       background: content.thumbnailGradient || content.gradient || 'linear-gradient(135deg, var(--lavender), var(--soft-purple))'
     };
 
+const getCategoryIcon = (category: ContentItem['category']) => {
+  if (category === 'breathing') return Wind;
+  if (category === 'sound') return Volume2;
+  return Brain;
+};
+
+const getContentScore = (item: ContentItem) => {
+  return Math.max(item.likes || 0, getLikeCount(item.id)) + (item.views || 0);
+};    
+
 
  useEffect(() => {
   let isMounted = true;
@@ -129,6 +145,62 @@ const headerBackground = content.thumbnailImage && content.thumbnailType === 'im
     isMounted = false;
   };
 }, [content.id, content.therapistId]);
+
+useEffect(() => {
+  let isMounted = true;
+
+  const fetchYouMightLikeContent = async () => {
+    try {
+      const libraryContent = await getLibraryContent();
+      const therapistContentIds = therapistContent.map((item) => item.id);
+
+      const sameCategoryContent = libraryContent
+        .filter((item) => {
+          return (
+            item.id !== content.id &&
+            item.category === content.category &&
+            item.therapistId !== content.therapistId &&
+            !therapistContentIds.includes(item.id)
+          );
+        })
+        .sort((firstItem, secondItem) => getContentScore(secondItem) - getContentScore(firstItem));
+
+      const fallbackContent = libraryContent
+        .filter((item) => {
+          return (
+            item.id !== content.id &&
+            item.category !== content.category &&
+            !therapistContentIds.includes(item.id) &&
+            !sameCategoryContent.some((sameCategoryItem) => sameCategoryItem.id === item.id)
+          );
+        })
+        .sort((firstItem, secondItem) => getContentScore(secondItem) - getContentScore(firstItem));
+
+      if (isMounted) {
+        setYouMightLikeContent([...sameCategoryContent, ...fallbackContent].slice(0, 3));
+      }
+    } catch (error) {
+      console.error('Error loading recommended content:', error);
+
+      if (isMounted) {
+        setYouMightLikeContent([]);
+      }
+    }
+  };
+
+  fetchYouMightLikeContent();
+
+  return () => {
+    isMounted = false;
+  };
+}, [content.id, content.category, content.therapistId, therapistContent]);
+
+useEffect(() => {
+  setCurrentStep(1);
+  setHasFinishedSteps(false);
+  setIsPlaying(false);
+  setProgress(0);
+}, [content.id]);
 
   // Breathing animation logic
   useEffect(() => {
@@ -362,31 +434,54 @@ const headerBackground = content.thumbnailImage && content.thumbnailType === 'im
     }
 
     // Relaxation exercises - Step by step
-    if (content.category === 'relaxation' && content.steps) {
-      return (
+    // Step by step content
+if (getContentType() === 'steps' && content.steps && content.steps.length > 0) {
+  const isLastStep = currentStep === content.steps.length;
+
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 20 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ delay: 0.2 }}
+      className="bg-card rounded-2xl p-6 shadow-lg mb-4"
+    >
+      {hasFinishedSteps ? (
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.2 }}
-          className="bg-card rounded-2xl p-6 shadow-lg mb-4"
+          className="text-center py-6"
         >
+          <div className="w-16 h-16 rounded-full bg-gradient-to-br from-[var(--lavender)] to-[var(--soft-purple)] text-white flex items-center justify-center mx-auto mb-4">
+            ✓
+          </div>
+
+          <h3 className="text-xl text-foreground mb-2">
+            You finished this session
+          </h3>
+
+          <p className="text-sm text-muted-foreground leading-relaxed">
+            Great job. You reached the end of this exercise. Take a moment to notice how you feel.
+          </p>
+        </motion.div>
+      ) : (
+        <>
           <div className="mb-4 flex items-center justify-between">
             <p className="text-sm text-muted-foreground">
               Step {currentStep} of {content.steps.length}
             </p>
+
             <div className="flex gap-1">
-              {content.steps.map((_, idx) => (
+              {content.steps.map((_, index) => (
                 <div
-                  key={idx}
+                  key={index}
                   className={`w-8 h-1 rounded-full ${
-                    idx < currentStep ? 'bg-[var(--lavender)]' : 'bg-[var(--muted)]'
+                    index < currentStep ? 'bg-[var(--lavender)]' : 'bg-[var(--muted)]'
                   }`}
                 />
               ))}
             </div>
           </div>
 
-          {/* Current Step Card */}
           <AnimatePresence mode="wait">
             <motion.div
               key={currentStep}
@@ -399,9 +494,11 @@ const headerBackground = content.thumbnailImage && content.thumbnailType === 'im
                 <div className="w-12 h-12 rounded-full bg-gradient-to-br from-[var(--lavender)] to-[var(--soft-purple)] text-white flex items-center justify-center mb-4">
                   {currentStep}
                 </div>
+
                 <h4 className="text-lg mb-2 text-foreground">
                   {content.steps[currentStep - 1].title}
                 </h4>
+
                 <p className="text-sm text-muted-foreground">
                   {content.steps[currentStep - 1].description}
                 </p>
@@ -409,34 +506,39 @@ const headerBackground = content.thumbnailImage && content.thumbnailType === 'im
             </motion.div>
           </AnimatePresence>
 
-          {/* Navigation */}
           <div className="flex gap-3">
+            {currentStep > 1 && (
+              <button
+                onClick={() => setCurrentStep((step) => Math.max(1, step - 1))}
+                className="flex-1 py-3 rounded-2xl border-2 border-[var(--border)] text-foreground"
+              >
+                Previous
+              </button>
+            )}
+
             <button
-              onClick={() => setCurrentStep(Math.max(1, currentStep - 1))}
-              disabled={currentStep === 1}
-              className="flex-1 py-3 rounded-2xl border-2 border-[var(--border)] text-foreground disabled:opacity-40 disabled:cursor-not-allowed"
+              onClick={() => {
+                if (isLastStep) {
+                  setHasFinishedSteps(true);
+                  return;
+                }
+
+                setCurrentStep((step) => Math.min(content.steps!.length, step + 1));
+              }}
+              className="flex-1 py-3 rounded-2xl bg-gradient-to-r from-[var(--lavender)] to-[var(--soft-purple)] text-white"
             >
-              Previous
-            </button>
-            <button
-              onClick={() => setCurrentStep(Math.min(content.steps!.length, currentStep + 1))}
-              disabled={currentStep === content.steps.length}
-              className="flex-1 py-3 rounded-2xl bg-gradient-to-r from-[var(--lavender)] to-[var(--soft-purple)] text-white disabled:opacity-40 disabled:cursor-not-allowed"
-            >
-              Next
+              {isLastStep ? 'Finish' : 'Next'}
             </button>
           </div>
-        </motion.div>
-      );
-    }
+        </>
+      )}
+    </motion.div>
+  );
+}
 
     return null;
   };
 
-  const youMightLike = [
-    { title: 'Ocean Waves', category: 'Sound Therapy', duration: '20 min' },
-    { title: 'Body Scan', category: 'Relaxation', duration: '15 min' }
-  ];
 
 
 
@@ -679,69 +781,119 @@ const headerBackground = content.thumbnailImage && content.thumbnailType === 'im
           </motion.div>
 
           {/* More from this therapist */}
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.6 }}
-            className="mb-4"
-          >
-            <h3 className="text-lg mb-3 text-foreground">More from this therapist</h3>
-            <div className="flex gap-3 overflow-x-auto scrollbar-hide pb-2">
-              {therapistContent.slice(0, 4).map((item) => (
-                <motion.div
-                  key={item.id}
-                  whileTap={{ scale: 0.98 }}
-                  onClick={() => onOpenContent?.(item)}
-                  className="flex-shrink-0 w-[160px] bg-card rounded-2xl p-4 shadow-md cursor-pointer hover:shadow-lg transition-shadow"
-                >
-                  <div className="w-full h-20 rounded-xl overflow-hidden mb-3">
-                    {item.thumbnailType === 'image' && item.thumbnailImage ? (
-                      <img
-                        src={item.thumbnailImage}
-                        alt={item.title}
-                        className="w-full h-full object-cover"
-                      />
-                    ) : (
-                      <div className={`w-full h-full bg-gradient-to-br ${item.thumbnailGradient || item.gradient || 'from-[var(--soft-purple)]/20 to-[var(--soft-mint)]/20'} flex items-center justify-center`}>
-                        <Brain className="w-8 h-8 text-[var(--lavender)]" />
-                      </div>
-                    )}
-                  </div>
-                  <h4 className="text-sm mb-1 text-foreground line-clamp-1">{item.title}</h4>
-                  <p className="text-xs text-muted-foreground">{item.duration}</p>
-                </motion.div>
-              ))}
-            </div>
-          </motion.div>
+<motion.div
+  initial={{ opacity: 0, y: 20 }}
+  animate={{ opacity: 1, y: 0 }}
+  transition={{ delay: 0.6 }}
+  className="mb-4"
+>
+  <h3 className="text-lg mb-3 text-foreground">More from this therapist</h3>
+  <div className="flex gap-3 overflow-x-auto scrollbar-hide pb-2">
+    {therapistContent.slice(0, 5).map((item) => {
+      const Icon = getCategoryIcon(item.category);
+
+      return (
+        <motion.div
+          key={item.id}
+          whileTap={{ scale: 0.98 }}
+          onClick={() => onOpenContent?.(item)}
+          className="flex-shrink-0 w-[160px] bg-card rounded-2xl p-4 shadow-md cursor-pointer hover:shadow-lg transition-shadow"
+        >
+          <div className="w-full h-20 rounded-xl overflow-hidden mb-3">
+            {item.thumbnailType === 'image' && item.thumbnailImage ? (
+              <img
+                src={item.thumbnailImage}
+                alt={item.title}
+                className="w-full h-full object-cover"
+              />
+            ) : (
+              <div
+                className="w-full h-full flex items-center justify-center"
+                style={{
+                  background: item.thumbnailGradient || 'linear-gradient(135deg, var(--lavender), var(--soft-purple))'
+                }}
+              >
+                <Icon className="w-8 h-8 text-white/90" />
+              </div>
+            )}
+          </div>
+
+          <h4 className="text-sm mb-2 text-foreground line-clamp-1">{item.title}</h4>
+
+          <span className="inline-block px-2 py-0.5 rounded-full bg-[var(--soft-purple)]/20 text-[var(--lavender)] text-xs">
+            {item.categoryLabel}
+          </span>
+        </motion.div>
+      );
+    })}
+  </div>
+</motion.div>
 
           {/* You might also like */}
+{youMightLikeContent.length > 0 && (
+  <motion.div
+    initial={{ opacity: 0, y: 20 }}
+    animate={{ opacity: 1, y: 0 }}
+    transition={{ delay: 0.7 }}
+    className="mb-4"
+  >
+    <h3 className="text-lg mb-3 text-foreground">You might also like</h3>
+    <div className="space-y-3">
+      {youMightLikeContent.map((item) => {
+        const Icon = getCategoryIcon(item.category);
+
+        return (
           <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.7 }}
-            className="mb-4"
+            key={item.id}
+            whileTap={{ scale: 0.98 }}
+            onClick={() => onOpenContent?.(item)}
+            className="bg-card rounded-2xl p-4 shadow-md flex items-center gap-4 cursor-pointer hover:shadow-lg transition-shadow"
           >
-            <h3 className="text-lg mb-3 text-foreground">You might also like</h3>
-            <div className="space-y-3">
-              {youMightLike.map((item, idx) => (
-                <motion.div
-                  key={idx}
-                  whileTap={{ scale: 0.98 }}
-                  className="bg-card rounded-2xl p-4 shadow-md flex items-center gap-4 cursor-pointer hover:shadow-lg transition-shadow"
-                >
-                  <div className="w-16 h-16 bg-gradient-to-br from-[var(--muted-blue)]/20 to-[var(--soft-pink)]/20 rounded-xl flex items-center justify-center flex-shrink-0">
-                    <Volume2 className="w-6 h-6 text-[var(--lavender)]" />
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <h4 className="text-sm mb-1 text-foreground line-clamp-1">{item.title}</h4>
-                    <p className="text-xs text-muted-foreground mb-1">{item.category}</p>
-                    <span className="text-xs text-muted-foreground">{item.duration}</span>
-                  </div>
-                  <ChevronRight className="w-5 h-5 text-muted-foreground flex-shrink-0" />
-                </motion.div>
-              ))}
+            <div
+              className="w-16 h-16 rounded-xl flex items-center justify-center flex-shrink-0 overflow-hidden"
+              style={{
+                background:
+                  item.thumbnailType === 'image' && item.thumbnailImage
+                    ? `url(${item.thumbnailImage}) center/cover`
+                    : item.thumbnailGradient || 'linear-gradient(135deg, var(--lavender), var(--soft-purple))'
+              }}
+            >
+              {item.thumbnailType !== 'image' && (
+                <Icon className="w-6 h-6 text-white/90" />
+              )}
             </div>
+
+            <div className="flex-1 min-w-0">
+  <h4 className="text-sm mb-2 text-foreground line-clamp-1">{item.title}</h4>
+
+  <div className="flex items-center gap-2">
+    {item.therapistAvatar ? (
+      <img
+        src={item.therapistAvatar}
+        alt={item.therapistName}
+        className="w-5 h-5 rounded-full object-cover"
+      />
+    ) : (
+      <div className="w-5 h-5 rounded-full bg-[var(--lavender)]/20 flex items-center justify-center">
+        <span className="text-[10px] text-[var(--lavender)]">
+          {item.therapistName?.charAt(0) || 'T'}
+        </span>
+      </div>
+    )}
+
+    <span className="text-xs text-muted-foreground line-clamp-1">
+      {item.therapistName}
+    </span>
+  </div>
+</div>
+
+            <ChevronRight className="w-5 h-5 text-muted-foreground flex-shrink-0" />
           </motion.div>
+        );
+      })}
+    </div>
+  </motion.div>
+)}
         </div>
       </div>
     </div>
