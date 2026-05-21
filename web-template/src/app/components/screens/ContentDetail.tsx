@@ -1,6 +1,6 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { ArrowLeft, Bookmark, BookmarkPlus, Play, Pause, Star, ChevronRight, Wind, Volume2, Brain, Heart, Calendar } from 'lucide-react';
+import { ArrowLeft, Bookmark, BookmarkPlus, Play, Pause, Star, ChevronRight, Wind, Volume2, Brain, Heart, Calendar, Maximize2 } from 'lucide-react';
 import { toggleLike, toggleBookmark, isLiked, isBookmarked, getLikeCount } from '../../utils/contentInteractions';
 import {
   getLibraryContent,
@@ -35,6 +35,18 @@ export function ContentDetail({
   const [mediaDuration, setMediaDuration] = useState('');
   const [therapistContent, setTherapistContent] = useState<ContentItem[]>(moreFromTherapist);
   const [youMightLikeContent, setYouMightLikeContent] = useState<ContentItem[]>([]);
+
+  
+
+  const audioRef = useRef<HTMLAudioElement | null>(null);
+const videoRef = useRef<HTMLVideoElement | null>(null);
+const audioContextRef = useRef<AudioContext | null>(null);
+const analyserRef = useRef<AnalyserNode | null>(null);
+const animationFrameRef = useRef<number | null>(null);
+const [waveformBars, setWaveformBars] = useState<number[]>(Array(40).fill(20));
+const [currentAudioTime, setCurrentAudioTime] = useState(0);
+const [audioDuration, setAudioDuration] = useState(0);
+
   const itemIsLiked = isLiked(content.id);
   const itemIsBookmarked = isBookmarked(content.id);
   const likeCount = getLikeCount(content.id);
@@ -61,6 +73,15 @@ const formatMediaDuration = (seconds: number) => {
   }
 
   return `${remainingSeconds} sec`;
+};
+
+const formatPlayerTime = (seconds: number) => {
+  if (!seconds || Number.isNaN(seconds)) return '00:00';
+
+  const minutes = Math.floor(seconds / 60).toString().padStart(2, '0');
+  const remainingSeconds = Math.floor(seconds % 60).toString().padStart(2, '0');
+
+  return `${minutes}:${remainingSeconds}`;
 };
 
 const getDuration = () => {
@@ -196,10 +217,18 @@ useEffect(() => {
 }, [content.id, content.category, content.therapistId, therapistContent]);
 
 useEffect(() => {
+  audioRef.current?.pause();
+  videoRef.current?.pause();
+  stopAudioVisualization();
+
   setCurrentStep(1);
   setHasFinishedSteps(false);
   setIsPlaying(false);
   setProgress(0);
+  setMediaDuration('');
+  setWaveformBars(Array(40).fill(20));
+  setCurrentAudioTime(0);
+setAudioDuration(0);
 }, [content.id]);
 
   // Breathing animation logic
@@ -228,15 +257,7 @@ useEffect(() => {
     }
   }, [isPlaying, content.category]);
 
-  // Progress bar simulation
-  useEffect(() => {
-    if (isPlaying) {
-      const interval = setInterval(() => {
-        setProgress((prev) => (prev >= 100 ? 0 : prev + 1));
-      }, 600);
-      return () => clearInterval(interval);
-    }
-  }, [isPlaying]);
+ 
 
   const handleBookmark = () => {
     toggleBookmark(content.id);
@@ -247,6 +268,93 @@ useEffect(() => {
     toggleLike(content.id);
     forceUpdate({});
   };
+
+  const handleMediaProgress = (currentTime: number, duration: number) => {
+  if (!duration || Number.isNaN(duration)) return;
+
+  setProgress((currentTime / duration) * 100);
+};
+
+const handleMediaLoadedMetadata = (duration: number) => {
+  if (Number.isFinite(duration)) {
+    setMediaDuration(formatMediaDuration(duration));
+  }
+};
+
+const stopAudioVisualization = () => {
+  if (animationFrameRef.current) {
+    cancelAnimationFrame(animationFrameRef.current);
+    animationFrameRef.current = null;
+  }
+};
+
+const startAudioVisualization = () => {
+  stopAudioVisualization();
+
+  const updateWaveform = () => {
+    const audioElement = audioRef.current;
+    const currentTime = audioElement?.currentTime || 0;
+
+    const bars = Array.from({ length: 40 }).map((_, index) => {
+      const wave = Math.sin(currentTime * 8 + index * 0.7);
+      const pulse = Math.sin(currentTime * 4 + index * 0.35);
+      return 18 + Math.abs(wave * pulse) * 75;
+    });
+
+    setWaveformBars(bars);
+    animationFrameRef.current = requestAnimationFrame(updateWaveform);
+  };
+
+  updateWaveform();
+};
+
+const handlePlayAudio = async () => {
+  const audioElement = audioRef.current;
+
+  if (!audioElement || !content.audioUrl) return;
+
+  if (isPlaying) {
+    audioElement.pause();
+    setIsPlaying(false);
+    stopAudioVisualization();
+    return;
+  }
+
+  try {
+    audioElement.volume = 1;
+    audioElement.muted = false;
+
+    await audioElement.play();
+
+    setIsPlaying(true);
+    startAudioVisualization();
+  } catch (error) {
+    console.error('Error playing audio:', error);
+  }
+};
+
+const handlePlayVideo = async () => {
+  const videoElement = videoRef.current;
+
+  if (!videoElement) return;
+
+  if (isPlaying) {
+    videoElement.pause();
+    setIsPlaying(false);
+    return;
+  }
+
+  await videoElement.play();
+  setIsPlaying(true);
+};
+
+const handleOpenFullscreen = () => {
+  const videoElement = videoRef.current;
+
+  if (videoElement?.requestFullscreen) {
+    videoElement.requestFullscreen();
+  }
+};
 
   const renderDynamicContent = () => {
     if (content.category === 'breathing') {
@@ -308,37 +416,71 @@ useEffect(() => {
       );
     }
 
-    if (content.contentType === 'video') {
-      return (
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.2 }}
-          className="bg-card rounded-2xl p-6 shadow-lg mb-4"
-        >
+  if (getContentType() === 'video') {
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 20 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ delay: 0.2 }}
+      className="bg-card rounded-2xl p-6 shadow-lg mb-4"
+    >
+      {content.videoUrl ? (
+        <>
+          <div className="overflow-hidden rounded-3xl bg-[var(--muted)] mb-4 relative">
+            <video
+              ref={videoRef}
+              src={content.videoUrl}
+              controls
+              playsInline
+              className="w-full rounded-3xl bg-black"
+              onLoadedMetadata={(event) => {
+  const duration = event.currentTarget.duration;
+
+  if (Number.isFinite(duration)) {
+    setAudioDuration(duration);
+    handleMediaLoadedMetadata(duration);
+  }
+}}
+onTimeUpdate={(event) => {
+  const currentTime = event.currentTarget.currentTime;
+  const duration = event.currentTarget.duration;
+
+  setCurrentAudioTime(currentTime);
+  handleMediaProgress(currentTime, duration);
+}}
+              onPlay={() => setIsPlaying(true)}
+              onPause={() => setIsPlaying(false)}
+              onEnded={() => {
+                setIsPlaying(false);
+                setProgress(100);
+              }}
+            />
+
+            <button
+              onClick={handleOpenFullscreen}
+              className="absolute top-3 right-3 w-10 h-10 rounded-full bg-black/40 backdrop-blur-xl flex items-center justify-center"
+            >
+              <Maximize2 className="w-5 h-5 text-white" />
+            </button>
+          </div>
+
           <div className="space-y-4 mb-4">
             <div className="flex items-center justify-between text-sm text-muted-foreground">
-              <span>{Math.floor(progress / 5)}:00</span>
               <span>{getDuration()}</span>
+              <span>{Math.round(progress)}%</span>
             </div>
-            <div className="overflow-hidden rounded-3xl bg-[var(--muted)] mb-4">
-              <video
-                src={content.videoUrl}
-                controls
-                className="w-full h-full rounded-3xl"
-                onLoadedMetadata={(e) => {
-                  const durationSeconds = e.currentTarget.duration;
-                  if (Number.isFinite(durationSeconds)) {
-                    setMediaDuration(formatMediaDuration(durationSeconds));
-                  }
-                }}
+
+            <div className="h-2 bg-[var(--muted)] rounded-full overflow-hidden">
+              <motion.div
+                className="h-full bg-gradient-to-r from-[var(--lavender)] to-[var(--soft-purple)] rounded-full"
+                style={{ width: `${progress}%` }}
               />
             </div>
           </div>
 
           <motion.button
             whileTap={{ scale: 0.95 }}
-            onClick={() => setIsPlaying(!isPlaying)}
+            onClick={handlePlayVideo}
             className="w-full py-4 rounded-2xl bg-gradient-to-r from-[var(--lavender)] to-[var(--soft-purple)] text-white flex items-center justify-center gap-2 shadow-lg"
           >
             {isPlaying ? (
@@ -353,56 +495,70 @@ useEffect(() => {
               </>
             )}
           </motion.button>
-        </motion.div>
-      );
-    }
+        </>
+      ) : (
+        <p className="text-sm text-muted-foreground text-center">
+          Video file is not available.
+        </p>
+      )}
+    </motion.div>
+  );
+}
 
-    if (content.category === 'sound') {
-      return (
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.2 }}
-          className="bg-card rounded-2xl p-6 shadow-lg mb-4"
-        >
+if (getContentType() === 'audio') {
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 20 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ delay: 0.2 }}
+      className="bg-card rounded-2xl p-6 shadow-lg mb-4"
+    >
+      {content.audioUrl ? (
+        <>
           <audio
+            ref={audioRef}
             src={content.audioUrl}
             preload="metadata"
             className="hidden"
-            onLoadedMetadata={(e) => {
-              const durationSeconds = e.currentTarget.duration;
-              if (Number.isFinite(durationSeconds)) {
-                setMediaDuration(formatMediaDuration(durationSeconds));
+            onLoadedMetadata={(event) => {
+              const duration = event.currentTarget.duration;
+
+              if (Number.isFinite(duration)) {
+                setAudioDuration(duration);
+                handleMediaLoadedMetadata(duration);
               }
+            }}
+            onTimeUpdate={(event) => {
+              const currentTime = event.currentTarget.currentTime;
+              const duration = event.currentTarget.duration;
+
+              setCurrentAudioTime(currentTime);
+              handleMediaProgress(currentTime, duration);
+            }}
+            onEnded={() => {
+              setIsPlaying(false);
+              setProgress(100);
+              stopAudioVisualization();
             }}
           />
 
-          {/* Waveform Visualization */}
           <div className="flex items-center justify-center gap-1 h-32 mb-6">
-            {Array.from({ length: 40 }).map((_, i) => (
+            {waveformBars.map((height, index) => (
               <motion.div
-                key={i}
+                key={index}
                 className="w-1 bg-gradient-to-t from-[var(--lavender)] to-[var(--soft-purple)] rounded-full"
-                animate={{
-                  height: isPlaying
-                    ? `${Math.random() * 80 + 20}%`
-                    : '20%'
-                }}
-                transition={{
-                  duration: 0.3,
-                  repeat: isPlaying ? Infinity : 0,
-                  delay: i * 0.05
-                }}
+                animate={{ height: `${height}%` }}
+                transition={{ duration: 0.12 }}
               />
             ))}
           </div>
 
-          {/* Audio Player */}
-          <div className="space-y-4 mb-4">
+          <div className="space-y-3 mb-5">
             <div className="flex items-center justify-between text-sm text-muted-foreground">
-              <span>{Math.floor(progress / 5)}:00</span>
-              <span>{getDuration()}</span>
+              <span>{formatPlayerTime(currentAudioTime)}</span>
+              <span>{formatPlayerTime(audioDuration)}</span>
             </div>
+
             <div className="h-2 bg-[var(--muted)] rounded-full overflow-hidden">
               <motion.div
                 className="h-full bg-gradient-to-r from-[var(--lavender)] to-[var(--soft-purple)] rounded-full"
@@ -411,10 +567,9 @@ useEffect(() => {
             </div>
           </div>
 
-          {/* Play/Pause Button */}
           <motion.button
             whileTap={{ scale: 0.95 }}
-            onClick={() => setIsPlaying(!isPlaying)}
+            onClick={handlePlayAudio}
             className="w-full py-4 rounded-2xl bg-gradient-to-r from-[var(--lavender)] to-[var(--soft-purple)] text-white flex items-center justify-center gap-2 shadow-lg"
           >
             {isPlaying ? (
@@ -429,9 +584,15 @@ useEffect(() => {
               </>
             )}
           </motion.button>
-        </motion.div>
-      );
-    }
+        </>
+      ) : (
+        <p className="text-sm text-muted-foreground text-center">
+          Audio file is not available.
+        </p>
+      )}
+    </motion.div>
+  );
+}
 
     // Relaxation exercises - Step by step
     // Step by step content

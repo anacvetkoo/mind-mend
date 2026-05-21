@@ -51,12 +51,27 @@ export function TherapistContentEditor({ onClose, onSave, existingContent }: The
   };
 
   const handleAudioUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
+  const file = e.target.files?.[0];
 
-    if (!file) return;
+  if (!file) return;
 
-    setAudioFile(file);
-  };
+  const allowedAudioTypes = [
+    'audio/mpeg',
+    'audio/wav',
+    'audio/x-wav',
+    'audio/mp4'
+  ];
+
+  const allowedAudioExtensions = ['mp3', 'wav', 'm4a'];
+  const fileExtension = file.name.split('.').pop()?.toLowerCase();
+
+  if (!allowedAudioTypes.includes(file.type) && !allowedAudioExtensions.includes(fileExtension || '')) {
+    alert('Please upload an MP3, WAV, or M4A audio file.');
+    return;
+  }
+
+  setAudioFile(file);
+};
 
   const handleVideoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -214,7 +229,7 @@ export function TherapistContentEditor({ onClose, onSave, existingContent }: The
                 </span>
                 <input
                   type="file"
-                  accept="audio/*"
+                  accept=".mp3,.wav,.m4a,audio/mpeg,audio/wav,audio/x-wav,audio/mp4"
                   onChange={handleAudioUpload}
                   className="hidden"
                 />
@@ -453,7 +468,7 @@ export function TherapistContentEditor({ onClose, onSave, existingContent }: The
                 disabled={savingAction !== null}
                 className="flex-1 py-4 rounded-2xl bg-gradient-to-r from-[var(--lavender)] to-[var(--soft-purple)] text-white shadow-lg flex items-center justify-center gap-2"
               >
-                <span>{<span>{savingAction === 'publish' ? 'Publishing...' : 'Publish Session'}</span>}</span>
+                <span>{savingAction === 'publish' ? 'Publishing...' : 'Publish Session'}</span>
               </motion.button>
               <motion.button
                 whileTap={{ scale: 0.98 }}
