@@ -21,12 +21,10 @@ import {
   type LibraryContentItem
 } from '../../services/content';
 import {
-  getLikeCount,
-  isBookmarked,
-  isLiked,
-  toggleBookmark,
-  toggleLike
-} from '../../utils/contentInteractions';
+  getUserContentInteractions,
+  toggleLikedContent,
+  toggleSavedContent
+} from '../../services/contentInteractions';
 
 type ContentType = 'all' | 'relaxation' | 'breathing' | 'sound';
 type SortOption = 'newest' | 'likes' | 'views';
@@ -78,7 +76,7 @@ const isCreatedToday = (createdAt: any) => {
 };
 
 const getContentLikes = (content: LibraryContentItem) => {
-  return Math.max(content.likes || 0, getLikeCount(content.id));
+  return content.likes || 0;
 };
 
 const getEngagementScore = (content: LibraryContentItem) => {
@@ -128,6 +126,8 @@ export function ContentLibrary({
   const [isLoading, setIsLoading] = useState(true);
   const [mediaDurations, setMediaDurations] = useState<Record<string, string>>({});
   const [, forceUpdate] = useState({});
+  const [likedContentIds, setLikedContentIds] = useState<string[]>([]);
+const [savedContentIds, setSavedContentIds] = useState<string[]>([]);
   const resultsSectionRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
@@ -179,6 +179,25 @@ export function ContentLibrary({
     isMounted = false;
   };
 }, [contentItems, mediaDurations]);
+
+useEffect(() => {
+  let isMounted = true;
+
+  const loadInteractions = async () => {
+    const interactions = await getUserContentInteractions();
+
+    if (!isMounted) return;
+
+    setLikedContentIds(interactions.likedContentIds);
+    setSavedContentIds(interactions.savedContentIds);
+  };
+
+  loadInteractions();
+
+  return () => {
+    isMounted = false;
+  };
+}, []);
 
   const scrollToResults = () => {
   setTimeout(() => {
@@ -277,15 +296,31 @@ export function ContentLibrary({
   scrollToResults();
 };
 
-  const handleBookmark = (contentId: string) => {
-    toggleBookmark(contentId);
-    forceUpdate({});
-  };
+  const handleBookmark = async (contentId: string) => {
+  const isCurrentlySaved = savedContentIds.includes(contentId);
 
-  const handleLike = (contentId: string) => {
-    toggleLike(contentId);
-    forceUpdate({});
-  };
+  await toggleSavedContent(contentId, isCurrentlySaved);
+
+  setSavedContentIds((previousIds) =>
+    isCurrentlySaved
+      ? previousIds.filter((id) => id !== contentId)
+      : [...previousIds, contentId]
+  );
+};
+
+const handleLike = async (contentId: string) => {
+  const isCurrentlyLiked = likedContentIds.includes(contentId);
+
+  await toggleLikedContent(contentId, isCurrentlyLiked);
+
+  setLikedContentIds((previousIds) =>
+    isCurrentlyLiked
+      ? previousIds.filter((id) => id !== contentId)
+      : [...previousIds, contentId]
+  );
+
+  forceUpdate({});
+};
 
   const getContentDuration = (content: LibraryContentItem) => {
   if (content.contentType === 'video' || content.contentType === 'audio') {
@@ -330,8 +365,8 @@ export function ContentLibrary({
 
 const renderContentCard = (content: LibraryContentItem, index = 0) => {
   const Icon = getCategoryIcon(content.category);
-  const itemIsBookmarked = isBookmarked(content.id);
-  const itemIsLiked = isLiked(content.id);
+  const itemIsBookmarked = savedContentIds.includes(content.id);
+const itemIsLiked = likedContentIds.includes(content.id);
   const likeCount = getContentLikes(content);
 
   return (

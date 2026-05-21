@@ -1,7 +1,7 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { motion } from 'motion/react';
-import { ArrowLeft, Heart, Wind, Brain, Volume2 } from 'lucide-react';
-import { getLikedContentIds, getLikeCount } from '../../utils/contentInteractions';
+import { ArrowLeft, Heart } from 'lucide-react';
+import { getLikedContent } from '../../services/contentInteractions';
 
 interface LikedContentScreenProps {
   onBack: () => void;
@@ -9,66 +9,29 @@ interface LikedContentScreenProps {
 }
 
 export function LikedContentScreen({ onBack, onSelectContent }: LikedContentScreenProps) {
-  const likedIds = getLikedContentIds();
+  const [likedContent, setLikedContent] = useState<any[]>([]);
 
-  // Mock content data (in a real app, this would be fetched from a service)
-  const allContent = [
-    {
-      id: 1,
-      title: 'Progressive Muscle Relaxation',
-      categoryLabel: 'Relaxation Exercise',
-      duration: '12 min',
-      thumbnailGradient: 'linear-gradient(135deg, #B8E0D2 0%, #C4B5FD 100%)',
-      icon: Brain
-    },
-    {
-      id: 2,
-      title: '4-7-8 Breathing Technique',
-      categoryLabel: 'Breathing Technique',
-      duration: '10 min',
-      thumbnailGradient: 'linear-gradient(135deg, #93C5FD 0%, #B8E0D2 100%)',
-      icon: Wind
-    },
-    {
-      id: 3,
-      title: 'Ocean Waves Soundscape',
-      categoryLabel: 'Sound Therapy',
-      duration: '20 min',
-      thumbnailGradient: 'linear-gradient(135deg, #C4B5FD 0%, #F5D6E3 100%)',
-      icon: Volume2
-    },
-    {
-      id: 4,
-      title: 'Guided Visualization',
-      categoryLabel: 'Relaxation Exercise',
-      duration: '15 min',
-      thumbnailGradient: 'linear-gradient(135deg, #F5D6E3 0%, #B8E0D2 100%)',
-      icon: Brain
-    },
-    {
-      id: 5,
-      title: 'Box Breathing',
-      categoryLabel: 'Breathing Technique',
-      duration: '8 min',
-      thumbnailGradient: 'linear-gradient(135deg, #93C5FD 0%, #B8E0D2 100%)',
-      icon: Wind
-    },
-    {
-      id: 6,
-      title: 'Forest Rain Ambience',
-      categoryLabel: 'Sound Therapy',
-      duration: '30 min',
-      thumbnailGradient: 'linear-gradient(135deg, #C4B5FD 0%, #F5D6E3 100%)',
-      icon: Volume2
-    }
-  ];
+  useEffect(() => {
+    let isMounted = true;
 
-  const likedContent = allContent.filter(item => likedIds.includes(item.id));
+    const loadLikedContent = async () => {
+      const content = await getLikedContent();
+
+      if (!isMounted) return;
+
+      setLikedContent(content);
+    };
+
+    loadLikedContent();
+
+    return () => {
+      isMounted = false;
+    };
+  }, []);
 
   return (
     <div className="min-h-screen bg-background pb-24">
       <div className="max-w-md mx-auto px-6 py-8">
-        {/* Header */}
         <div className="flex items-center gap-4 mb-8">
           <button
             onClick={onBack}
@@ -82,7 +45,6 @@ export function LikedContentScreen({ onBack, onSelectContent }: LikedContentScre
           </div>
         </div>
 
-        {/* Content */}
         {likedContent.length === 0 ? (
           <motion.div
             initial={{ opacity: 0, y: 20 }}
@@ -97,49 +59,42 @@ export function LikedContentScreen({ onBack, onSelectContent }: LikedContentScre
           </motion.div>
         ) : (
           <div className="space-y-4">
-            {likedContent.map((item, idx) => {
-              const Icon = item.icon;
-              const likeCount = getLikeCount(item.id);
+            {likedContent.map((item, idx) => (
+              <motion.div
+                key={item.id}
+                initial={{ opacity: 0, x: -20 }}
+                animate={{ opacity: 1, x: 0 }}
+                transition={{ delay: 0.05 * idx }}
+                whileTap={{ scale: 0.98 }}
+                onClick={() => onSelectContent?.(item)}
+                className="bg-card rounded-2xl p-4 shadow-md hover:shadow-xl transition-all cursor-pointer"
+              >
+                <div className="flex gap-4">
+                  <div
+                    className="w-20 h-20 rounded-2xl flex items-center justify-center flex-shrink-0"
+                    style={{ background: item.thumbnailGradient }}
+                  >
+                    {item.icon && <item.icon className="w-8 h-8 text-white/90" />}
+                  </div>
 
-              return (
-                <motion.div
-                  key={item.id}
-                  initial={{ opacity: 0, x: -20 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  transition={{ delay: 0.05 * idx }}
-                  whileTap={{ scale: 0.98 }}
-                  onClick={() => onSelectContent?.(item)}
-                  className="bg-card rounded-2xl p-4 shadow-md hover:shadow-xl transition-all cursor-pointer"
-                >
-                  <div className="flex gap-4">
-                    {/* Thumbnail */}
-                    <div
-                      className="w-20 h-20 rounded-2xl flex items-center justify-center flex-shrink-0"
-                      style={{ background: item.thumbnailGradient }}
-                    >
-                      <Icon className="w-8 h-8 text-white/90" />
-                    </div>
-
-                    {/* Content info */}
-                    <div className="flex-1 min-w-0">
-                      <span className="inline-block px-2 py-0.5 rounded-full bg-[var(--soft-purple)]/20 text-[var(--lavender)] text-xs mb-2">
-                        {item.categoryLabel}
+                  <div className="flex-1 min-w-0">
+                    <span className="inline-block px-2 py-0.5 rounded-full bg-[var(--soft-purple)]/20 text-[var(--lavender)] text-xs mb-2">
+                      {item.categoryLabel}
+                    </span>
+                    <h3 className="text-foreground mb-1 line-clamp-2">
+                      {item.title}
+                    </h3>
+                    <div className="flex items-center gap-3 text-xs text-muted-foreground">
+                      <span>{item.duration}</span>
+                      <span className="flex items-center gap-1">
+                        <Heart className="w-3.5 h-3.5 text-red-500 fill-red-500" />
+                        {item.likes || 0}
                       </span>
-                      <h3 className="text-foreground mb-1 line-clamp-2">
-                        {item.title}
-                      </h3>
-                      <div className="flex items-center gap-3 text-xs text-muted-foreground">
-                        <span>{item.duration}</span>
-                        <span className="flex items-center gap-1">
-                          <Heart className="w-3.5 h-3.5 text-red-500 fill-red-500" />
-                          {likeCount}
-                        </span>
-                      </div>
                     </div>
                   </div>
-                </motion.div>
-              );
-            })}
+                </div>
+              </motion.div>
+            ))}
           </div>
         )}
       </div>

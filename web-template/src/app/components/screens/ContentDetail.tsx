@@ -1,7 +1,12 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { ArrowLeft, Bookmark, BookmarkPlus, Play, Pause, Star, ChevronRight, Wind, Volume2, Brain, Heart, Calendar } from 'lucide-react';
-import { toggleLike, toggleBookmark, isLiked, isBookmarked, getLikeCount } from '../../utils/contentInteractions';
+import {
+  getUserContentInteractions,
+  markContentAsCompleted,
+  toggleLikedContent,
+  toggleSavedContent
+} from '../../services/contentInteractions';
 import {
   getLibraryContent,
   getMoreContentFromTherapist,
@@ -35,6 +40,8 @@ export function ContentDetail({
   const [mediaDuration, setMediaDuration] = useState('');
   const [therapistContent, setTherapistContent] = useState<ContentItem[]>(moreFromTherapist);
   const [youMightLikeContent, setYouMightLikeContent] = useState<ContentItem[]>([]);
+  const [likedContentIds, setLikedContentIds] = useState<string[]>([]);
+const [savedContentIds, setSavedContentIds] = useState<string[]>([]);
 
   
 
@@ -47,9 +54,9 @@ const [waveformBars, setWaveformBars] = useState<number[]>(Array(40).fill(20));
 const [currentAudioTime, setCurrentAudioTime] = useState(0);
 const [audioDuration, setAudioDuration] = useState(0);
 
-  const itemIsLiked = isLiked(content.id);
-  const itemIsBookmarked = isBookmarked(content.id);
-  const likeCount = getLikeCount(content.id);
+  const itemIsLiked = likedContentIds.includes(content.id);
+const itemIsBookmarked = savedContentIds.includes(content.id);
+  const likeCount = content.likes || 0;
 
   const getContentType = () => {
   if (content.contentType) return content.contentType;
@@ -124,8 +131,8 @@ const getCategoryIcon = (category: ContentItem['category']) => {
 };
 
 const getContentScore = (item: ContentItem) => {
-  return Math.max(item.likes || 0, getLikeCount(item.id)) + (item.views || 0);
-};    
+  return (item.likes || 0) + (item.views || 0);
+};   
 
 
  useEffect(() => {
@@ -231,43 +238,48 @@ useEffect(() => {
 setAudioDuration(0);
 }, [content.id]);
 
-  // Breathing animation logic
   useEffect(() => {
-    if (isPlaying && content.category === 'breathing') {
-      const phases = [
-        { phase: 'inhale' as const, duration: 4000, count: 4 },
-        { phase: 'hold' as const, duration: 7000, count: 7 },
-        { phase: 'exhale' as const, duration: 8000, count: 8 }
-      ];
+  let isMounted = true;
 
-      let currentPhaseIndex = 0;
+  const loadInteractions = async () => {
+    const interactions = await getUserContentInteractions();
 
-      const cyclePhases = () => {
-        const { phase, duration, count } = phases[currentPhaseIndex];
-        setBreathPhase(phase);
-        setBreathCount(count);
+    if (!isMounted) return;
 
-        setTimeout(() => {
-          currentPhaseIndex = (currentPhaseIndex + 1) % phases.length;
-          cyclePhases();
-        }, duration);
-      };
+    setLikedContentIds(interactions.likedContentIds);
+    setSavedContentIds(interactions.savedContentIds);
+  };
 
-      cyclePhases();
-    }
-  }, [isPlaying, content.category]);
+  loadInteractions();
+
+  return () => {
+    isMounted = false;
+  };
+}, [content.id]);
 
  
 
-  const handleBookmark = () => {
-    toggleBookmark(content.id);
-    forceUpdate({});
-  };
+  const handleBookmark = async () => {
+  await toggleSavedContent(content.id, itemIsBookmarked);
 
-  const handleLike = () => {
-    toggleLike(content.id);
-    forceUpdate({});
-  };
+  setSavedContentIds((previousIds) =>
+    itemIsBookmarked
+      ? previousIds.filter((id) => id !== content.id)
+      : [...previousIds, content.id]
+  );
+};
+
+const handleLike = async () => {
+  await toggleLikedContent(content.id, itemIsLiked);
+
+  setLikedContentIds((previousIds) =>
+    itemIsLiked
+      ? previousIds.filter((id) => id !== content.id)
+      : [...previousIds, content.id]
+  );
+
+  forceUpdate({});
+};
 
   const handleMediaProgress = (currentTime: number, duration: number) => {
   if (!duration || Number.isNaN(duration)) return;
@@ -385,6 +397,7 @@ const handleOpenFullscreen = () => {
             onEnded={() => {
               setIsPlaying(false);
               setProgress(100);
+              markContentAsCompleted(content.id);
             }}
           >
             Your browser does not support the video tag.
@@ -433,6 +446,7 @@ if (getContentType() === 'audio') {
               setIsPlaying(false);
               setProgress(100);
               stopAudioVisualization();
+              markContentAsCompleted(content.id);
             }}
           />
 
@@ -574,9 +588,10 @@ if (getContentType() === 'steps' && content.steps && content.steps.length > 0) {
             <button
               onClick={() => {
                 if (isLastStep) {
-                  setHasFinishedSteps(true);
-                  return;
-                }
+  setHasFinishedSteps(true);
+  markContentAsCompleted(content.id);
+  return;
+}
 
                 setCurrentStep((step) => Math.min(content.steps!.length, step + 1));
               }}

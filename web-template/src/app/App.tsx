@@ -33,6 +33,7 @@ import { AppTutorial } from './components/tutorial/AppTutorial';
 import { TherapistTutorial } from './components/tutorial/TherapistTutorial';
 import { LikedContentScreen } from './components/screens/LikedContentScreen';
 import { SavedContentScreen } from './components/screens/SavedContentScreen';
+import { CompletedContentScreen } from './components/screens/CompletedContentScreen';
 import type { TherapistAvailability } from './types/appointments';
 import { saveCheckIn } from './utils/checkInUtils';
 import { onAuthChange, logout } from './services/auth';
@@ -82,7 +83,7 @@ export default function App() {
 
   const [showLikedContent, setShowLikedContent] = useState(false);
   const [showSavedContent, setShowSavedContent] = useState(false);
-
+  const [showCompletedContent, setShowCompletedContent] = useState(false);
   const [showTherapistProfileEdit, setShowTherapistProfileEdit] = useState(false);
 
 
@@ -199,7 +200,24 @@ export default function App() {
 
   useEffect(() => {
     window.scrollTo({ top: 0, behavior: 'instant' });
-  }, [currentScreen, appState, showDailyCheckIn, selectedCheckIn, selectedContent, selectedTherapistId, showChatConversation, showCallScreen, showVideoCallScreen, showBookingFlow, showCustomRequest, showPaymentCheckout, showCustomRequestConfirmation, showLikedContent, showSavedContent]);
+  }, [
+  currentScreen,
+  appState,
+  showDailyCheckIn,
+  selectedCheckIn,
+  selectedContent,
+  selectedTherapistId,
+  showChatConversation,
+  showCallScreen,
+  showVideoCallScreen,
+  showBookingFlow,
+  showCustomRequest,
+  showPaymentCheckout,
+  showCustomRequestConfirmation,
+  showLikedContent,
+  showSavedContent,
+  showCompletedContent
+]);
 
   const toggleDarkMode = async () => {
     const newValue = !darkMode;
@@ -400,6 +418,7 @@ const handleQuestionnaireComplete = async (data: any) => {
     setShowCustomRequestConfirmation(false);
     setShowLikedContent(false);
     setShowSavedContent(false);
+    setShowCompletedContent(false);
     setBookingTherapistAvailability(null);
     setBookingTherapistName('');
   };
@@ -593,6 +612,17 @@ const handleQuestionnaireComplete = async (data: any) => {
       />
     );
   }
+  if (showCompletedContent) {
+  return (
+    <CompletedContentScreen
+      onBack={() => setShowCompletedContent(false)}
+      onSelectContent={(content) => {
+        setShowCompletedContent(false);
+        setSelectedContent(content);
+      }}
+    />
+  );
+}
 
   if (showTherapistProfileEdit) {
     return (
@@ -844,6 +874,7 @@ const handleQuestionnaireComplete = async (data: any) => {
               onNavigateToLikedContent={() => setShowLikedContent(true)}
               onNavigateToSavedContent={() => setShowSavedContent(true)}
               onUpdateName={handleUpdateName}
+              onNavigateToCompletedContent={() => setShowCompletedContent(true)}
             />
           )}
         </>
@@ -883,6 +914,7 @@ const handleQuestionnaireComplete = async (data: any) => {
               onToggleBiometricAuth={handleToggleBiometricAuth}
               onNavigateToLikedContent={() => setShowLikedContent(true)}
               onNavigateToSavedContent={() => setShowSavedContent(true)}
+              onNavigateToCompletedContent={() => setShowCompletedContent(true)}
               onEditProfile={() => setShowTherapistProfileEdit(true)}
               therapistProfileProp={therapistProfileData}
             />

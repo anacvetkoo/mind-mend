@@ -21,7 +21,8 @@ import {
   Camera,
   Mic,
   Heart,
-  Bookmark
+  Bookmark,
+  CheckCircle
 } from 'lucide-react';
 import type { TherapistAvailability } from '../../types/appointments';
 import { TherapistAvailabilitySetup } from './TherapistAvailabilitySetup';
@@ -42,9 +43,10 @@ interface ProfileScreenProps {
   onEditProfile?: () => void;
   onUpdateName?: (name: string) => void;
   therapistProfileProp?: any;
+  onNavigateToCompletedContent?: () => void;
 }
 
-export function ProfileScreen({ onLogout, userName = 'Alex', userRole = 'User', darkMode = false, onToggleDarkMode, notificationsEnabled = false, onToggleNotifications, biometricAuthEnabled = false, onToggleBiometricAuth, onNavigateToLikedContent, onNavigateToSavedContent, onEditProfile, onUpdateName, therapistProfileProp }: ProfileScreenProps) {
+export function ProfileScreen({ onLogout, userName = 'Alex', userRole = 'User', darkMode = false, onToggleDarkMode, notificationsEnabled = false, onToggleNotifications, biometricAuthEnabled = false, onToggleBiometricAuth, onNavigateToLikedContent, onNavigateToSavedContent, onEditProfile, onUpdateName, therapistProfileProp, onNavigateToCompletedContent }: ProfileScreenProps) {
   const [availability, setAvailability] = useState<TherapistAvailability | null>(null);
   const [showAvailabilitySetup, setShowAvailabilitySetup] = useState(false);
   const [showBlockedTimeManagement, setShowBlockedTimeManagement] = useState(false);
@@ -257,30 +259,40 @@ export function ProfileScreen({ onLogout, userName = 'Alex', userRole = 'User', 
         </motion.div>
 
         {!isTherapist && (
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.1 }}
-            className="grid grid-cols-2 gap-3 mb-6"
-          >
-            <button
-              onClick={onNavigateToLikedContent}
-              className="bg-card rounded-2xl p-4 shadow-md hover:shadow-xl transition-all border-2 border-transparent hover:border-[var(--lavender)]"
-            >
-              <Heart className="w-6 h-6 text-red-500 mx-auto mb-2" />
-              <div className="text-sm text-foreground mb-1">Liked Content</div>
-              <ChevronRight className="w-4 h-4 text-muted-foreground mx-auto" />
-            </button>
-            <button
-              onClick={onNavigateToSavedContent}
-              className="bg-card rounded-2xl p-4 shadow-md hover:shadow-xl transition-all border-2 border-transparent hover:border-[var(--lavender)]"
-            >
-              <Bookmark className="w-6 h-6 text-[var(--lavender)] mx-auto mb-2" />
-              <div className="text-sm text-foreground mb-1">Saved Content</div>
-              <ChevronRight className="w-4 h-4 text-muted-foreground mx-auto" />
-            </button>
-          </motion.div>
-        )}
+  <motion.div
+    initial={{ opacity: 0, y: 20 }}
+    animate={{ opacity: 1, y: 0 }}
+    transition={{ delay: 0.1 }}
+    className="grid grid-cols-3 gap-3 mb-6"
+  >
+    <button
+      onClick={onNavigateToLikedContent}
+      className="bg-card rounded-2xl p-4 shadow-md hover:shadow-xl transition-all border-2 border-transparent hover:border-[var(--lavender)]"
+    >
+      <Heart className="w-6 h-6 text-red-500 mx-auto mb-2" />
+      <div className="text-sm text-foreground mb-1">Liked</div>
+      <ChevronRight className="w-4 h-4 text-muted-foreground mx-auto" />
+    </button>
+
+    <button
+      onClick={onNavigateToSavedContent}
+      className="bg-card rounded-2xl p-4 shadow-md hover:shadow-xl transition-all border-2 border-transparent hover:border-[var(--lavender)]"
+    >
+      <Bookmark className="w-6 h-6 text-[var(--lavender)] mx-auto mb-2" />
+      <div className="text-sm text-foreground mb-1">Saved</div>
+      <ChevronRight className="w-4 h-4 text-muted-foreground mx-auto" />
+    </button>
+
+    <button
+      onClick={onNavigateToCompletedContent}
+      className="bg-card rounded-2xl p-4 shadow-md hover:shadow-xl transition-all border-2 border-transparent hover:border-[var(--lavender)]"
+    >
+      <CheckCircle className="w-6 h-6 text-[var(--soft-mint)] mx-auto mb-2" />
+      <div className="text-sm text-foreground mb-1">Done</div>
+      <ChevronRight className="w-4 h-4 text-muted-foreground mx-auto" />
+    </button>
+  </motion.div>
+)}
 
         {isTherapist && (
           <motion.div

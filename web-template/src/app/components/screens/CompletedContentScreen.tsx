@@ -1,28 +1,28 @@
 import React, { useEffect, useState } from 'react';
 import { motion } from 'motion/react';
-import { ArrowLeft, Bookmark } from 'lucide-react';
-import { getSavedContent } from '../../services/contentInteractions';
+import { ArrowLeft, CheckCircle } from 'lucide-react';
+import { getCompletedContent } from '../../services/contentInteractions';
 
-interface SavedContentScreenProps {
+interface CompletedContentScreenProps {
   onBack: () => void;
   onSelectContent?: (content: any) => void;
 }
 
-export function SavedContentScreen({ onBack, onSelectContent }: SavedContentScreenProps) {
-  const [savedContent, setSavedContent] = useState<any[]>([]);
+export function CompletedContentScreen({ onBack, onSelectContent }: CompletedContentScreenProps) {
+  const [completedContent, setCompletedContent] = useState<any[]>([]);
 
   useEffect(() => {
     let isMounted = true;
 
-    const loadSavedContent = async () => {
-      const content = await getSavedContent();
+    const loadCompletedContent = async () => {
+      const content = await getCompletedContent();
 
       if (!isMounted) return;
 
-      setSavedContent(content);
+      setCompletedContent(content);
     };
 
-    loadSavedContent();
+    loadCompletedContent();
 
     return () => {
       isMounted = false;
@@ -40,26 +40,26 @@ export function SavedContentScreen({ onBack, onSelectContent }: SavedContentScre
             <ArrowLeft className="w-5 h-5 text-foreground" />
           </button>
           <div>
-            <h1 className="text-2xl text-foreground">Saved Content</h1>
-            <p className="text-sm text-muted-foreground">{savedContent.length} items</p>
+            <h1 className="text-2xl text-foreground">Completed Content</h1>
+            <p className="text-sm text-muted-foreground">{completedContent.length} items</p>
           </div>
         </div>
 
-        {savedContent.length === 0 ? (
+        {completedContent.length === 0 ? (
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             className="text-center py-16"
           >
-            <Bookmark className="w-16 h-16 text-muted-foreground opacity-30 mx-auto mb-4" />
-            <h3 className="text-lg text-foreground mb-2">No saved content yet</h3>
+            <CheckCircle className="w-16 h-16 text-muted-foreground opacity-30 mx-auto mb-4" />
+            <h3 className="text-lg text-foreground mb-2">No completed content yet</h3>
             <p className="text-sm text-muted-foreground">
-              Bookmark content to save it for later
+              Finish a video, audio session, or step-by-step exercise to see it here.
             </p>
           </motion.div>
         ) : (
           <div className="space-y-4">
-            {savedContent.map((item, idx) => (
+            {completedContent.map((item, idx) => (
               <motion.div
                 key={item.id}
                 initial={{ opacity: 0, x: -20 }}
@@ -85,8 +85,8 @@ export function SavedContentScreen({ onBack, onSelectContent }: SavedContentScre
                     <div className="flex items-center gap-3 text-xs text-muted-foreground">
                       <span>{item.duration}</span>
                       <span className="flex items-center gap-1">
-                        <Bookmark className="w-3.5 h-3.5 text-[var(--lavender)] fill-[var(--lavender)]" />
-                        Saved
+                        <CheckCircle className="w-3.5 h-3.5 text-[var(--soft-mint)]" />
+                        Completed
                       </span>
                     </div>
                   </div>
