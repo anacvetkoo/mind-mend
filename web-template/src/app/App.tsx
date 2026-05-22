@@ -78,6 +78,8 @@ export default function App() {
   const [showCustomRequestConfirmation, setShowCustomRequestConfirmation] = useState(false);
   const [bookingData, setBookingData] = useState<any>(null);
   const [bookingStep, setBookingStep] = useState(1);
+  // UID terapevta za vrnitev na profil po zaključku/prekliću bookinga
+  const [bookingTherapistId, setBookingTherapistId] = useState<string | null>(null);
   const [bookingTherapistAvailability, setBookingTherapistAvailability] = useState<TherapistAvailability | null>(null);
   const [bookingTherapistName, setBookingTherapistName] = useState('');
 
@@ -424,6 +426,8 @@ const handleQuestionnaireComplete = async (data: any) => {
     setShowCompletedContent(false);
     setBookingTherapistAvailability(null);
     setBookingTherapistName('');
+    setBookingTherapistId(null);
+    setBookingStep(1);
   };
 
   const handleTutorialComplete = () => {
@@ -698,11 +702,15 @@ const handleQuestionnaireComplete = async (data: any) => {
           setShowVideoCallScreen(true);
           setSelectedTherapistId(null);
         }}
-        onBookAppointment={(therapistName, availability) => {
+        onBookAppointment={(tName, availability) => {
           if (!availability || !availability.isSetupComplete) return;
-          setBookingTherapistName(therapistName);
+          // Shrani therapistId za vrnitev na profil
+          setBookingTherapistId(selectedTherapistId);
+          setBookingTherapistName(tName);
           setBookingTherapistAvailability(availability);
           setSelectedTherapistId(null);
+          setBookingStep(1);
+          setBookingData(null);
           setShowBookingFlow(true);
         }}
         onSelectContent={(content) => {
@@ -747,6 +755,8 @@ const handleQuestionnaireComplete = async (data: any) => {
     );
   }
 
+  // ─── Booking flow ─────────────────────────────────────────────────────────────
+
   if (showBookingFlow && bookingTherapistAvailability) {
     return (
       <BookAppointmentFlow
@@ -756,7 +766,12 @@ const handleQuestionnaireComplete = async (data: any) => {
         initialStep={bookingStep}
         initialDate={bookingData?.date ?? ''}
         initialType={bookingData?.appointmentType ?? null}
-        onClose={() => { setShowBookingFlow(false); setBookingStep(1); }}
+        onClose={() => {
+          // Puščica nazaj na Step 1 → vrni na TherapistProfile
+          setShowBookingFlow(false);
+          setBookingStep(1);
+          setSelectedTherapistId(bookingTherapistId);
+        }}
         onRequestCustomTime={(data) => {
           setBookingData({
             therapistId: bookingTherapistAvailability?.therapistId ?? '',
@@ -785,6 +800,7 @@ const handleQuestionnaireComplete = async (data: any) => {
         selectedType={bookingData?.appointmentType}
         selectedDate={bookingData?.date}
         onClose={() => {
+          // Puščica nazaj → vrni na Step 3 (Select Time)
           setShowCustomRequest(false);
           setShowBookingFlow(true);
         }}
@@ -818,6 +834,7 @@ const handleQuestionnaireComplete = async (data: any) => {
           setShowPaymentCheckout(false);
           setBookingData(null);
           setBookingStep(1);
+          setBookingTherapistId(null);
           setCurrentScreen('appointments');
           alert('Appointment confirmed! Check your appointments to view details.');
         }}
