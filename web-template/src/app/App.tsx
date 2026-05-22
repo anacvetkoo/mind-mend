@@ -829,7 +829,11 @@ const handleQuestionnaireComplete = async (data: any) => {
       <PaymentCheckout
         appointmentData={bookingData}
         price={bookingData.price || 120}
-        onClose={() => setShowPaymentCheckout(false)}
+        onClose={() => {
+          setShowPaymentCheckout(false);
+          setBookingStep(3);
+          setShowBookingFlow(true);
+        }}
         onPaymentSuccess={() => {
           setShowPaymentCheckout(false);
           setBookingData(null);
