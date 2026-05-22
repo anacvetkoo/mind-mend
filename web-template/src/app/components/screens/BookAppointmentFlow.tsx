@@ -10,6 +10,9 @@ interface BookAppointmentFlowProps {
   therapistId: string;
   therapistName: string;
   therapistAvailability: TherapistAvailability;
+  initialStep?: number;
+  initialDate?: string;
+  initialType?: AppointmentType | null;
   onClose: () => void;
   onRequestCustomTime: (data: { appointmentType: AppointmentType | null; date: string }) => void;
   onProceedToPayment: (appointmentData: any) => void;
@@ -19,13 +22,16 @@ export function BookAppointmentFlow({
   therapistId,
   therapistName,
   therapistAvailability,
+  initialStep = 1,
+  initialDate = '',
+  initialType = null,
   onClose,
   onRequestCustomTime,
   onProceedToPayment
 }: BookAppointmentFlowProps) {
-  const [step, setStep] = useState(1);
-  const [selectedType, setSelectedType] = useState<AppointmentType | null>(null);
-  const [selectedDate, setSelectedDate] = useState<string>('');
+  const [step, setStep] = useState(initialStep);
+  const [selectedType, setSelectedType] = useState<AppointmentType | null>(initialType);
+  const [selectedDate, setSelectedDate] = useState<string>(initialDate);
   const [selectedSlot, setSelectedSlot] = useState<AppointmentSlot | null>(null);
   const [notes, setNotes] = useState('');
   const [currentMonth, setCurrentMonth] = useState(new Date());

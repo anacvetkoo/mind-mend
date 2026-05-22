@@ -77,6 +77,7 @@ export default function App() {
   const [showPaymentCheckout, setShowPaymentCheckout] = useState(false);
   const [showCustomRequestConfirmation, setShowCustomRequestConfirmation] = useState(false);
   const [bookingData, setBookingData] = useState<any>(null);
+  const [bookingStep, setBookingStep] = useState(1);
   const [bookingTherapistAvailability, setBookingTherapistAvailability] = useState<TherapistAvailability | null>(null);
   const [bookingTherapistName, setBookingTherapistName] = useState('');
 
@@ -752,7 +753,10 @@ const handleQuestionnaireComplete = async (data: any) => {
         therapistId={bookingTherapistAvailability.therapistId}
         therapistName={bookingTherapistName || 'Your Therapist'}
         therapistAvailability={bookingTherapistAvailability}
-        onClose={() => setShowBookingFlow(false)}
+        initialStep={bookingStep}
+        initialDate={bookingData?.date ?? ''}
+        initialType={bookingData?.appointmentType ?? null}
+        onClose={() => { setShowBookingFlow(false); setBookingStep(1); }}
         onRequestCustomTime={(data) => {
           setBookingData({
             therapistId: bookingTherapistAvailability?.therapistId ?? '',
@@ -760,6 +764,7 @@ const handleQuestionnaireComplete = async (data: any) => {
             appointmentType: data.appointmentType,
             date: data.date,
           });
+          setBookingStep(3);
           setShowBookingFlow(false);
           setShowCustomRequest(true);
         }}
@@ -779,7 +784,10 @@ const handleQuestionnaireComplete = async (data: any) => {
         therapistName={bookingTherapistName || 'Your Therapist'}
         selectedType={bookingData?.appointmentType}
         selectedDate={bookingData?.date}
-        onClose={() => setShowCustomRequest(false)}
+        onClose={() => {
+          setShowCustomRequest(false);
+          setShowBookingFlow(true);
+        }}
         onSubmit={(data) => {
           console.log('Custom request submitted:', data);
           setShowCustomRequest(false);
@@ -809,6 +817,7 @@ const handleQuestionnaireComplete = async (data: any) => {
         onPaymentSuccess={() => {
           setShowPaymentCheckout(false);
           setBookingData(null);
+          setBookingStep(1);
           setCurrentScreen('appointments');
           alert('Appointment confirmed! Check your appointments to view details.');
         }}

@@ -51,7 +51,7 @@ export function CustomAppointmentRequest({
             <ArrowLeft className="w-5 h-5 text-foreground" />
           </button>
           <div className="flex-1">
-            <h1 className="text-xl text-foreground">Request Custom Time</h1>
+            <h1 className="text-xl text-foreground">Request Different Time</h1>
             <p className="text-xs text-muted-foreground">with {therapistName}</p>
           </div>
         </div>
