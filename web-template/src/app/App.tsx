@@ -877,7 +877,24 @@ const handleQuestionnaireComplete = async (data: any) => {
 />
           )}
           {currentScreen === 'therapists' && (
-            <TherapistList onSelectTherapist={(id) => setSelectedTherapistId(id)} />
+          <TherapistList
+            onSelectTherapist={(id) => setSelectedTherapistId(id)}
+            onBookTherapist={async (id, name) => {
+              const availability = await getTherapistAvailability(id);
+
+              if (!availability || !availability.isSetupComplete) {
+                return;
+              }
+              
+              setBookingTherapistId(id);
+              setBookingTherapistName(name);
+              setBookingTherapistAvailability({ ...availability, therapistId: id });
+              setSelectedTherapistId(null);
+              setBookingStep(1);
+              setBookingData(null);
+              setShowBookingFlow(true);
+            }}
+          />
           )}
           {currentScreen === 'chat' && (
             <ChatScreen

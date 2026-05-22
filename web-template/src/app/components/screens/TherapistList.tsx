@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { motion } from 'motion/react';
-import { Search, Star, User } from 'lucide-react';
+import { Search, Star, User, Calendar } from 'lucide-react';
 import { getTherapists, type TherapistProfileData } from '../../services/users';
 
 // ─── Module-level cache — fetchamo samo enkrat na sejo ────────────────────────
@@ -10,13 +10,16 @@ const fetchListeners: Array<(data: TherapistProfileData[]) => void> = [];
 
 interface TherapistListProps {
   onSelectTherapist: (therapistId: string) => void;
+  onBookTherapist: (therapistId: string, therapistName: string) => void;
 }
 
-export function TherapistList({ onSelectTherapist }: TherapistListProps) {
+export function TherapistList({ onSelectTherapist, onBookTherapist }: TherapistListProps) {
   const [selectedFilter, setSelectedFilter] = useState('all');
   const [searchQuery, setSearchQuery] = useState('');
   const [therapists, setTherapists] = useState<TherapistProfileData[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [showNoAvailabilityModal, setShowNoAvailabilityModal] = useState(false);
+  const [selectedUnavailableTherapist, setSelectedUnavailableTherapist] = useState<TherapistProfileData | null>(null);
 
   const filters = [
     { id: 'all', label: 'All' },
@@ -238,13 +241,32 @@ export function TherapistList({ onSelectTherapist }: TherapistListProps) {
                       )}
                     </div>
 
-                    <motion.button
-                      whileTap={{ scale: 0.98 }}
-                      onClick={() => onSelectTherapist(therapist.id)}
-                      className="w-full py-2 rounded-2xl bg-gradient-to-r from-[var(--lavender)] to-[var(--soft-purple)] text-white text-sm shadow-sm"
-                    >
-                      View Profile
-                    </motion.button>
+                    <div className="grid grid-cols-2 gap-3">
+                      <motion.button
+                        whileTap={{ scale: 0.98 }}
+                        onClick={() => onSelectTherapist(therapist.id)}
+                        className="py-2 rounded-2xl bg-gradient-to-r from-[var(--lavender)] to-[var(--soft-purple)] text-white text-sm shadow-sm"
+                      >
+                        View Profile
+                      </motion.button>
+
+                      <motion.button
+                        whileTap={{ scale: 0.98 }}
+                        onClick={() => {
+                          if (!therapist.isAvailable) {
+                            setSelectedUnavailableTherapist(therapist);
+                            setShowNoAvailabilityModal(true);
+                            return;
+                          }
+
+                          onBookTherapist(therapist.id, therapist.name);
+                        }}
+                        className="py-2 rounded-2xl border-2 border-[var(--lavender)] text-[var(--lavender)] bg-card text-sm shadow-sm flex items-center justify-center gap-1.5"
+                      >
+                        <Calendar className="w-4 h-4" />
+                        Book
+                      </motion.button>
+                    </div>
                   </div>
                 </div>
               </motion.div>
@@ -252,6 +274,48 @@ export function TherapistList({ onSelectTherapist }: TherapistListProps) {
           </motion.div>
         )}
       </div>
+
+      {showNoAvailabilityModal && selectedUnavailableTherapist && (
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          className="fixed inset-0 z-[60] flex items-end justify-center px-4 pb-8"
+          style={{ background: 'rgba(0,0,0,0.4)' }}
+          onClick={() => setShowNoAvailabilityModal(false)}
+        >
+          <motion.div
+            initial={{ opacity: 0, y: 60, scale: 0.95 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: 60 }}
+            transition={{ type: 'spring', damping: 25, stiffness: 300 }}
+            className="w-full max-w-sm bg-card rounded-3xl p-6 shadow-2xl"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="w-16 h-16 rounded-full bg-[var(--soft-purple)]/15 flex items-center justify-center mx-auto mb-4">
+              <Calendar className="w-8 h-8 text-[var(--lavender)]" />
+            </div>
+
+            <h3 className="text-xl text-foreground text-center mb-2">
+              Not available yet
+            </h3>
+
+            <p className="text-sm text-muted-foreground text-center leading-relaxed mb-6">
+              <span className="text-foreground">{selectedUnavailableTherapist.name}</span> hasn't set up their schedule yet.
+              Check back soon or explore other therapists.
+            </p>
+
+            <motion.button
+              whileTap={{ scale: 0.98 }}
+              onClick={() => setShowNoAvailabilityModal(false)}
+              className="w-full py-3.5 rounded-2xl bg-gradient-to-r from-[var(--lavender)] to-[var(--soft-purple)] text-white"
+            >
+              Got it
+            </motion.button>
+          </motion.div>
+        </motion.div>
+      )}
+      
     </div>
   );
 }
