@@ -5,7 +5,10 @@ import {
   getUserContentInteractions,
   markContentAsCompleted,
   toggleLikedContent,
-  toggleSavedContent
+  toggleSavedContent,
+  saveContentProgress,
+  getContentProgress,
+  type ContentProgressItem
 } from '../../services/contentInteractions';
 import {
   getLibraryContent,
@@ -21,6 +24,7 @@ interface ContentDetailProps {
   onOpenContent?: (content: ContentItem) => void | Promise<void>;
   onViewTherapist?: (therapistId: string) => void;
   moreFromTherapist?: ContentItem[];
+  initialProgress?: ContentProgressItem | null;
 }
 
 export function ContentDetail({
@@ -28,7 +32,8 @@ export function ContentDetail({
   onClose,
   onOpenContent,
   onViewTherapist,
-  moreFromTherapist = []
+  moreFromTherapist = [],
+  initialProgress = null
 }: ContentDetailProps) {
   const [, forceUpdate] = useState({});
   const [isPlaying, setIsPlaying] = useState(false);
@@ -41,7 +46,7 @@ export function ContentDetail({
   const [therapistContent, setTherapistContent] = useState<ContentItem[]>(moreFromTherapist);
   const [youMightLikeContent, setYouMightLikeContent] = useState<ContentItem[]>([]);
   const [likedContentIds, setLikedContentIds] = useState<string[]>([]);
-const [savedContentIds, setSavedContentIds] = useState<string[]>([]);
+  const [savedContentIds, setSavedContentIds] = useState<string[]>([]);
 
   
 
@@ -53,7 +58,10 @@ const animationFrameRef = useRef<number | null>(null);
 const [waveformBars, setWaveformBars] = useState<number[]>(Array(40).fill(20));
 const [currentAudioTime, setCurrentAudioTime] = useState(0);
 const [audioDuration, setAudioDuration] = useState(0);
-
+const [activeInitialProgress, setActiveInitialProgress] = useState<ContentProgressItem | null>(
+  initialProgress
+);
+const hasAppliedInitialProgressRef = useRef(false);
   const itemIsLiked = likedContentIds.includes(content.id);
 const itemIsBookmarked = savedContentIds.includes(content.id);
   const likeCount = content.likes || 0;
@@ -235,8 +243,42 @@ useEffect(() => {
   setMediaDuration('');
   setWaveformBars(Array(40).fill(20));
   setCurrentAudioTime(0);
-setAudioDuration(0);
+  setAudioDuration(0);
+  hasAppliedInitialProgressRef.current = false;
 }, [content.id]);
+
+useEffect(() => {
+  let isMounted = true;
+
+  const loadContentProgress = async () => {
+    const latestProgress = await getContentProgress(content.id);
+
+    if (!isMounted) return;
+
+    setActiveInitialProgress(latestProgress || initialProgress || null);
+    hasAppliedInitialProgressRef.current = false;
+  };
+
+  loadContentProgress();
+
+  return () => {
+    isMounted = false;
+  };
+}, [content.id, initialProgress]);
+
+useEffect(() => {
+  if (!activeInitialProgress || hasAppliedInitialProgressRef.current) return;
+
+  if (getContentType() !== 'steps') return;
+
+  const savedStep = activeInitialProgress.currentStep || 1;
+
+  setCurrentStep(savedStep);
+  setProgress(activeInitialProgress.progress);
+  hasAppliedInitialProgressRef.current = true;
+}, [content.id, activeInitialProgress]);
+
+
 
   useEffect(() => {
   let isMounted = true;
@@ -257,7 +299,7 @@ setAudioDuration(0);
   };
 }, [content.id]);
 
- 
+
 
   const handleBookmark = async () => {
   await toggleSavedContent(content.id, itemIsBookmarked);
@@ -293,16 +335,63 @@ const handleLike = async () => {
   }
 };
 
-  const handleMediaProgress = (currentTime: number, duration: number) => {
+  const handleMediaProgress = async (currentTime: number, duration: number) => {
   if (!duration || Number.isNaN(duration)) return;
 
-  setProgress((currentTime / duration) * 100);
+  const progressValue = (currentTime / duration) * 100;
+
+  setProgress(progressValue);
+
+  await saveContentProgress(content.id, getContentType(), {
+    currentTime,
+    progress: progressValue
+  });
 };
 
-const handleMediaLoadedMetadata = (duration: number) => {
+const applyInitialMediaProgress = (
+  mediaElement?: HTMLAudioElement | HTMLVideoElement | null
+) => {
+  if (
+    !mediaElement ||
+    activeInitialProgress?.currentTime === undefined ||
+    hasAppliedInitialProgressRef.current
+  ) {
+    return;
+  }
+
+  if (mediaElement.readyState < 1) return;
+
+  mediaElement.currentTime = activeInitialProgress.currentTime;
+  setProgress(activeInitialProgress.progress);
+
+  if (getContentType() === 'audio') {
+    setCurrentAudioTime(activeInitialProgress.currentTime);
+  }
+
+  hasAppliedInitialProgressRef.current = true;
+};
+
+useEffect(() => {
+  if (!activeInitialProgress || hasAppliedInitialProgressRef.current) return;
+
+  if (getContentType() === 'video') {
+    applyInitialMediaProgress(videoRef.current);
+  }
+
+  if (getContentType() === 'audio') {
+    applyInitialMediaProgress(audioRef.current);
+  }
+}, [content.id, activeInitialProgress]);
+
+const handleMediaLoadedMetadata = (
+  duration: number,
+  mediaElement?: HTMLAudioElement | HTMLVideoElement
+) => {
   if (Number.isFinite(duration)) {
     setMediaDuration(formatMediaDuration(duration));
   }
+
+  applyInitialMediaProgress(mediaElement);
 };
 
 const stopAudioVisualization = () => {
@@ -400,7 +489,9 @@ const handleOpenFullscreen = () => {
             playsInline
             preload="metadata"
             className="w-full aspect-video bg-black"
-            onLoadedMetadata={(event) => handleMediaLoadedMetadata(event.currentTarget.duration)}
+            onLoadedMetadata={(event) =>
+              handleMediaLoadedMetadata(event.currentTarget.duration, event.currentTarget)
+            }
             onTimeUpdate={(event) => {
               handleMediaProgress(event.currentTarget.currentTime, event.currentTarget.duration);
             }}
@@ -440,13 +531,13 @@ if (getContentType() === 'audio') {
             preload="metadata"
             className="hidden"
             onLoadedMetadata={(event) => {
-              const duration = event.currentTarget.duration;
+  const duration = event.currentTarget.duration;
 
-              if (Number.isFinite(duration)) {
-                setAudioDuration(duration);
-                handleMediaLoadedMetadata(duration);
-              }
-            }}
+  if (Number.isFinite(duration)) {
+    setAudioDuration(duration);
+    handleMediaLoadedMetadata(duration, event.currentTarget);
+  }
+}}
             onTimeUpdate={(event) => {
               const currentTime = event.currentTarget.currentTime;
               const duration = event.currentTarget.duration;
@@ -605,7 +696,14 @@ if (getContentType() === 'steps' && content.steps && content.steps.length > 0) {
   return;
 }
 
-                setCurrentStep((step) => Math.min(content.steps!.length, step + 1));
+                const nextStep = Math.min(content.steps!.length, currentStep + 1);
+
+setCurrentStep(nextStep);
+
+saveContentProgress(content.id, 'steps', {
+  currentStep: nextStep,
+  progress: (nextStep / content.steps!.length) * 100
+});
               }}
               className="flex-1 py-3 rounded-2xl bg-gradient-to-r from-[var(--lavender)] to-[var(--soft-purple)] text-white"
             >

@@ -12,7 +12,8 @@ import {
   Sparkles,
   TrendingUp,
   Volume2,
-  Wind
+  Wind,
+  X
 } from 'lucide-react';
 import { ContentDetail } from './ContentDetail';
 import {
@@ -23,7 +24,10 @@ import {
 import {
   getUserContentInteractions,
   toggleLikedContent,
-  toggleSavedContent
+  toggleSavedContent,
+  getUserContentProgress,
+  type ContentProgressItem,
+  removeContentProgress
 } from '../../services/contentInteractions';
 
 type ContentType = 'all' | 'relaxation' | 'breathing' | 'sound';
@@ -119,6 +123,7 @@ export function ContentLibrary({
   const [contentItems, setContentItems] = useState<LibraryContentItem[]>([]);
   const [selectedCategory, setSelectedCategory] = useState<ContentType>('all');
   const [selectedContent, setSelectedContent] = useState<LibraryContentItem | null>(null);
+  const [selectedContentProgress, setSelectedContentProgress] = useState<ContentProgressItem | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [sortBy, setSortBy] = useState<SortOption>('newest');
   const [showTodayOnly, setShowTodayOnly] = useState(false);
@@ -126,7 +131,8 @@ export function ContentLibrary({
   const [isLoading, setIsLoading] = useState(true);
   const [mediaDurations, setMediaDurations] = useState<Record<string, string>>({});
   const [likedContentIds, setLikedContentIds] = useState<string[]>([]);
-const [savedContentIds, setSavedContentIds] = useState<string[]>([]);
+  const [savedContentIds, setSavedContentIds] = useState<string[]>([]);
+  const [contentProgressItems, setContentProgressItems] = useState<ContentProgressItem[]>([]);
   const resultsSectionRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
@@ -187,8 +193,13 @@ useEffect(() => {
 
     if (!isMounted) return;
 
+    const progressItems = await getUserContentProgress();
+
     setLikedContentIds(interactions.likedContentIds);
     setSavedContentIds(interactions.savedContentIds);
+    setContentProgressItems(progressItems);
+
+    
   };
 
   loadInteractions();
@@ -260,6 +271,24 @@ useEffect(() => {
     });
   }, [contentItems, searchTerm, selectedCategory, showTodayOnly, sortBy]);
 
+  const continueContentItems = useMemo(() => {
+  return contentProgressItems
+    .map((progressItem) => {
+      const content = contentItems.find((item) => item.id === progressItem.contentId);
+
+      if (!content) return null;
+
+      return {
+        content,
+        progressItem
+      };
+    })
+    .filter(Boolean) as Array<{
+    content: LibraryContentItem;
+    progressItem: ContentProgressItem;
+  }>;
+}, [contentItems, contentProgressItems]);
+
   const totalPages = Math.max(1, Math.ceil(filteredContent.length / itemsPerPage));
 
   const paginatedContent = filteredContent.slice(
@@ -267,16 +296,20 @@ useEffect(() => {
     currentPage * itemsPerPage
   );
 
-  const handleOpenContent = async (content: LibraryContentItem) => {
-    setSelectedContent(content);
-    onSelectContent?.(content);
+  const handleOpenContent = async (
+  content: LibraryContentItem,
+  progressItem: ContentProgressItem | null = null
+) => {
+  setSelectedContent(content);
+  setSelectedContentProgress(progressItem);
+  onSelectContent?.(content);
 
-    try {
-      await incrementContentViews(content.id);
-    } catch (error) {
-      console.error('Error incrementing content views:', error);
-    }
-  };
+  try {
+    await incrementContentViews(content.id);
+  } catch (error) {
+    console.error('Error incrementing content views:', error);
+  }
+};
 
   const handleCategoryClick = (category: ContentType) => {
   setSelectedCategory(category);
@@ -348,6 +381,14 @@ const handleLike = async (contentId: string) => {
       )
     );
   }
+};
+
+const handleRemoveProgress = async (contentId: string) => {
+  await removeContentProgress(contentId);
+
+  setContentProgressItems((previousItems) =>
+    previousItems.filter((item) => item.contentId !== contentId)
+  );
 };
 
   const getContentDuration = (content: LibraryContentItem) => {
@@ -519,19 +560,85 @@ const itemIsLiked = likedContentIds.includes(content.id);
   );
 };
 
+const renderContinueContentCard = ({
+  content,
+  progressItem
+}: {
+  content: LibraryContentItem;
+  progressItem: ContentProgressItem;
+}) => {
+  const Icon = getCategoryIcon(content.category);
+
+  return (
+    <motion.div
+      key={content.id}
+      whileTap={{ scale: 0.98 }}
+      onClick={() => handleOpenContent(content, progressItem)}
+      className="flex-shrink-0 w-[220px] rounded-2xl bg-card shadow-md cursor-pointer overflow-hidden relative"
+    >
+      <button
+        onClick={(event) => {
+          event.stopPropagation();
+          handleRemoveProgress(content.id);
+        }}
+        className="absolute top-2 right-2 z-20 w-7 h-7 rounded-full bg-black/40 backdrop-blur-sm flex items-center justify-center"
+      >
+        <X className="w-4 h-4 text-white" />
+      </button>
+
+      <div
+        className="h-28 flex items-center justify-center relative overflow-hidden"
+        style={{
+          background:
+            content.thumbnailType === 'image' && content.thumbnailImage
+              ? `url(${content.thumbnailImage}) center/cover`
+              : content.thumbnailGradient
+        }}
+      >
+        {content.thumbnailType === 'image' && content.thumbnailImage ? (
+          <div className="absolute inset-0 bg-black/10" />
+        ) : (
+          <Icon className="w-9 h-9 text-white/90" />
+        )}
+      </div>
+
+      <div className="p-3">
+        <h4 className="text-sm text-foreground mb-1 line-clamp-1">
+          {content.title}
+        </h4>
+
+        <p className="text-xs text-muted-foreground mb-3 line-clamp-1">
+          {content.categoryLabel}
+        </p>
+
+        <div className="h-1.5 bg-[var(--muted)] rounded-full overflow-hidden">
+          <div
+            className="h-full bg-gradient-to-r from-[var(--lavender)] to-[var(--soft-purple)] rounded-full"
+            style={{ width: `${progressItem.progress}%` }}
+          />
+        </div>
+      </div>
+    </motion.div>
+  );
+};
+
   if (selectedContent) {
-    return (
-      <ContentDetail
-        content={selectedContent}
-        onClose={() => setSelectedContent(null)}
-        moreFromTherapist={moreFromTherapist}
-        onOpenContent={handleOpenContent}
-        onViewTherapist={(therapistId) => {
-  onViewTherapist?.(therapistId);
-}}
-      />
-    );
-  }
+  return (
+    <ContentDetail
+      content={selectedContent}
+      onClose={() => {
+        setSelectedContent(null);
+        setSelectedContentProgress(null);
+      }}
+      moreFromTherapist={moreFromTherapist}
+      onOpenContent={handleOpenContent}
+      onViewTherapist={(therapistId) => {
+        onViewTherapist?.(therapistId);
+      }}
+      initialProgress={selectedContentProgress}
+    />
+  );
+}
 
   return (
     <div className="min-h-screen bg-background pb-24">
@@ -543,7 +650,18 @@ const itemIsLiked = likedContentIds.includes(content.id);
           </p>
         </div>
 
-        
+        {continueContentItems.length > 0 && (
+  <div className="mb-6">
+    <div className="flex items-center gap-2 mb-3">
+      <Play className="w-5 h-5 text-[var(--lavender)]" />
+      <h2 className="text-xl text-foreground">Continue your session</h2>
+    </div>
+
+    <div className="flex gap-3 overflow-x-auto scrollbar-hide -mx-6 px-6">
+      {continueContentItems.map(renderContinueContentCard)}
+    </div>
+  </div>
+)}
 
         <div className="mb-6">
           <div className="flex items-center gap-2 mb-3">

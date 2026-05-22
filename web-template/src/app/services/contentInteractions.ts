@@ -5,7 +5,13 @@ import {
   getDoc,
   increment,
   setDoc,
-  updateDoc
+  updateDoc,
+  collection,
+  deleteDoc,
+  getDocs,
+  query,
+  serverTimestamp,
+  where
 } from 'firebase/firestore';
 import { auth, db } from './firebaseConfig';
 import { getLibraryContent, type LibraryContentItem } from './content';
@@ -14,6 +20,17 @@ export interface UserContentInteractions {
   likedContentIds: string[];
   savedContentIds: string[];
   completedContentIds: string[];
+}
+
+export interface ContentProgressItem {
+  id: string;
+  userId: string;
+  contentId: string;
+  contentType: 'video' | 'audio' | 'steps';
+  currentTime?: number;
+  currentStep?: number;
+  progress: number;
+  updatedAt?: any;
 }
 
 const getCurrentUserId = () => auth.currentUser?.uid || '';
@@ -98,6 +115,79 @@ export const markContentAsCompleted = async (contentId: string) => {
     },
     { merge: true }
   );
+
+  await removeContentProgress(contentId);
+};
+
+export const saveContentProgress = async (
+  contentId: string,
+  contentType: 'video' | 'audio' | 'steps',
+  progressData: {
+    currentTime?: number;
+    currentStep?: number;
+    progress: number;
+  }
+) => {
+  const userId = getCurrentUserId();
+
+  if (!userId) return;
+
+  if (progressData.progress <= 0 || progressData.progress >= 100) return;
+
+  await setDoc(
+    doc(db, 'contentProgress', `${userId}_${contentId}`),
+    {
+      userId,
+      contentId,
+      contentType,
+      ...progressData,
+      updatedAt: serverTimestamp()
+    },
+    { merge: true }
+  );
+};
+
+export const getUserContentProgress = async (): Promise<ContentProgressItem[]> => {
+  const userId = getCurrentUserId();
+
+  if (!userId) return [];
+
+  const progressQuery = query(
+    collection(db, 'contentProgress'),
+    where('userId', '==', userId)
+  );
+
+  const snapshot = await getDocs(progressQuery);
+
+  return snapshot.docs.map((progressDocument) => ({
+    id: progressDocument.id,
+    ...progressDocument.data()
+  })) as ContentProgressItem[];
+};
+
+export const getContentProgress = async (
+  contentId: string
+): Promise<ContentProgressItem | null> => {
+  const userId = getCurrentUserId();
+
+  if (!userId) return null;
+
+  const progressSnapshot = await getDoc(doc(db, 'contentProgress', `${userId}_${contentId}`));
+
+  if (!progressSnapshot.exists()) return null;
+
+  return {
+    id: progressSnapshot.id,
+    ...progressSnapshot.data()
+  } as ContentProgressItem;
+};
+
+export const removeContentProgress = async (contentId: string) => {
+  const userId = getCurrentUserId();
+
+  if (!userId) return;
+
+  await deleteDoc(doc(db, 'contentProgress', `${userId}_${contentId}`));
 };
 
 const getContentByIds = async (contentIds: string[]): Promise<LibraryContentItem[]> => {
