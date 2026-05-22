@@ -139,7 +139,6 @@ export const getBlockedTimes = async (
   const snapshot = await getDoc(therapistRef);
   if (!snapshot.exists()) return [];
   const result = snapshot.data().blockedTimes ?? [];
-  console.log('[getBlockedTimes] uid:', uid, '| blockedTimes:', JSON.stringify(result));
   return result;
 };
 
@@ -185,16 +184,16 @@ export const updateUserBiometricAuthEnabled = async (uid: string, biometricAuthE
   await setDoc(userRef, { biometricAuthEnabled }, { merge: true });
 };
 
+// ─── Therapist Public Profile ─────────────────────────────────────────────────
 
 export interface TherapistContentPreview {
   id: string;
   title: string;
   category?: string;
   duration?: string;
-  
 }
 
-export interface TherapistProfileData {
+export interface TherapistPublicProfile {
   id: string;
   name: string;
   avatar: string;
@@ -212,11 +211,10 @@ export interface TherapistProfileData {
 
 const getStringValue = (...values: unknown[]): string => {
   const value = values.find((item) => typeof item === 'string' && item.trim() !== '');
-
   return typeof value === 'string' ? value.trim() : '';
 };
 
-const mapTherapistData = (id: string, data: any): TherapistProfileData => {
+const mapTherapistData = (id: string, data: any): TherapistPublicProfile => {
   const firstName = getStringValue(data.firstName);
   const lastName = getStringValue(data.lastName);
 
@@ -271,19 +269,18 @@ const getTherapistContent = async (therapistId: string): Promise<TherapistConten
   const snapshot = await getDocs(contentQuery);
 
   return snapshot.docs.map((contentDocument) => {
-  const data = contentDocument.data();
-
-  return {
-    id: contentDocument.id,
-    title: getStringValue(data.title) || 'Untitled content',
-    category: getStringValue(data.category, data.contentType),
-    duration: getStringValue(data.duration),
-    ...data,
-  };
-});
+    const data = contentDocument.data();
+    return {
+      id: contentDocument.id,
+      title: getStringValue(data.title) || 'Untitled content',
+      category: getStringValue(data.category, data.contentType),
+      duration: getStringValue(data.duration),
+      ...data,
+    };
+  });
 };
 
-export const getTherapistById = async (therapistId: string): Promise<TherapistProfileData | null> => {
+export const getTherapistById = async (therapistId: string): Promise<TherapistPublicProfile | null> => {
   const therapistRef = doc(db, 'users', therapistId);
   const snapshot = await getDoc(therapistRef);
 
@@ -298,11 +295,31 @@ export const getTherapistById = async (therapistId: string): Promise<TherapistPr
   };
 };
 
-export const getTherapists = async (): Promise<TherapistProfileData[]> => {
+export const getTherapists = async (): Promise<TherapistPublicProfile[]> => {
   const therapistsQuery = query(collection(db, 'users'), where('role', '==', 'therapist'));
   const snapshot = await getDocs(therapistsQuery);
 
   return snapshot.docs.map((therapistDocument) =>
     mapTherapistData(therapistDocument.id, therapistDocument.data())
   );
+};
+
+// ─── Profile Image Upload ─────────────────────────────────────────────────────
+
+export const uploadTherapistProfileImage = async (
+  uid: string,
+  file: File
+): Promise<string> => {
+  const { ref, uploadBytes, getDownloadURL } = await import('firebase/storage');
+  const { storage } = await import('./firebaseConfig');
+
+  const filePath = `therapists/${uid}/profile/${Date.now()}-${file.name}`;
+  const fileRef = ref(storage, filePath);
+  await uploadBytes(fileRef, file);
+  const downloadURL = await getDownloadURL(fileRef);
+
+  const therapistRef = doc(db, 'users', uid);
+  await setDoc(therapistRef, { profileImage: downloadURL }, { merge: true });
+
+  return downloadURL;
 };

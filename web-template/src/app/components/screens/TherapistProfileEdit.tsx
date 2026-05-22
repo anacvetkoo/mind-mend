@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { motion } from 'motion/react';
-import { Card } from '../ui/Card';
+import { Card } from '../ui/card';
 import { Button } from '../ui/Button';
 import { X, Camera, User, Save } from 'lucide-react';
 import type { TherapistProfileData } from './TherapistProfileSetup';
@@ -42,9 +42,21 @@ const FIELDS_OF_WORK = [
 export function TherapistProfileEdit({ onClose, initialData, onSave }: TherapistProfileEditProps) {
   const [profileData, setProfileData] = useState<TherapistProfileData>(initialData);
 
-  const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
-    if (file) {
+    if (!file) return;
+
+    try {
+      const { auth } = await import('../../services/firebaseConfig');
+      const currentUser = auth.currentUser;
+      if (!currentUser) return;
+
+      const { uploadTherapistProfileImage } = await import('../../services/users');
+      const downloadURL = await uploadTherapistProfileImage(currentUser.uid, file);
+      setProfileData({ ...profileData, profileImage: downloadURL });
+    } catch (err) {
+      console.error('Image upload failed:', err);
+      // Fallback na base64
       const reader = new FileReader();
       reader.onloadend = () => {
         setProfileData({ ...profileData, profileImage: reader.result as string });
