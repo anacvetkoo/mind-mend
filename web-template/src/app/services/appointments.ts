@@ -28,19 +28,22 @@ export const createAppointment = async (
 
 // ─── Read ─────────────────────────────────────────────────────────────────────
 
+const mapAppointmentDoc = (d: any): Appointment => ({
+  id: d.id,
+  ...d.data(),
+  createdAt: d.data().createdAt?.toDate?.()?.toISOString() ?? '',
+  updatedAt: d.data().updatedAt?.toDate?.()?.toISOString() ?? '',
+}) as Appointment;
+
 export const getAppointmentsForUser = async (userId: string): Promise<Appointment[]> => {
   const q = query(
     collection(db, 'appointments'),
     where('userId', '==', userId),
     orderBy('date', 'asc')
   );
+
   const snapshot = await getDocs(q);
-  return snapshot.docs.map(d => ({
-    id: d.id,
-    ...d.data(),
-    createdAt: d.data().createdAt?.toDate?.()?.toISOString() ?? '',
-    updatedAt: d.data().updatedAt?.toDate?.()?.toISOString() ?? '',
-  })) as Appointment[];
+  return snapshot.docs.map(mapAppointmentDoc);
 };
 
 export const getAppointmentsForTherapist = async (therapistId: string): Promise<Appointment[]> => {
@@ -49,23 +52,21 @@ export const getAppointmentsForTherapist = async (therapistId: string): Promise<
     where('therapistId', '==', therapistId),
     orderBy('date', 'asc')
   );
+
   const snapshot = await getDocs(q);
-  return snapshot.docs.map(d => ({
-    id: d.id,
-    ...d.data(),
-    createdAt: d.data().createdAt?.toDate?.()?.toISOString() ?? '',
-    updatedAt: d.data().updatedAt?.toDate?.()?.toISOString() ?? '',
-  })) as Appointment[];
+  return snapshot.docs.map(mapAppointmentDoc);
 };
 
 // ─── Update ───────────────────────────────────────────────────────────────────
 
 export const updateAppointmentStatus = async (
   appointmentId: string,
-  status: AppointmentStatus
+  status: AppointmentStatus,
+  paymentId?: string
 ): Promise<void> => {
   await updateDoc(doc(db, 'appointments', appointmentId), {
     status,
+    ...(paymentId ? { paymentId } : {}),
     updatedAt: serverTimestamp(),
   });
 };
@@ -77,6 +78,7 @@ export const cancelAppointment = async (
   const status: AppointmentStatus = cancelledByTherapist
     ? 'CANCELLED_BY_THERAPIST'
     : 'CANCELLED';
+
   await updateAppointmentStatus(appointmentId, status);
 };
 
@@ -91,5 +93,5 @@ export const isAppointmentUpcoming = (apt: Appointment): boolean => {
 export const isAppointmentPast = (apt: Appointment): boolean => {
   const now = new Date();
   const aptDate = new Date(`${apt.date}T${apt.endTime}`);
-  return aptDate <= now;
+  return aptDate <= now || apt.status === 'COMPLETED';
 };

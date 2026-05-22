@@ -4,16 +4,20 @@ import { ArrowLeft, CreditCard, Lock, CheckCircle, XCircle } from 'lucide-react'
 
 interface PaymentCheckoutProps {
   appointmentData: {
+    id?: string;
+    therapistId?: string;
     therapistName: string;
     appointmentType: string;
     date: string;
     startTime: string;
     endTime: string;
     notes?: string;
+    price?: number;
+    location?: string;
   };
   price: number;
   onClose: () => void;
-  onPaymentSuccess: () => void;
+  onPaymentSuccess: (paymentId?: string) => void;
   onPaymentFailed: () => void;
 }
 
@@ -64,21 +68,33 @@ export function PaymentCheckout({
 
     setProcessing(true);
 
-    // Simulate payment processing
+    /*
+      STRIPE TODO FOR TEAMMATE:
+      Replace this demo block with Stripe Checkout / PaymentIntent logic.
+
+      Important:
+      - appointmentData.id is already the Firestore appointment id
+      - appointment status is PENDING_PAYMENT before Stripe starts
+      - after Stripe succeeds, call onPaymentSuccess(stripePaymentIntentId)
+      - after Stripe fails, call onPaymentFailed()
+
+      Do not create the appointment here. It already exists before payment.
+    */
     setTimeout(() => {
-      // 90% success rate for demo
-      const success = Math.random() > 0.1;
+      const success = true;
+      const demoPaymentId = `demo_payment_${Date.now()}`;
 
       setProcessing(false);
       if (success) {
         setPaymentStatus('success');
         setTimeout(() => {
-          onPaymentSuccess();
+          onPaymentSuccess(demoPaymentId);
         }, 2000);
       } else {
         setPaymentStatus('failed');
+        onPaymentFailed();
       }
-    }, 2000);
+    }, 1200);
   };
 
   const formatDate = (dateStr: string) => {

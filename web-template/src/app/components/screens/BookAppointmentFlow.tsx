@@ -111,6 +111,10 @@ export function BookAppointmentFlow({
         startTime: selectedSlot.startTime,
         endTime: selectedSlot.endTime,
         notes,
+        inPersonAddress:
+          selectedType === 'In Person'
+            ? therapistAvailability.inPersonAddress || ''
+            : '',
       });
     } else {
       setStep(step + 1);

@@ -40,6 +40,7 @@ import { onAuthChange, logout } from './services/auth';
 import { getUserDocument, updateUserDisplayName, updateTherapistProfile, updateTherapistAvailability, getTherapistAvailability, getUserDarkMode, updateUserDarkMode, getUserNotificationsEnabled, updateUserNotificationsEnabled, getUserBiometricAuthEnabled, updateUserBiometricAuthEnabled } from './services/users';
 import { completeUserOnboarding } from './services/onboarding';
 import { getAuth } from 'firebase/auth';
+import { createAppointment, updateAppointmentStatus } from './services/appointments';
 import { PrivacyPolicyPage } from './components/screens/PrivacyPolicy.js';
 import { TermsConditionsPage } from './components/screens/TermsAndConditions.js';
 import { AiInsightsScreen } from './components/screens/AiInsightsScreen.js';
@@ -90,6 +91,23 @@ export default function App() {
   const [showSavedContent, setShowSavedContent] = useState(false);
   const [showCompletedContent, setShowCompletedContent] = useState(false);
   const [showTherapistProfileEdit, setShowTherapistProfileEdit] = useState(false);
+
+  const getAppointmentPrice = (appointmentType?: string | null) => {
+    switch (appointmentType) {
+      case 'Chat': return 80;
+      case 'Voice Call': return 100;
+      case 'Video Call': return 120;
+      case 'In Person': return 140;
+      default: return 120;
+    }
+  };
+
+  const getAppointmentEndTime = (startTime: string, durationMinutes: number) => {
+    const [hours, minutes] = startTime.split(':').map(Number);
+    const date = new Date();
+    date.setHours(hours, minutes + durationMinutes, 0, 0);
+    return `${String(date.getHours()).padStart(2, '0')}:${String(date.getMinutes()).padStart(2, '0')}`;
+  };
 
 
   const sendNativeMessage = (data: any) => {
@@ -783,8 +801,22 @@ const handleQuestionnaireComplete = async (data: any) => {
           setShowBookingFlow(false);
           setShowCustomRequest(true);
         }}
-        onProceedToPayment={(data) => {
-          setBookingData(data);
+        onProceedToPayment={async (data) => {
+          const currentUser = getAuth().currentUser;
+
+          if (!currentUser) {
+            alert('Please sign in before booking an appointment.');
+            return;
+          }
+
+          const price = getAppointmentPrice(data.appointmentType);
+          // Appointment se ustvari šele po uspešnem plačilu — tukaj samo shranimo podatke
+          setBookingData({
+            ...data,
+            userId: currentUser.uid,
+            userName: userData.name || currentUser.displayName || 'MindMend User',
+            price,
+          });
           setShowBookingFlow(false);
           setShowPaymentCheckout(true);
         }}
@@ -804,10 +836,43 @@ const handleQuestionnaireComplete = async (data: any) => {
           setShowCustomRequest(false);
           setShowBookingFlow(true);
         }}
-        onSubmit={(data) => {
-          console.log('Custom request submitted:', data);
-          setShowCustomRequest(false);
-          setShowCustomRequestConfirmation(true);
+        onSubmit={async (data) => {
+          const currentUser = getAuth().currentUser;
+
+          if (!currentUser) {
+            alert('Please sign in before sending a request.');
+            return;
+          }
+
+          try {
+            const appointmentType = data.appointmentType || bookingData?.appointmentType || 'Video Call';
+            const date = data.proposedDate || bookingData?.date;
+            const startTime = data.proposedTime;
+            const endTime = getAppointmentEndTime(
+              startTime,
+              bookingTherapistAvailability?.appointmentDuration || 50
+            );
+
+            await createAppointment({
+              therapistId: data.therapistId,
+              therapistName: bookingTherapistName || 'Your Therapist',
+              userId: currentUser.uid,
+              userName: userData.name || currentUser.displayName || 'MindMend User',
+              appointmentType,
+              date,
+              startTime,
+              endTime,
+              status: 'REQUESTED',
+              notes: data.message || '',
+              price: getAppointmentPrice(appointmentType),
+            });
+
+            setShowCustomRequest(false);
+            setShowCustomRequestConfirmation(true);
+          } catch (error) {
+            console.error('Error submitting custom request:', error);
+            alert('Request could not be sent. Please try again.');
+          }
         }}
       />
     );
@@ -834,7 +899,33 @@ const handleQuestionnaireComplete = async (data: any) => {
           setBookingStep(3);
           setShowBookingFlow(true);
         }}
-        onPaymentSuccess={() => {
+        onPaymentSuccess={async (paymentId) => {
+          const currentUser = getAuth().currentUser;
+          try {
+            if (bookingData.id) {
+              // Obstoječi appointment (terapevt je sprejel request) — samo posodobimo status
+              await updateAppointmentStatus(bookingData.id, 'CONFIRMED', paymentId || 'simulated');
+            } else {
+              // Nov appointment (normal booking) — ustvarimo direktno kot CONFIRMED
+              await createAppointment({
+                therapistId: bookingData.therapistId,
+                therapistName: bookingData.therapistName,
+                userId: bookingData.userId || currentUser?.uid || '',
+                userName: bookingData.userName || userData.name || 'MindMend User',
+                appointmentType: bookingData.appointmentType,
+                date: bookingData.date,
+                startTime: bookingData.startTime,
+                endTime: bookingData.endTime,
+                status: 'CONFIRMED',
+                notes: bookingData.notes || '',
+                price: bookingData.price || 120,
+                paymentId: paymentId || 'simulated',
+              });
+            }
+          } catch (error) {
+            console.error('Error saving appointment:', error);
+          }
+
           setShowPaymentCheckout(false);
           setBookingData(null);
           setBookingStep(1);
@@ -842,7 +933,9 @@ const handleQuestionnaireComplete = async (data: any) => {
           setCurrentScreen('appointments');
           alert('Appointment confirmed! Check your appointments to view details.');
         }}
-        onPaymentFailed={() => {}}
+        onPaymentFailed={async () => {
+          // Payment failed — appointment ni bil ustvarjen, user lahko poskusi znova
+        }}
       />
     );
   }
@@ -909,6 +1002,7 @@ const handleQuestionnaireComplete = async (data: any) => {
             <UserAppointmentsScreen
               onCompletePayment={(appointment) => {
                 setBookingData({
+                  id: appointment.id,
                   therapistId: appointment.therapistId,
                   therapistName: appointment.therapistName,
                   appointmentType: appointment.appointmentType,
