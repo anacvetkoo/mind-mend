@@ -69,16 +69,32 @@ export function PaymentCheckout({
     setProcessing(true);
 
     /*
-      STRIPE TODO FOR TEAMMATE:
-      Replace this demo block with Stripe Checkout / PaymentIntent logic.
+      ════════════════════════════════════════════════════════
+      STRIPE TODO
+      ════════════════════════════════════════════════════════
 
-      Important:
-      - appointmentData.id is already the Firestore appointment id
-      - appointment status is PENDING_PAYMENT before Stripe starts
-      - after Stripe succeeds, call onPaymentSuccess(stripePaymentIntentId)
-      - after Stripe fails, call onPaymentFailed()
+      Replace the setTimeout block below with real Stripe logic.
+      Two scenarios exist depending on appointmentData.id:
 
-      Do not create the appointment here. It already exists before payment.
+      SCENARIO A — Normal booking (appointmentData.id is undefined/null):
+        - No appointment in Firestore yet.
+        - After Stripe payment succeeds → call onPaymentSuccess(stripePaymentIntentId)
+        - App.tsx will then createAppointment with status CONFIRMED.
+        - If Stripe fails → call onPaymentFailed(). Nothing to clean up.
+
+      SCENARIO B — Custom time request (appointmentData.id is a Firestore doc ID):
+        - Appointment already exists in Firestore with status PENDING_PAYMENT
+          (therapist accepted the request, now client needs to pay).
+        - After Stripe payment succeeds → call onPaymentSuccess(stripePaymentIntentId)
+        - App.tsx will then updateAppointmentStatus(id, 'CONFIRMED').
+        - If Stripe fails → call onPaymentFailed(). Appointment stays PENDING_PAYMENT, client can retry.
+
+      DO NOT create or update appointments inside this component.
+      All Firestore writes happen in App.tsx onPaymentSuccess handler.
+
+      Recommended Stripe approach: PaymentIntent on your backend,
+      confirmCardPayment() here, then call onPaymentSuccess(paymentIntent.id).
+      ════════════════════════════════════════════════════════
     */
     setTimeout(() => {
       const success = true;
