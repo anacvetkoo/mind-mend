@@ -11,7 +11,7 @@ interface BookAppointmentFlowProps {
   therapistName: string;
   therapistAvailability: TherapistAvailability;
   onClose: () => void;
-  onRequestCustomTime: () => void;
+  onRequestCustomTime: (data: { appointmentType: AppointmentType | null; date: string }) => void;
   onProceedToPayment: (appointmentData: any) => void;
 }
 
@@ -34,11 +34,8 @@ export function BookAppointmentFlow({
 
   useEffect(() => {
     const fetchData = async () => {
-      // Ločena fetcha — napaka pri appointments ne sme pokvariti blocked times
       try {
         const blocked = await getBlockedTimes(therapistId);
-        console.log('[BookAppointmentFlow] therapistId:', therapistId);
-        console.log('[BookAppointmentFlow] blockedTimes:', JSON.stringify(blocked));
         setBlockedTimes(blocked);
       } catch (error) {
         console.error('Error fetching blocked times:', error);
@@ -49,15 +46,11 @@ export function BookAppointmentFlow({
         setExistingAppointments(appointments.filter(a => a.status === 'CONFIRMED'));
       } catch (error) {
         console.error('Error fetching appointments (index missing?):', error);
-        // Appointments ne moremo naložiti — nadaljujemo brez njih
       }
     };
     fetchData();
   }, [therapistId]);
 
-  // ─── Helpers ─────────────────────────────────────────────────────────────────
-
-  // Naredi lokalni dateStr brez UTC shift
   const toLocalDateStr = (date: Date): string =>
     `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
 
@@ -66,18 +59,11 @@ export function BookAppointmentFlow({
     return blockedTimes.some(bt => bt.isFullDay && dateStr >= bt.startDate && dateStr <= bt.endDate);
   };
 
-  const isPartialDayBlocked = (date: Date): boolean => {
-    const dateStr = toLocalDateStr(date);
-    return blockedTimes.some(bt => !bt.isFullDay && dateStr >= bt.startDate && dateStr <= bt.endDate);
-  };
-
   const isWorkingDay = (date: Date): boolean => {
     const dayName = date.toLocaleDateString('en-US', { weekday: 'long' });
     const wh = therapistAvailability.workingHours.find(w => w.day === dayName);
     return !!wh?.enabled;
   };
-
-  // ─── Calendar ─────────────────────────────────────────────────────────────────
 
   const getDaysInMonth = (date: Date): (Date | null)[] => {
     const year = date.getFullYear();
@@ -94,13 +80,9 @@ export function BookAppointmentFlow({
   const nextMonth = () => setCurrentMonth(new Date(currentMonth.getFullYear(), currentMonth.getMonth() + 1));
   const prevMonth = () => setCurrentMonth(new Date(currentMonth.getFullYear(), currentMonth.getMonth() - 1));
 
-  // ─── Slots ────────────────────────────────────────────────────────────────────
-
   const availableSlots = selectedDate
     ? generateSlotsForDate(selectedDate, therapistAvailability, blockedTimes, existingAppointments)
     : [];
-
-  // ─── Session types ────────────────────────────────────────────────────────────
 
   const appointmentTypes: { type: AppointmentType; icon: typeof MessageCircle; label: string; description: string }[] = [
     { type: 'Chat', icon: MessageCircle, label: 'Text Chat', description: 'Secure messaging session' },
@@ -112,8 +94,6 @@ export function BookAppointmentFlow({
   const availableTypes = appointmentTypes.filter(at =>
     therapistAvailability.enabledTypes.includes(at.type)
   );
-
-  // ─── Navigation ───────────────────────────────────────────────────────────────
 
   const handleContinue = () => {
     if (step === 3 && selectedSlot) {
@@ -137,8 +117,6 @@ export function BookAppointmentFlow({
     if (step === 3) return selectedSlot !== null;
     return false;
   };
-
-  // ─── Render ───────────────────────────────────────────────────────────────────
 
   return (
     <div className="fixed inset-0 bg-background z-50 overflow-auto">
@@ -168,12 +146,11 @@ export function BookAppointmentFlow({
 
         <div className="px-6 pt-6">
 
-          {/* ─── Step 1: Session Type ────────────────────────────────────────── */}
+          {/* Step 1: Session Type */}
           {step === 1 && (
             <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }}>
               <h2 className="text-2xl mb-2 text-foreground">Session Type</h2>
               <p className="text-sm text-muted-foreground mb-6">Choose how you'd like to meet</p>
-
               <div className="space-y-3 mb-6">
                 {availableTypes.map(({ type, icon: Icon, label, description }) => (
                   <button
@@ -205,39 +182,30 @@ export function BookAppointmentFlow({
             </motion.div>
           )}
 
-          {/* ─── Step 2: Select Date ─────────────────────────────────────────── */}
+          {/* Step 2: Select Date */}
           {step === 2 && (
             <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }}>
               <h2 className="text-2xl mb-2 text-foreground">Select Date</h2>
               <p className="text-sm text-muted-foreground mb-6">Choose a date for your appointment</p>
 
-              {/* Month Navigation */}
               <div className="flex items-center justify-between mb-4">
-                <button
-                  onClick={prevMonth}
-                  className="w-10 h-10 rounded-full bg-card border-2 border-[var(--border)] flex items-center justify-center"
-                >
+                <button onClick={prevMonth} className="w-10 h-10 rounded-full bg-card border-2 border-[var(--border)] flex items-center justify-center">
                   <ChevronLeft className="w-5 h-5 text-foreground" />
                 </button>
                 <h3 className="text-lg text-foreground">
                   {currentMonth.toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}
                 </h3>
-                <button
-                  onClick={nextMonth}
-                  className="w-10 h-10 rounded-full bg-card border-2 border-[var(--border)] flex items-center justify-center"
-                >
+                <button onClick={nextMonth} className="w-10 h-10 rounded-full bg-card border-2 border-[var(--border)] flex items-center justify-center">
                   <ChevronRight className="w-5 h-5 text-foreground" />
                 </button>
               </div>
 
-              {/* Calendar Grid */}
               <div className="grid grid-cols-7 gap-1.5 mb-4">
                 {['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa'].map(day => (
                   <div key={day} className="text-center text-xs text-muted-foreground py-2">{day}</div>
                 ))}
                 {days.map((day, idx) => {
                   if (!day) return <div key={`empty-${idx}`} />;
-
                   const today = new Date();
                   today.setHours(0, 0, 0, 0);
                   const isPast = day < today;
@@ -271,7 +239,6 @@ export function BookAppointmentFlow({
                 })}
               </div>
 
-              {/* Legenda */}
               <div className="flex gap-4 mb-6 flex-wrap">
                 <div className="flex items-center gap-1.5">
                   <div className="w-3 h-3 rounded-full bg-gradient-to-r from-[var(--lavender)] to-[var(--soft-purple)]" />
@@ -289,7 +256,7 @@ export function BookAppointmentFlow({
             </motion.div>
           )}
 
-          {/* ─── Step 3: Select Time ─────────────────────────────────────────── */}
+          {/* Step 3: Select Time */}
           {step === 3 && (
             <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }}>
               <h2 className="text-2xl mb-2 text-foreground">Select Time</h2>
@@ -305,7 +272,7 @@ export function BookAppointmentFlow({
                   <p className="text-muted-foreground mb-2">No available time slots</p>
                   <p className="text-sm text-muted-foreground mb-6">All slots may be booked or the therapist is unavailable</p>
                   <button
-                    onClick={onRequestCustomTime}
+                    onClick={() => onRequestCustomTime({ appointmentType: selectedType, date: selectedDate })}
                     className="px-6 py-3 rounded-xl bg-gradient-to-r from-[var(--lavender)] to-[var(--soft-purple)] text-white"
                   >
                     Request Different Time
@@ -333,7 +300,7 @@ export function BookAppointmentFlow({
                   </div>
 
                   <button
-                    onClick={onRequestCustomTime}
+                    onClick={() => onRequestCustomTime({ appointmentType: selectedType, date: selectedDate })}
                     className="w-full py-3 rounded-xl bg-card border-2 border-[var(--border)] text-foreground mb-6 text-sm"
                   >
                     Request Different Time
@@ -346,7 +313,7 @@ export function BookAppointmentFlow({
                       onChange={(e) => setNotes(e.target.value)}
                       placeholder="Any specific topics or concerns you'd like to discuss..."
                       rows={3}
-                      className="w-full px-4 py-3 rounded-xl bg-[var(--input-background)] border-2 border-[var(--border)] text-foreground placeholder:text-muted-foreground resize-none focus:border-[var(--lavender)] focus:outline-none"
+                      className="w-full px-4 py-3 rounded-xl bg-[var(--muted)] border-2 border-transparent focus:border-[var(--lavender)] text-foreground placeholder:text-muted-foreground resize-none outline-none transition-all"
                     />
                   </div>
                 </>
@@ -354,7 +321,6 @@ export function BookAppointmentFlow({
             </motion.div>
           )}
 
-          {/* Continue Button */}
           {(step < 3 || (step === 3 && availableSlots.length > 0)) && (
             <motion.button
               whileTap={{ scale: 0.98 }}

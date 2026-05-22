@@ -753,7 +753,13 @@ const handleQuestionnaireComplete = async (data: any) => {
         therapistName={bookingTherapistName || 'Your Therapist'}
         therapistAvailability={bookingTherapistAvailability}
         onClose={() => setShowBookingFlow(false)}
-        onRequestCustomTime={() => {
+        onRequestCustomTime={(data) => {
+          setBookingData({
+            therapistId: bookingTherapistAvailability?.therapistId ?? '',
+            therapistName: bookingTherapistName,
+            appointmentType: data.appointmentType,
+            date: data.date,
+          });
           setShowBookingFlow(false);
           setShowCustomRequest(true);
         }}
@@ -771,6 +777,8 @@ const handleQuestionnaireComplete = async (data: any) => {
       <CustomAppointmentRequest
         therapistId={bookingTherapistAvailability?.therapistId ?? ''}
         therapistName={bookingTherapistName || 'Your Therapist'}
+        selectedType={bookingData?.appointmentType}
+        selectedDate={bookingData?.date}
         onClose={() => setShowCustomRequest(false)}
         onSubmit={(data) => {
           console.log('Custom request submitted:', data);
@@ -874,7 +882,7 @@ const handleQuestionnaireComplete = async (data: any) => {
               onBack={() => setCurrentScreen('home')}
               onCheckIn={() => {
                 setCurrentScreen('home');
-                setShowDailyCheckIn(true); // Odpre check-in okno
+                setShowDailyCheckIn(true);
               }}
             />
           )}
@@ -945,8 +953,6 @@ const handleQuestionnaireComplete = async (data: any) => {
           )}
         </>
       )}
-
-     
 
       <BottomNav activeTab={currentScreen} onTabChange={handleTabChange} role={userRole} />
 
