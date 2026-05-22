@@ -22,10 +22,15 @@ export function TherapistSignUpForm({ onSignUpSuccess, onBack }: TherapistSignUp
   const [error, setError] = useState('');
 
   const passwordsMatch = password === confirmPassword || confirmPassword === '';
+  const [showPasswordError, setShowPasswordError] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (password !== confirmPassword) return;
+    if (password !== confirmPassword) {
+      setShowPasswordError(true);
+      return;
+    }
+    setShowPasswordError(false);
 
     setError('');
     setIsLoading(true);
@@ -143,7 +148,7 @@ export function TherapistSignUpForm({ onSignUpSuccess, onBack }: TherapistSignUp
                 value={confirmPassword}
                 onChange={(e) => setConfirmPassword(e.target.value)}
                 required
-                className={`w-full h-12 pl-12 pr-12 rounded-2xl bg-card border-2 ${!passwordsMatch && confirmPassword ? 'border-red-400' : 'border-transparent'} focus:border-[var(--lavender)] focus:outline-none shadow-md transition-all`}
+                className={`w-full h-12 pl-12 pr-12 rounded-2xl bg-card border-2 ${showPasswordError ? 'border-red-400' : 'border-transparent'} focus:border-[var(--lavender)] focus:outline-none shadow-md transition-all`}
               />
               <button
                 type="button"
@@ -154,7 +159,7 @@ export function TherapistSignUpForm({ onSignUpSuccess, onBack }: TherapistSignUp
               </button>
             </div>
 
-            {!passwordsMatch && confirmPassword && (
+            {showPasswordError && (
               <p className="text-xs text-red-500 -mt-2">Passwords do not match</p>
             )}
 
@@ -184,7 +189,7 @@ export function TherapistSignUpForm({ onSignUpSuccess, onBack }: TherapistSignUp
 
             <Button
               type="submit"
-              disabled={!passwordsMatch || !password || !confirmPassword || !firstName || !lastName || !agreedToTerms || isLoading}
+              disabled={!password || !confirmPassword || !firstName || !lastName || !agreedToTerms || isLoading}
               className="w-full h-14 bg-gradient-to-r from-[var(--soft-mint)] to-[var(--muted-blue)] text-white disabled:opacity-50"
             >
               {isLoading ? 'Creating account…' : 'Create Therapist Account'}
