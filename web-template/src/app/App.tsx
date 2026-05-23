@@ -44,6 +44,8 @@ import { createAppointment, updateAppointmentStatus } from './services/appointme
 import { PrivacyPolicyPage } from './components/screens/PrivacyPolicy.js';
 import { TermsConditionsPage } from './components/screens/TermsAndConditions.js';
 import { AiInsightsScreen } from './components/screens/AiInsightsScreen.js';
+import { ClientFilesScreen } from './components/screens/ClientFilesScreen';
+import { ClientFileDetails } from './components/screens/ClientFileDetails';
 
 type AppState = 'splash' | 'welcome' | 'auth' | 'questionnaire' | 'therapist-profile-setup' | 'app';
 type ContentReturnScreen = 'likedContent' | 'savedContent' | 'completedContent' | null;
@@ -91,6 +93,7 @@ export default function App() {
   const [showSavedContent, setShowSavedContent] = useState(false);
   const [showCompletedContent, setShowCompletedContent] = useState(false);
   const [showTherapistProfileEdit, setShowTherapistProfileEdit] = useState(false);
+  const [selectedClientUserId, setSelectedClientUserId] = useState<string | null>(null);
 
   const getAppointmentPrice = (appointmentType?: string | null) => {
     switch (appointmentType) {
@@ -239,7 +242,8 @@ export default function App() {
   showCustomRequestConfirmation,
   showLikedContent,
   showSavedContent,
-  showCompletedContent
+  showCompletedContent,
+  selectedClientUserId
 ]);
 
   const toggleDarkMode = async () => {
@@ -446,6 +450,7 @@ const handleQuestionnaireComplete = async (data: any) => {
     setBookingTherapistName('');
     setBookingTherapistId(null);
     setBookingStep(1);
+    setSelectedClientUserId(null);
   };
 
   const handleTutorialComplete = () => {
@@ -670,6 +675,16 @@ const handleQuestionnaireComplete = async (data: any) => {
     />
   );
 }
+
+  if (selectedClientUserId) {
+    return (
+      <ClientFileDetails
+        therapistId={getAuth().currentUser?.uid || ''}
+        userId={selectedClientUserId}
+        onBack={() => setSelectedClientUserId(null)}
+      />
+    );
+  }
 
   if (showTherapistProfileEdit) {
     return (
@@ -1064,13 +1079,10 @@ const handleQuestionnaireComplete = async (data: any) => {
           {currentScreen === 'mycontent' && <TherapistMyContent />}
           {currentScreen === 'availability' && <TherapistAvailabilityScreen />}
           {currentScreen === 'appointments' && <TherapistAppointmentsScreen />}
-          {currentScreen === 'messages' && (
-            <ChatScreen
-              userRole="therapist"
-              onOpenChat={(target) => {
-                setChatTarget(target);
-                setShowChatConversation(true);
-              }}
+          {currentScreen === 'clients' && (
+            <ClientFilesScreen
+              therapistId={getAuth().currentUser?.uid || ''}
+              onOpenClientFile={(userId) => setSelectedClientUserId(userId)}
             />
           )}
           {currentScreen === 'notifications' && <NotificationsScreen onClose={() => setCurrentScreen('dashboard')} />}

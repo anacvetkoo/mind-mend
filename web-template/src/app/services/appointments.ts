@@ -11,6 +11,7 @@ import {
 } from 'firebase/firestore';
 import { db } from './firebaseConfig';
 import type { Appointment, AppointmentStatus } from '../types/appointments';
+import { upsertClientFileForAppointment } from './clientFiles';
 
 // ─── Create ───────────────────────────────────────────────────────────────────
 
@@ -23,6 +24,15 @@ export const createAppointment = async (
     createdAt: serverTimestamp(),
     updatedAt: serverTimestamp(),
   });
+
+  await upsertClientFileForAppointment({
+    therapistId: data.therapistId,
+    userId: data.userId,
+    userName: data.userName,
+    appointmentType: data.appointmentType,
+    appointmentDate: data.date,
+  });
+
   return docRef.id;
 };
 

@@ -1,5 +1,5 @@
 import React from 'react';
-import { Home, Book, MessageCircle, User, Heart, Compass, FileText, Plus, Users, Briefcase, Settings, Video } from 'lucide-react';
+import { Home, Book, User, Heart, Compass, FileText, Plus, Users, Briefcase, Settings, Video } from 'lucide-react';
 import { motion } from 'motion/react';
 import otterImage from '../../../imports/vidra.png';
 import type { UserRole } from '../screens/AuthScreen';
@@ -25,7 +25,7 @@ export function BottomNav({ activeTab, onTabChange, role }: BottomNavProps) {
     { id: 'dashboard', label: 'Home', icon: Home },
     { id: 'mycontent', label: 'My Content', icon: Video },
     { id: 'addcontent', label: '', icon: Plus, special: true },
-    { id: 'messages', label: 'Messages', icon: MessageCircle },
+    { id: 'clients', label: 'Clients', icon: FileText },
     { id: 'profile', label: 'Profile', icon: User }
   ];
 
@@ -76,7 +76,7 @@ export function BottomNav({ activeTab, onTabChange, role }: BottomNavProps) {
               data-tutorial={
                 tab.id === 'home' || tab.id === 'dashboard' ? (role === 'therapist' ? 'dashboard-tab' : 'home-tab') :
                 tab.id === 'explore' ? 'explore-tab' :
-                tab.id === 'messages' ? 'messages-tab' :
+                tab.id === 'clients' ? 'clients-tab' :
                 tab.id === 'profile' ? 'profile-tab' :
                 undefined
               }
