@@ -35,7 +35,19 @@ export function generateSlotsForDate(
   let currentTime = startHour * 60 + startMin;
   const endTime = endHour * 60 + endMin;
 
+  // Če je datum danes, ugotovimo trenutni čas in preskočimo pretekle slote
+  const now = new Date();
+  const todayStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+  const isToday = date === todayStr;
+  // Dodamo 30 min buffer da user nima nerealno malo časa za pripravo
+  const nowMinutes = isToday ? now.getHours() * 60 + now.getMinutes() + 30 : 0;
+
   while (currentTime + appointmentDuration <= endTime) {
+    // Preskoči slote ki so že v preteklosti (za današnji dan)
+    if (isToday && currentTime < nowMinutes) {
+      currentTime += appointmentDuration + breakDuration;
+      continue;
+    }
     const slotEnd = currentTime + appointmentDuration;
 
     const startStr = `${String(Math.floor(currentTime / 60)).padStart(2, '0')}:${String(currentTime % 60).padStart(2, '0')}`;
