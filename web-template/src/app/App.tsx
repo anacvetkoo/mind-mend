@@ -969,8 +969,6 @@ export default function App() {
               onFindTherapist={() => setCurrentScreen('therapists')}
               onViewAppointments={() => setCurrentScreen('appointments')}
               onViewNotifications={() => setCurrentScreen('notifications')}
-              onViewPrivacy={() => setCurrentScreen('privacy-policy')}
-              onViewTerms={() => setCurrentScreen('terms-conditions')}
             />
           )}
           {currentScreen === 'journal' && (
@@ -1045,10 +1043,10 @@ export default function App() {
             />
           )}
           {currentScreen === 'privacy-policy' && (
-            <PrivacyPolicyPage onBack={() => setCurrentScreen('home')} />
+            <PrivacyPolicyPage onBack={() => setCurrentScreen('profile')} />
           )}
           {currentScreen === 'terms-conditions' && (
-            <TermsConditionsPage onBack={() => setCurrentScreen('home')} />
+            <TermsConditionsPage onBack={() => setCurrentScreen('profile')} />
           )}
           {currentScreen === 'profile' && (
             <ProfileScreen
@@ -1065,6 +1063,8 @@ export default function App() {
               onNavigateToSavedContent={() => setShowSavedContent(true)}
               onUpdateName={handleUpdateName}
               onNavigateToCompletedContent={() => setShowCompletedContent(true)}
+              onViewPrivacy={() => setCurrentScreen('privacy-policy')}
+              onViewTerms={() => setCurrentScreen('terms-conditions')}
             />
           )}
         </>
