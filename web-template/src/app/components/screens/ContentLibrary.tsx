@@ -29,11 +29,13 @@ import {
   type ContentProgressItem,
   removeContentProgress
 } from '../../services/contentInteractions';
+import { db } from '../../services/firebaseConfig';
 
 type ContentType = 'all' | 'relaxation' | 'breathing' | 'sound';
 type SortOption = 'newest' | 'likes' | 'views';
 
 interface ContentLibraryProps {
+  userId?: string;
   onSelectContent?: (content: LibraryContentItem) => void;
   onViewTherapist?: (therapistId: string) => void;
 }
@@ -117,6 +119,7 @@ const getMediaUrl = (content: LibraryContentItem) => {
 };
 
 export function ContentLibrary({
+  userId,
   onSelectContent,
   onViewTherapist
 }: ContentLibraryProps = {}) {
@@ -208,6 +211,50 @@ useEffect(() => {
     isMounted = false;
   };
 }, []);
+
+// 🔥 NOVO: Stanji za shranjevanje AI priporočil na Explore strani
+const [aiRecommendations, setAiRecommendations] = useState<any[]>([]);
+const [isAiLoading, setIsAiLoading] = useState(true);
+
+useEffect(() => {
+  const fetchExploreRecommendations = async () => {
+    if (!userId) {
+      setIsAiLoading(false);
+      return;
+    }
+    
+    try {
+      const { doc, getDoc } = await import('firebase/firestore');
+      const userDocRef = doc(db, "users", userId);
+      const userDocSnap = await getDoc(userDocRef);
+
+      if (userDocSnap.exists()) {
+        const userData = userDocSnap.data();
+        
+        if (userData.latestAIRecommendations && userData.latestAIRecommendations.length > 0) {
+          console.log("Explore stran uspešno prebrala priporočila iz baze!");
+          const formatted = userData.latestAIRecommendations.map((item: any, idx: number) => ({
+            id: item.id || `explore-rec-${idx}`,
+            ...item
+          }));
+          setAiRecommendations(formatted);
+        } else {
+          setAiRecommendations([
+            { id: "default-1", category: 'breathing', difficulty: 'easy', duration: '5 min', title: 'Box Breathing Technique', description: 'Calm your nervous system instantly.' },
+            { id: "default-2", category: 'relaxation', difficulty: 'medium', duration: '10 min', title: 'Progressive Muscle Relaxation', description: 'Release physical tension from head to toe.' },
+            { id: "default-3", category: 'sound therapy', difficulty: 'easy', duration: '15 min', title: 'Tibetan Singing Bowls', description: 'Deep alpha waves for mental clarity.' }
+          ]);
+        }
+      }
+    } catch (err) {
+      console.error("Napaka pri branju priporočil na Explore strani:", err);
+    } finally {
+      setIsAiLoading(false);
+    }
+  };
+
+  fetchExploreRecommendations();
+}, [userId, contentItems]);
 
   const scrollToResults = () => {
   setTimeout(() => {
@@ -663,17 +710,86 @@ const renderContinueContentCard = ({
   </div>
 )}
 
-        <div className="mb-6">
+       {/* AI Recommendations - For You */}
+       <div className="mb-6">
           <div className="flex items-center gap-2 mb-3">
             <Sparkles className="w-5 h-5 text-[var(--lavender)]" />
             <h2 className="text-xl text-foreground">For you</h2>
           </div>
+          {isAiLoading ? (
+            <div className="rounded-3xl bg-gradient-to-br from-[var(--lavender)]/15 to-[var(--soft-purple)]/15 border border-[var(--lavender)]/20 p-5 animate-pulse text-center text-sm text-muted-foreground">
+              ✨ Gemini is gathering your personalized content...
+            </div>
+          ) :
+          aiRecommendations.length > 0 ? (
+            <div className="space-y-3">
+              {aiRecommendations.map((item, idx) => {
+                let IconComponent = Brain;
+                let gradientClass = "from-[var(--muted-blue)] to-[var(--soft-mint)]";
 
-          <div className="rounded-3xl bg-gradient-to-br from-[var(--lavender)]/15 to-[var(--soft-purple)]/15 border border-[var(--lavender)]/20 p-5">
-            <p className="text-sm text-muted-foreground">
-              AI recommendations will appear here after we connect your check-ins with personalized content suggestions.
-            </p>
-          </div>
+                if (item.category === 'breathing') {
+                  IconComponent = Heart;
+                  gradientClass = "from-[var(--soft-purple)] to-[var(--soft-pink)]";
+                } else if (item.category === 'sound therapy' || item.category === 'relaxation') {
+                  IconComponent = getCategoryIcon(item.category as any) || Volume2;
+                  gradientClass = "from-[var(--lavender)] to-[var(--soft-purple)]";
+                }
+
+                const difficultyColor = 
+                  item.difficulty === 'easy' ? 'bg-green-500/10 text-green-500 border-none' :
+                  item.difficulty === 'medium' ? 'bg-amber-500/10 text-amber-500 border-none' : 
+                  'bg-rose-500/10 text-rose-500 border-none';
+
+                return (
+                  <motion.div
+                    key={item.id || idx}
+                    whileTap={{ scale: 0.98 }}
+                    className="bg-card rounded-2xl p-4 shadow-md hover:shadow-xl transition-all cursor-pointer relative"
+                    onClick={() => {
+                      // Poiščemo pravo vsebino v knjižnici po naslovu (odstranimo presledke in ignoriramo velike/male črke)
+                      const pravaVsebina = contentItems.find(
+                        (c) => c.title.toLowerCase().trim() === item.title.toLowerCase().trim()
+                      );
+
+                      if (pravaVsebina) {
+                        handleOpenContent(pravaVsebina);
+                      } else {
+                        if (contentItems.length > 0) {
+                          console.log("Ujemanja ni v knjižnici, odpiram prvo razpoložljivo vsebino kot zasilni izhod.");
+                          handleOpenContent(contentItems[0]);
+                        }
+                      }
+                    }}
+                  >
+                    <div className="flex gap-4">
+                      <div className={`w-16 h-16 rounded-2xl bg-gradient-to-br ${gradientClass} flex items-center justify-center flex-shrink-0`}>
+                        <IconComponent className="w-7 h-7 text-white/90" />
+                      </div>
+                      
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <span className="inline-block px-2 py-0.5 rounded-full bg-[var(--soft-purple)]/20 text-[var(--lavender)] text-xs">
+                            {item.duration || '5 min'}
+                          </span>
+                          <span className={`text-[10px] uppercase font-bold tracking-wider px-2 py-0.5 rounded-full ${difficultyColor}`}>
+                            {item.difficulty}
+                          </span>
+                        </div>
+                        <h4 className="mt-1 text-foreground font-medium truncate">{item.title}</h4>
+                        <p className="text-xs text-muted-foreground line-clamp-1">{item.description}</p>
+                      </div>
+                    </div>
+                  </motion.div>
+                );
+              })}
+            </div>
+          ) : (
+            <div className="rounded-3xl bg-gradient-to-br from-[var(--lavender)]/15 to-[var(--soft-purple)]/15 border border-[var(--lavender)]/20 p-5">
+              <p className="text-sm text-muted-foreground">
+                AI recommendations will appear here after we connect your check-ins with personalized content suggestions.
+              </p>
+            </div>
+          )}
         </div>
 
         <div className="mb-6">

@@ -1,5 +1,6 @@
 import { getAI, getGenerativeModel, GoogleAIBackend } from "firebase/ai";
-import { app } from './firebaseConfig';
+import { app, db } from './firebaseConfig';
+import { doc, updateDoc } from "firebase/firestore";
 
 const aiService = getAI(app, { backend: new GoogleAIBackend() });
 
@@ -135,5 +136,80 @@ export async function generateAITherapistReply(chatHistory: { sender: string; te
   } catch (error) {
     console.error("Napaka znotraj Firebase AI servisa (Chat):", error);
     return "I hear you, and I'm so sorry you're dealing with this. Can you expand a little bit more on how that makes you feel?";
+  }
+}
+
+//generiranje recomended contenta
+export async function generateAIRecommendations(checkIns: any[], userId: string, availableContent: any[]): Promise<{ id?: string; category: 'relaxation' | 'breathing' | 'sound therapy'; difficulty: 'easy' | 'medium' | 'hard'; duration: string; title: string; description: string }[]> {
+  const fallbackRecommendations = [
+    { id: "rec-1", category: 'breathing' as const, difficulty: 'easy' as const, duration: '5 min', title: 'Box Breathing Technique', description: 'Calm your nervous system instantly.' },
+    { id: "rec-2", category: 'relaxation' as const, difficulty: 'medium' as const, duration: '10 min', title: 'Progressive Muscle Relaxation', description: 'Release physical tension from head to toe.' },
+    { id: "rec-3", category: 'sound therapy' as const, difficulty: 'easy' as const, duration: '15 min', title: 'Tibetan Singing Bowls', description: 'Deep alpha waves for mental clarity.' }
+  ];
+
+  const recentData = (checkIns || []).slice(0, 5).map(c => ({
+    mood: c.emotionalState || 'neutral',
+    emotions: Array.isArray(c.dominantEmotion) ? c.dominantEmotion.join(', ') : c.dominantEmotion || 'none',
+    stress: c.stressLevel ?? 'unknown',
+    sleepQuality: c.sleepQuality || 'not specified',
+    difficulties: c.difficulties || 'none reported'
+  }));
+
+  const cleanDbContent = (availableContent || []).map(item => ({
+    id: item.id || item.docId,
+    title: item.title,
+    category: item.category,
+    difficulty: item.difficulty,
+    duration: item.duration || 'Not specified',
+    description: item.description
+  }));
+
+  const prompt = `
+    You are an AI mental health content recommender for the MindMend app.
+    
+    TASK:
+    Analyze the user's recent emotional state and select EXACTLY 3 matching exercises from our official library provided below. Do not invent new exercises. Choose only from the provided list.
+
+    USER'S RECENT EMOTIONAL STATE:
+    ${JSON.stringify(recentData, null, 2)}
+
+    OFFICIAL LIBRARY CONTENT AVAILABLE IN OUR DATABASE:
+    ${JSON.stringify(cleanDbContent, null, 2)}
+
+    CRITICAL RULES:
+    1. Select exactly 3 objects that would best help the user based on their mood, stress, and difficulties.
+    2. Keep the original 'id', 'category', 'difficulty', 'duration', 'title', and 'description' exactly as they appear in the library list.
+    3. Strictly return ONLY a valid JSON array containing exactly 3 objects. Do not write markdown wrappers like \`\`\`json, no chat, no intro, no explanation.
+
+    Example output format:
+    [
+      { "id": "obstoječi-id-1", "category": "breathing", "difficulty": "easy", "duration": "5 min", "title": "Realen Naslov Iz Baze", "description": "Realen opis iz baze." },
+      ...
+    ]
+  `;
+
+  try {
+    const result = await model.generateContent(prompt);
+    const response = result.response;
+    const text = response.text().trim();
+
+    let cleanJson = text;
+    if (cleanJson.includes("```")) {
+      cleanJson = cleanJson.replace(/```json/g, '').replace(/```/g, '').trim();
+    }
+
+    const parsedRecommendations = JSON.parse(cleanJson);
+
+    if (userId) {
+      const userDocRef = doc(db, "users", userId);
+      await updateDoc(userDocRef, {
+        latestAIRecommendations: parsedRecommendations
+      });
+      console.log("Uporabnikova personalizirana priporočila iz baze so shranjena!");
+    }
+    return parsedRecommendations;
+  } catch (error) {
+    console.error("Napaka znotraj Firebase AI servisa (Recommendations):", error);
+    return fallbackRecommendations;
   }
 }
