@@ -72,20 +72,40 @@ export function TherapistList({ onSelectTherapist, onBookTherapist }: TherapistL
       });
   }, []);
 
-  const filteredTherapists = therapists.filter((therapist) => {
-    const matchesSearch =
-      searchQuery === '' ||
-      therapist.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      therapist.specialization.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      therapist.tags.some(t => t.toLowerCase().includes(searchQuery.toLowerCase()));
+  const filteredTherapists = React.useMemo(() => {
+    const q = searchQuery.toLowerCase();
 
-    const matchesFilter =
+    const normalize = (s: string) => s.toLowerCase().replace(/[-\s]/g, '');
+    const normalizedFilter = normalize(selectedFilter);
+
+    const matchesFilter = (therapist: TherapistProfileData) =>
       selectedFilter === 'all' ||
-      therapist.specialization.toLowerCase().includes(selectedFilter) ||
-      therapist.tags.some(t => t.toLowerCase().includes(selectedFilter));
+      normalize(therapist.specialization).includes(normalizedFilter) ||
+      therapist.tags.some(t => normalize(t).includes(normalizedFilter));
 
-    return matchesSearch && matchesFilter;
-  });
+    if (q === '') {
+      return therapists.filter(matchesFilter);
+    }
+
+    // Vsak terapevt dobi prioriteto — nižja = bolj relevanten
+    const scored = therapists
+      .filter(matchesFilter)
+      .map(therapist => {
+        let score = 99;
+        if (therapist.name.toLowerCase().includes(q)) score = 0;
+        else if (therapist.title.toLowerCase().includes(q)) score = 1;
+        else if (therapist.specialization.toLowerCase().includes(q)) score = 2;
+        else if (therapist.tags.some(t => t.toLowerCase().includes(q))) score = 3;
+        else if (therapist.bio.toLowerCase().includes(q)) score = 4;
+        else return null; // ne ustreza iskanju
+        return { therapist, score };
+      })
+      .filter(Boolean) as { therapist: TherapistProfileData; score: number }[];
+
+    return scored
+      .sort((a, b) => a.score - b.score)
+      .map(s => s.therapist);
+  }, [therapists, searchQuery, selectedFilter]);
 
   return (
     <div className="min-h-screen bg-background pb-24">
