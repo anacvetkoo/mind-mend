@@ -5,6 +5,7 @@ import { Users, FileText, Star, Calendar, Clock, MessageCircle, Phone, Video, Ma
 import type { Appointment, AppointmentStatus } from '../../types/appointments';
 import { getAuth } from 'firebase/auth';
 import { cancelAppointment, getAppointmentsForTherapist, updateAppointmentStatus } from '../../services/appointments';
+import { getTherapistDashboardStats, type TherapistDashboardStats } from '../../services/therapistDashboard';
 
 interface TherapistDashboardProps {
   therapistName?: string;
@@ -15,6 +16,12 @@ export function TherapistDashboard({ therapistName = 'Dr. Sarah', onViewNotifica
   const [selectedTab, setSelectedTab] = useState<'upcoming' | 'requests' | 'past'>('upcoming');
   const [appointments, setAppointments] = useState<Appointment[]>([]);
   const [isLoadingAppointments, setIsLoadingAppointments] = useState(true);
+  const [dashboardStats, setDashboardStats] = useState<TherapistDashboardStats>({
+  totalSessions: 0,
+  activeClients: 0,
+  contentPublished: 0,
+  rating: null,
+});
 
   const loadAppointments = async () => {
     const currentUser = getAuth().currentUser;
@@ -22,7 +29,10 @@ export function TherapistDashboard({ therapistName = 'Dr. Sarah', onViewNotifica
     try {
       setIsLoadingAppointments(true);
       const data = await getAppointmentsForTherapist(currentUser.uid);
-      setAppointments(data);
+const stats = await getTherapistDashboardStats(currentUser.uid, data);
+
+setAppointments(data);
+setDashboardStats(stats);
     } catch (error) {
       console.error('Error loading appointments:', error);
       setAppointments([]);
@@ -42,7 +52,9 @@ export function TherapistDashboard({ therapistName = 'Dr. Sarah', onViewNotifica
   // PENDING_PAYMENT NE sodi sem — terapevt je že sprejel, čaka na plačilo
   const appointmentRequests = appointments.filter(apt => apt.status === 'REQUESTED' && !isPast(apt));
 
-  const pastAppointments = appointments.filter(apt => apt.status === 'COMPLETED');
+  const pastAppointments = appointments.filter(
+  (apt) => apt.status === 'CONFIRMED' && isPast(apt)
+);
 
   const handleAcceptRequest = async (id: string) => {
     await updateAppointmentStatus(id, 'PENDING_PAYMENT');
@@ -96,11 +108,31 @@ export function TherapistDashboard({ therapistName = 'Dr. Sarah', onViewNotifica
     new Date(dateStr).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
 
   const stats = [
-    { label: 'Total Sessions', value: '1,250', icon: Calendar, color: 'var(--lavender)' },
-    { label: 'Active Clients', value: '48', icon: Users, color: 'var(--soft-mint)' },
-    { label: 'Content Published', value: '24', icon: FileText, color: 'var(--muted-blue)' },
-    { label: 'Rating', value: '4.9', icon: Star, color: 'var(--soft-pink)' },
-  ];
+  {
+    label: 'Total Sessions',
+    value: dashboardStats.totalSessions.toString(),
+    icon: Calendar,
+    color: 'var(--lavender)',
+  },
+  {
+    label: 'Active Clients',
+    value: dashboardStats.activeClients.toString(),
+    icon: Users,
+    color: 'var(--soft-mint)',
+  },
+  {
+    label: 'Content Published',
+    value: dashboardStats.contentPublished.toString(),
+    icon: FileText,
+    color: 'var(--muted-blue)',
+  },
+  {
+    label: 'Rating',
+    value: dashboardStats.rating !== null ? dashboardStats.rating.toFixed(1) : '—',
+    icon: Star,
+    color: 'var(--soft-pink)',
+  },
+];
 
   return (
     <div className="min-h-screen bg-background pb-24">
