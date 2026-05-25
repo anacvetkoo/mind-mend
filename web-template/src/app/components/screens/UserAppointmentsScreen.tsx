@@ -175,13 +175,21 @@ export function UserAppointmentsScreen({ onCompletePayment }: UserAppointmentsSc
         )}
 
         {mode === 'upcoming' && (
-          <motion.button
-            whileTap={{ scale: 0.95 }}
-            onClick={() => handleCancelAppointment(apt.id)}
-            className="w-full px-4 py-2 rounded-xl border-2 border-red-200 bg-red-50 text-red-600 dark:border-red-900/50 dark:bg-red-900/20 dark:text-red-400 text-sm mt-2"
-          >
-            Cancel Appointment
-          </motion.button>
+          <div className="flex gap-2">
+            <motion.button
+              whileTap={{ scale: 0.95 }}
+              className="flex-1 px-4 py-2.5 rounded-2xl bg-gradient-to-r from-[var(--lavender)] to-[var(--soft-purple)] text-white text-sm font-medium shadow-sm"
+            >
+              Join Session
+            </motion.button>
+            <motion.button
+              whileTap={{ scale: 0.95 }}
+              onClick={() => handleCancelAppointment(apt.id)}
+              className="px-4 py-2.5 rounded-2xl border-2 border-[var(--lavender)] text-[var(--lavender)] bg-card text-sm font-medium"
+            >
+              Cancel
+            </motion.button>
+          </div>
         )}
       </motion.div>
     );
