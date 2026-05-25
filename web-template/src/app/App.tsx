@@ -46,6 +46,7 @@ import { TermsConditionsPage } from './components/screens/TermsAndConditions.js'
 import { AiInsightsScreen } from './components/screens/AiInsightsScreen.js';
 import { ClientFilesScreen } from './components/screens/ClientFilesScreen';
 import { ClientFileDetails } from './components/screens/ClientFileDetails';
+import { auth } from './services/firebaseConfig';
 
 type AppState = 'splash' | 'welcome' | 'auth' | 'questionnaire' | 'therapist-profile-setup' | 'app';
 type ContentReturnScreen = 'likedContent' | 'savedContent' | 'completedContent' | null;
@@ -227,24 +228,24 @@ export default function App() {
   useEffect(() => {
     window.scrollTo({ top: 0, behavior: 'instant' });
   }, [
-  currentScreen,
-  appState,
-  showDailyCheckIn,
-  selectedCheckIn,
-  selectedContent,
-  selectedTherapistId,
-  showChatConversation,
-  showCallScreen,
-  showVideoCallScreen,
-  showBookingFlow,
-  showCustomRequest,
-  showPaymentCheckout,
-  showCustomRequestConfirmation,
-  showLikedContent,
-  showSavedContent,
-  showCompletedContent,
-  selectedClientUserId
-]);
+    currentScreen,
+    appState,
+    showDailyCheckIn,
+    selectedCheckIn,
+    selectedContent,
+    selectedTherapistId,
+    showChatConversation,
+    showCallScreen,
+    showVideoCallScreen,
+    showBookingFlow,
+    showCustomRequest,
+    showPaymentCheckout,
+    showCustomRequestConfirmation,
+    showLikedContent,
+    showSavedContent,
+    showCompletedContent,
+    selectedClientUserId
+  ]);
 
   const toggleDarkMode = async () => {
     const newValue = !darkMode;
@@ -292,29 +293,29 @@ export default function App() {
     setAppState('auth');
   };
 
-const handleQuestionnaireComplete = async (data: any) => {
-  const { auth } = await import('./services/firebaseConfig');
-  const currentUser = auth.currentUser;
+  const handleQuestionnaireComplete = async (data: any) => {
+    const { auth } = await import('./services/firebaseConfig');
+    const currentUser = auth.currentUser;
 
-  if (currentUser) {
-    await completeUserOnboarding(currentUser.uid, data);
-  }
+    if (currentUser) {
+      await completeUserOnboarding(currentUser.uid, data);
+    }
 
-  setUserData({ name: data.name || '' });
-  localStorage.setItem('userName', data.name || '');
-  localStorage.setItem('hasSeenOnboarding', 'true');
-  localStorage.setItem('isAuthenticated', 'true');
-  localStorage.setItem('userRole', 'user');
+    setUserData({ name: data.name || '' });
+    localStorage.setItem('userName', data.name || '');
+    localStorage.setItem('hasSeenOnboarding', 'true');
+    localStorage.setItem('isAuthenticated', 'true');
+    localStorage.setItem('userRole', 'user');
 
-  setUserRole('user');
-  setAppState('app');
-  setCurrentScreen('home');
+    setUserRole('user');
+    setAppState('app');
+    setCurrentScreen('home');
 
-  const hasSeenTutorial = localStorage.getItem('hasSeenTutorial');
-  if (!hasSeenTutorial) {
-    setTimeout(() => setShowTutorial(true), 500);
-  }
-};
+    const hasSeenTutorial = localStorage.getItem('hasSeenTutorial');
+    if (!hasSeenTutorial) {
+      setTimeout(() => setShowTutorial(true), 500);
+    }
+  };
 
   const handleAuthComplete = async (role: UserRole, skipQuestionnaire: boolean = false) => {
     setUserRole(role);
@@ -606,47 +607,47 @@ const handleQuestionnaireComplete = async (data: any) => {
   }
 
   if (selectedContent) {
-  return (
-    <ContentDetail
-      content={selectedContent}
-      onClose={() => {
-  const returnScreen = contentReturnScreen;
+    return (
+      <ContentDetail
+        content={selectedContent}
+        onClose={() => {
+          const returnScreen = contentReturnScreen;
 
-  setSelectedContent(null);
-  setContentReturnScreen(null);
+          setSelectedContent(null);
+          setContentReturnScreen(null);
 
-  if (returnScreen === 'liked') {
-    setShowLikedContent(true);
-    return;
+          if (returnScreen === 'liked') {
+            setShowLikedContent(true);
+            return;
+          }
+
+          if (returnScreen === 'saved') {
+            setShowSavedContent(true);
+            return;
+          }
+
+          if (returnScreen === 'completed') {
+            setShowCompletedContent(true);
+          }
+        }}
+        onViewTherapist={(therapistId) => {
+          setContentBeforeTherapistProfile(selectedContent);
+          setSelectedContent(null);
+          setSelectedTherapistId(therapistId);
+        }}
+      />
+    );
   }
-
-  if (returnScreen === 'saved') {
-    setShowSavedContent(true);
-    return;
-  }
-
-  if (returnScreen === 'completed') {
-    setShowCompletedContent(true);
-  }
-}}
-      onViewTherapist={(therapistId) => {
-        setContentBeforeTherapistProfile(selectedContent);
-        setSelectedContent(null);
-        setSelectedTherapistId(therapistId);
-      }}
-    />
-  );
-}
 
   if (showLikedContent) {
     return (
       <LikedContentScreen
         onBack={() => setShowLikedContent(false)}
         onSelectContent={(content) => {
-  setContentReturnScreen('liked');
-  setShowLikedContent(false);
-  setSelectedContent(content);
-}}
+          setContentReturnScreen('liked');
+          setShowLikedContent(false);
+          setSelectedContent(content);
+        }}
       />
     );
   }
@@ -656,25 +657,25 @@ const handleQuestionnaireComplete = async (data: any) => {
       <SavedContentScreen
         onBack={() => setShowSavedContent(false)}
         onSelectContent={(content) => {
-  setContentReturnScreen('saved');
-  setShowSavedContent(false);
-  setSelectedContent(content);
-}}
+          setContentReturnScreen('saved');
+          setShowSavedContent(false);
+          setSelectedContent(content);
+        }}
       />
     );
   }
   if (showCompletedContent) {
-  return (
-    <CompletedContentScreen
-      onBack={() => setShowCompletedContent(false)}
-      onSelectContent={(content) => {
-  setContentReturnScreen('completed');
-  setShowCompletedContent(false);
-  setSelectedContent(content);
-}}
-    />
-  );
-}
+    return (
+      <CompletedContentScreen
+        onBack={() => setShowCompletedContent(false)}
+        onSelectContent={(content) => {
+          setContentReturnScreen('completed');
+          setShowCompletedContent(false);
+          setSelectedContent(content);
+        }}
+      />
+    );
+  }
 
   if (selectedClientUserId) {
     return (
@@ -711,13 +712,13 @@ const handleQuestionnaireComplete = async (data: any) => {
       <TherapistProfile
         therapistId={selectedTherapistId}
         onClose={() => {
-  setSelectedTherapistId(null);
+          setSelectedTherapistId(null);
 
-  if (contentBeforeTherapistProfile) {
-    setSelectedContent(contentBeforeTherapistProfile);
-    setContentBeforeTherapistProfile(null);
-  }
-}}
+          if (contentBeforeTherapistProfile) {
+            setSelectedContent(contentBeforeTherapistProfile);
+            setContentBeforeTherapistProfile(null);
+          }
+        }}
         onMessage={() => {
           setChatTarget({
             name: 'Dr. Sarah Mitchell',
@@ -747,9 +748,9 @@ const handleQuestionnaireComplete = async (data: any) => {
           setShowBookingFlow(true);
         }}
         onSelectContent={(content) => {
-  setSelectedTherapistId(null);
-  setSelectedContent(content);
-}}
+          setSelectedTherapistId(null);
+          setSelectedContent(content);
+        }}
       />
     );
   }
@@ -981,8 +982,6 @@ onPaymentFailed={async () => {
               onFindTherapist={() => setCurrentScreen('therapists')}
               onViewAppointments={() => setCurrentScreen('appointments')}
               onViewNotifications={() => setCurrentScreen('notifications')}
-              onViewPrivacy={() => setCurrentScreen('privacy-policy')}
-              onViewTerms={() => setCurrentScreen('terms-conditions')}
             />
           )}
           {currentScreen === 'journal' && (
@@ -990,32 +989,33 @@ onPaymentFailed={async () => {
           )}
           {currentScreen === 'explore' && (
             <ContentLibrary
-  onSelectContent={(content) => setSelectedContent(content)}
-  onViewTherapist={(therapistId) => {
-    setSelectedTherapistId(therapistId);
-    setCurrentScreen('therapistProfile');
-  }}
-/>
+              userId={auth.currentUser?.uid}
+              onSelectContent={(content) => setSelectedContent(content)}
+              onViewTherapist={(therapistId) => {
+                setSelectedTherapistId(therapistId);
+                setCurrentScreen('therapistProfile');
+              }}
+            />
           )}
           {currentScreen === 'therapists' && (
-          <TherapistList
-            onSelectTherapist={(id) => setSelectedTherapistId(id)}
-            onBookTherapist={async (id, name) => {
-              const availability = await getTherapistAvailability(id);
+            <TherapistList
+              onSelectTherapist={(id) => setSelectedTherapistId(id)}
+              onBookTherapist={async (id, name) => {
+                const availability = await getTherapistAvailability(id);
 
-              if (!availability || !availability.isSetupComplete) {
-                return;
-              }
-              
-              setBookingTherapistId(id);
-              setBookingTherapistName(name);
-              setBookingTherapistAvailability({ ...availability, therapistId: id });
-              setSelectedTherapistId(null);
-              setBookingStep(1);
-              setBookingData(null);
-              setShowBookingFlow(true);
-            }}
-          />
+                if (!availability || !availability.isSetupComplete) {
+                  return;
+                }
+
+                setBookingTherapistId(id);
+                setBookingTherapistName(name);
+                setBookingTherapistAvailability({ ...availability, therapistId: id });
+                setSelectedTherapistId(null);
+                setBookingStep(1);
+                setBookingData(null);
+                setShowBookingFlow(true);
+              }}
+            />
           )}
           {currentScreen === 'chat' && (
             <ChatScreen
@@ -1046,7 +1046,7 @@ onPaymentFailed={async () => {
           )}
           {currentScreen === 'notifications' && <NotificationsScreen onClose={() => setCurrentScreen('home')} />}
           {currentScreen === 'ai-insights' && (
-            <AiInsightsScreen 
+            <AiInsightsScreen
               userId={getAuth().currentUser?.uid || ""}
               onBack={() => setCurrentScreen('home')}
               onCheckIn={() => {
@@ -1056,10 +1056,10 @@ onPaymentFailed={async () => {
             />
           )}
           {currentScreen === 'privacy-policy' && (
-            <PrivacyPolicyPage onBack={() => setCurrentScreen('home')} />
+            <PrivacyPolicyPage onBack={() => setCurrentScreen('profile')} />
           )}
           {currentScreen === 'terms-conditions' && (
-            <TermsConditionsPage onBack={() => setCurrentScreen('home')} />
+            <TermsConditionsPage onBack={() => setCurrentScreen('profile')} />
           )}
           {currentScreen === 'profile' && (
             <ProfileScreen
@@ -1076,6 +1076,8 @@ onPaymentFailed={async () => {
               onNavigateToSavedContent={() => setShowSavedContent(true)}
               onUpdateName={handleUpdateName}
               onNavigateToCompletedContent={() => setShowCompletedContent(true)}
+              onViewPrivacy={() => setCurrentScreen('privacy-policy')}
+              onViewTerms={() => setCurrentScreen('terms-conditions')}
             />
           )}
         </>

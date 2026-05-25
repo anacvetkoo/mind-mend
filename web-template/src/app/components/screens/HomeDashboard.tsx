@@ -9,7 +9,7 @@ import { Flame, Calendar, Target, TrendingUp, Sparkles, Brain, Heart, UserRound,
 import { isTodayCompleted, getStreakData, getWeeklyTrend, getFirebaseCheckIns } from '../../utils/checkInUtils';
 import { getStreakDataFromFirestore } from '../../utils/StreakCalculator';
 import { generateAIWellnessTips } from '../../services/gemini';
-import { doc, getDoc } from 'firebase/firestore';
+import { collection, doc, getDoc, getDocs } from 'firebase/firestore';
 import { db } from '../../services/firebaseConfig.js';
 
 interface HomeDashboardProps {
@@ -20,11 +20,9 @@ interface HomeDashboardProps {
   onFindTherapist?: () => void;
   onViewAppointments?: () => void;
   onViewNotifications?: () => void;
-  onViewPrivacy?: () => void;
-  onViewTerms?: () => void;
 }
 
-export function HomeDashboard({ userId, userName, onCheckIn, onViewAiInsights, onFindTherapist, onViewAppointments, onViewNotifications, onViewPrivacy, onViewTerms }: HomeDashboardProps) {
+export function HomeDashboard({ userId, userName, onCheckIn, onViewAiInsights, onFindTherapist, onViewAppointments, onViewNotifications }: HomeDashboardProps) {
   const currentHour = new Date().getHours();
   const greeting =
     currentHour < 12 ? 'Good morning' : currentHour < 18 ? 'Good afternoon' : 'Good evening';
@@ -42,6 +40,15 @@ export function HomeDashboard({ userId, userName, onCheckIn, onViewAiInsights, o
 
   const [aiTips, setAiTips] = useState<string[]>([]);
 
+  const [recommendedContent, setRecommendedContent] = useState<{ 
+    id?: string; 
+    category: 'relaxation' | 'breathing' | 'sound therapy'; 
+    difficulty: 'easy' | 'medium' | 'hard'; 
+    duration: string; 
+    title: string; 
+    description: string; 
+  }[]>([]);
+
   useEffect(() => {
     const loadDashboardData = async () => {
      setIsLoading(true);
@@ -56,28 +63,44 @@ export function HomeDashboard({ userId, userName, onCheckIn, onViewAiInsights, o
        const incomingStreak = await getStreakDataFromFirestore();
        setStreakData(incomingStreak);
        if (incomingStreak && typeof incomingStreak.current === 'number') {
-        localStorage.setItem('mindmend_current_streak', String(incomingStreak.current)); //shranjenje corrent streak v local storage
+        localStorage.setItem('mindmend_current_streak', String(incomingStreak.current));
       }
 
-       if (completedToday && userId) {
+      if (userId) {
         const userDocRef = doc(db, "users", userId);
         const userDocSnap = await getDoc(userDocRef);
 
-        if (userDocSnap.exists() && userDocSnap.data().latestAIWellnessTip) {
-          setAiTips(userDocSnap.data().latestAIWellnessTip);
-        } else {
-          // Fallback: Če polja v bazi slučajno še ni, damo privzete nasvete
-          setAiTips([
-            "Take a deep breath and give yourself credit for tracking your mood today. Every step counts! 💜",
-            "Establishing a consistent sleep pattern supports your brain's emotional processing and recovery."
-          ]);
+        if (userDocSnap.exists()) {
+          const userData = userDocSnap.data();
+
+          //latestAIWellnessTip
+          if (completedToday && userData.latestAIWellnessTip) {
+            setAiTips(userData.latestAIWellnessTip);
+          } else if (completedToday) {
+            setAiTips([
+              "Take a deep breath and give yourself credit for tracking your mood today. Every step counts! 💜",
+              "Establishing a consistent sleep pattern supports your brain's emotional processing and recovery."
+            ]);
+          } else {
+            setAiTips([
+              "Starting a daily check-in routine can help you track your emotional patterns and build self-awareness.",
+              "Quality sleep is essential for emotional wellbeing. Try establishing a calming bedtime routine."
+            ]);
+          }
+
+          //latestAIRecommendations
+          if (userData.latestAIRecommendations && userData.latestAIRecommendations.length > 0) {
+            console.log("Najdena priporočila v bazi, nalagam na UI...", userData.latestAIRecommendations);
+            setRecommendedContent(userData.latestAIRecommendations as any);
+          } else {
+            console.log("Priporočil ni v bazi, nalagam fallback...");
+            setRecommendedContent([
+              { id: "default-1", category: 'breathing', difficulty: 'easy', duration: '5 min', title: 'Box Breathing Technique', description: 'Calm your nervous system instantly.' },
+              { id: "default-2", category: 'relaxation', difficulty: 'medium', duration: '10 min', title: 'Progressive Muscle Relaxation', description: 'Release physical tension from head to toe.' },
+              { id: "default-3", category: 'sound therapy', difficulty: 'easy', duration: '15 min', title: 'Tibetan Singing Bowls', description: 'Deep alpha waves for mental clarity.' }
+            ]);
+          }
         }
-      } else {
-        // Če uporabnik danes še NI opravil check-ina, mu pokažemo splošno vzpodbudno obvestilo
-        setAiTips([
-          "Starting a daily check-in routine can help you track your emotional patterns and build self-awareness.",
-          "Quality sleep is essential for emotional wellbeing. Try establishing a calming bedtime routine."
-        ]);
       }
 
      } catch (error) {
@@ -92,7 +115,7 @@ export function HomeDashboard({ userId, userName, onCheckIn, onViewAiInsights, o
     };
 
     loadDashboardData();
-  }, []);
+  }, [userId, todayCompleted]);
 
   return (
     <div className="min-h-screen bg-background pb-24">
@@ -239,23 +262,19 @@ export function HomeDashboard({ userId, userName, onCheckIn, onViewAiInsights, o
             <h3 className="text-xl text-foreground">AI wellness tips just for you</h3>
           </div>
           <div className="space-y-3">
-            {/* 1. KORAK: Preverimo, če se podatki še nalagajo ali pa je tabela z nasveti še prazna */}
             {isLoading || aiTips.length === 0 ? (
               <Card variant="glass" className="py-6 text-center text-sm text-muted-foreground animate-pulse">
                 ✨ Gemini is analyzing your journals to generate personalized tips...
               </Card>
             ) : (
-              // 2. KORAK: Če so nasveti naloženi, se sprehodimo čez njih s pomočjo .map()
               aiTips.map((tip, idx) => (
                 <Card variant="glass" key={idx}>
                   <div className="flex items-start gap-3">
-                    {/* Dinamično spreminjamo barvo ikon: prvi nasvet bo vijoličen, drugi zeleno-moder */}
                     <div className={`w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0 bg-gradient-to-br ${
                       idx === 0 
                         ? 'from-[var(--lavender)] to-[var(--soft-purple)]' 
                         : 'from-[var(--soft-mint)] to-[var(--muted-blue)]'
                     }`}>
-                      {/* Prvemu nasvetu damo ikonco Sparkles, drugemu pa Moon */}
                       {idx === 0 ? (
                         <Sparkles className="w-5 h-5 text-white" />
                       ) : (
@@ -263,16 +282,15 @@ export function HomeDashboard({ userId, userName, onCheckIn, onViewAiInsights, o
                       )}
                     </div>
                     <div className="flex-1">
-                      {/* Izpis pravega teksta nasveta, ki ga je ustvaril Gemini */}
                       <p className="text-sm text-muted-foreground">{tip}</p>
                     </div>
                   </div>
                 </Card>
               ))
             )}
-            {/* KARTICA ZA PREUSMERITEV NA DOVRŠENO REZULTATNO ANALIZO */}
+
                 <Card 
-                  onClick={onViewAiInsights} // Preveri, da ima tvoj HomeDashboard prop onViewAiInsights
+                  onClick={onViewAiInsights}
                   className="mt-2 cursor-pointer border border-[var(--lavender)]/30 bg-gradient-to-r from-[var(--lavender)]/5 to-transparent hover:from-[var(--lavender)]/10 transition-all p-3 flex items-center justify-between group"
                 >
                   <div className="flex items-center gap-2.5">
@@ -293,8 +311,8 @@ export function HomeDashboard({ userId, userName, onCheckIn, onViewAiInsights, o
           </div>
         </motion.div>
 
-        {/* Recommended Content */}
-        <motion.div
+    {/* Recommended Content */}
+    <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.4 }}
@@ -312,80 +330,56 @@ export function HomeDashboard({ userId, userName, onCheckIn, onViewAiInsights, o
           </div>
 
           <div className="space-y-3 mt-3">
-            <Card className="hover:shadow-xl transition-shadow cursor-pointer">
-              <div className="flex items-center gap-4">
-                <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-[var(--muted-blue)] to-[var(--soft-mint)] flex items-center justify-center flex-shrink-0">
-                  <Brain className="w-8 h-8 text-white" />
-                </div>
-                <div className="flex-1">
-                  <Badge variant="secondary">5 min</Badge>
-                  <h4 className="mt-2">Grounding Exercise</h4>
-                  <p className="text-sm text-muted-foreground">Return to the present moment</p>
-                </div>
-              </div>
-            </Card>
+            {isLoading || !recommendedContent || recommendedContent.length === 0 ? (
+              <Card variant="glass" className="py-6 text-center text-sm text-muted-foreground animate-pulse">
+                ✨ Tailoring exercises to your emotional patterns...
+              </Card>
+            ) : (
+              recommendedContent.map((item, idx) => {
+                let IconComponent = Brain; 
+                let gradientClass = "from-[var(--muted-blue)] to-[var(--soft-mint)]";
 
-            <Card className="hover:shadow-xl transition-shadow cursor-pointer">
-              <div className="flex items-center gap-4">
-                <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-[var(--soft-purple)] to-[var(--soft-pink)] flex items-center justify-center flex-shrink-0">
-                  <Heart className="w-8 h-8 text-white" />
-                </div>
-                <div className="flex-1">
-                  <Badge variant="primary">10 min</Badge>
-                  <h4 className="mt-2">Deep Breathing</h4>
-                  <p className="text-sm text-muted-foreground">Calm your nervous system</p>
-                </div>
-              </div>
-            </Card>
+                if (item.category === 'breathing') {
+                  IconComponent = Heart;
+                  gradientClass = "from-[var(--soft-purple)] to-[var(--soft-pink)]";
+                } else if (item.category === 'sound therapy' || item.category === 'relaxation') {
+                  IconComponent = Moon;
+                  gradientClass = "from-[var(--lavender)] to-[var(--soft-purple)]";
+                }
 
-            <Card className="hover:shadow-xl transition-shadow cursor-pointer">
-              <div className="flex items-center gap-4">
-                <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-[var(--lavender)] to-[var(--soft-purple)] flex items-center justify-center flex-shrink-0">
-                  <Moon className="w-5 h-5 text-white" />
-                </div>
-                <div className="flex-1">
-                  <Badge variant="secondary">8 min</Badge>
-                  <h4 className="mt-2">Better Sleep Guide</h4>
-                  <p className="text-sm text-muted-foreground">Improve your sleep quality</p>
-                </div>
-              </div>
-            </Card>
-          </div>
-        </motion.div>
+                const difficultyColor = 
+                  item.difficulty === 'easy' ? 'bg-green-500/10 text-green-500 border-none' :
+                  item.difficulty === 'medium' ? 'bg-amber-500/10 text-amber-500 border-none' : 
+                  'bg-rose-500/10 text-rose-500 border-none';
 
-        {/* Terms and conditions in privacy policy */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.4 }}
-          className="mb-6"
-        >
-          <div className="flex items-center justify-between mb-4">
-            <h3 className="text-xl text-foreground">Get informed about our policy</h3>
-          </div>
-          <div className="space-y-3 mt-3">
-          <Card className="hover:shadow-xl transition-shadow cursor-pointer" onClick={onViewPrivacy}>
-              <div className="flex items-center gap-4">
-                <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-[var(--muted-blue)] to-[var(--soft-mint)] flex items-center justify-center flex-shrink-0">
-                  <ShieldCheck className="w-8 h-8 text-white" />
-                </div>
-                <div className="flex-1">
-                  <h4 className="mt-2">Privacy Policy</h4>
-                  <p className="text-sm text-muted-foreground">Click here to read</p>
-                </div>
-              </div>
-            </Card>
-            <Card className="hover:shadow-xl transition-shadow cursor-pointer" onClick={onViewTerms}>
-              <div className="flex items-center gap-4">
-                <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-[var(--muted-blue)] to-[var(--soft-mint)] flex items-center justify-center flex-shrink-0">
-                  <ClipboardList className="w-8 h-8 text-white" />
-                </div>
-                <div className="flex-1">
-                  <h4 className="mt-2">Terms and Conditions</h4>
-                  <p className="text-sm text-muted-foreground">Click here to read</p>
-                </div>
-              </div>
-            </Card>
+                return (
+                  <Card 
+                    key={item.id || idx}
+                    className="hover:shadow-xl transition-shadow cursor-pointer"
+                    onClick={() => {
+                      console.log("Uporabnik želi predvajati vsebino z ID-jem:", item.id);
+                    }}
+                  >
+                    <div className="flex items-center gap-4">
+                      <div className={`w-16 h-16 rounded-2xl bg-gradient-to-br ${gradientClass} flex items-center justify-center flex-shrink-0`}>
+                        <IconComponent className="w-7 h-7 text-white" />
+                      </div>
+                      
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <Badge variant="secondary">{item.duration}</Badge>
+                          <span className={`text-[10px] uppercase font-bold tracking-wider px-2 py-0.5 rounded-full ${difficultyColor}`}>
+                            {item.difficulty}
+                          </span>
+                        </div>
+                        <h4 className="mt-1.5 text-sm font-medium text-foreground truncate">{item.title}</h4>
+                        <p className="text-xs text-muted-foreground line-clamp-1">{item.description}</p>
+                      </div>
+                    </div>
+                  </Card>
+                );
+              })
+            )}
           </div>
         </motion.div>
       </div>

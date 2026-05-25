@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { useTypingAnimation } from '../../hooks/useTypingAnimation';
 import { X, ChevronRight } from 'lucide-react';
-import { db, auth } from '../../services/firebaseConfig.js'; 
+import { db, auth } from '../../services/firebaseConfig.js';
 import { collection, addDoc, doc, updateDoc } from 'firebase/firestore';
 import { generateAIWellnessTips } from '../../services/gemini.js'
 
@@ -164,39 +164,61 @@ export function DailyCheckIn({ onComplete, onClose }: DailyCheckInProps) {
       };
 
       setIsSaving(true);
-    try {
-      const docRef = await addDoc(collection(db, "dnevniki"), checkInData);
-      console.log("Check-in uspešno shranjen z ID:", docRef.id);
-      
-      const runAIInBackground = async () => {
-        try {
-          const generatedTips = await generateAIWellnessTips([checkInData]);
-          const uId = checkInData.userId; 
+      try {
+        const docRef = await addDoc(collection(db, "dnevniki"), checkInData);
+        console.log("Check-in uspešno shranjen z ID:", docRef.id);
 
-          if (uId) {
+        const runAIInBackground = async () => {
+          try {
+            const generatedTips = await generateAIWellnessTips([checkInData]);
+            const uId = checkInData.userId;
+
+            if (!uId) return;
+
+            const { getDocs } = await import('firebase/firestore');
+            const contentCollectionRef = collection(db, "content");
+            const contentSnapshot = await getDocs(contentCollectionRef);
+
+            const availableDbContent = contentSnapshot.docs.map(doc => ({
+              id: doc.id,
+              ...doc.data()
+            }));
+
+            // Pokličemo Gemini za priporočila
+            let recommendations = [];
+            try {
+              const { generateAIRecommendations } = await import('../../services/gemini.js');
+              recommendations = await generateAIRecommendations([checkInData], uId, availableDbContent);
+            } catch (recError) {
+              console.error("Zasilni izhod za priporočila (kvota presežena):", recError);
+              recommendations = [
+                { id: "def-1", category: 'breathing', difficulty: 'easy', duration: '5 min', title: 'Box Breathing Technique', description: 'Calm your nervous system instantly.' },
+                { id: "def-2", category: 'relaxation', difficulty: 'medium', duration: '10 min', title: 'Progressive Muscle Relaxation', description: 'Release physical tension.' }
+              ];
+            }
+
             const userDocRef = doc(db, "users", uId);
             await updateDoc(userDocRef, {
-              latestAIWellnessTip: generatedTips
+              latestAIWellnessTip: generatedTips,
+              latestAIRecommendations: recommendations
             });
-            console.log("🔥 [Ozadje] Najnovejša AI nasveta uspešno shranjena v zbirko users!");
-          } else {
-            console.warn("[Ozadje] Uporabnikov ID (userId) ni najden v checkInData.");
-          }
-        } catch (aiError) {
-          console.error("[Ozadje] AI generiranje v ozadju ni uspelo:", aiError);
-        }
-      };
-      runAIInBackground();
+            console.log("🔥 [Ozadje] Nasveti in priporočila uspešno shranjeni!");
 
-      onComplete(checkInData);
-      
-    } catch (error) {
-      console.error("Napaka pri shranjevanju v Firestore:", error);
-      alert("Nekaj je šlo narobe pri shranjevanju. Poskusi znova!");
-    } finally {
-      setIsSaving(false);
-    }
-  };
+          } catch (aiError) {
+            console.error("[Ozadje] AI generiranje v ozadju ni uspelo:", aiError);
+          }
+        };
+        runAIInBackground();
+
+        onComplete(checkInData);
+
+      } catch (error) {
+        console.error("Napaka pri shranjevanju v Firestore:", error);
+        alert("Nekaj je šlo narobe pri shranjevanju. Poskusi znova!");
+      } finally {
+        setIsSaving(false);
+      }
+    };
   };
 
   const handleBack = () => {
@@ -316,11 +338,10 @@ export function DailyCheckIn({ onComplete, onClose }: DailyCheckInProps) {
                           key={option.value}
                           whileTap={{ scale: 0.95 }}
                           onClick={() => handleAnswer(option.value)}
-                          className={`p-4 rounded-2xl border-2 transition-all ${
-                            isSelected
-                              ? 'bg-gradient-to-r from-[var(--lavender)]/10 to-[var(--soft-purple)]/10 border-[var(--lavender)] shadow-lg'
-                              : 'bg-card border-[var(--border)]'
-                          }`}
+                          className={`p-4 rounded-2xl border-2 transition-all ${isSelected
+                            ? 'bg-gradient-to-r from-[var(--lavender)]/10 to-[var(--soft-purple)]/10 border-[var(--lavender)] shadow-lg'
+                            : 'bg-card border-[var(--border)]'
+                            }`}
                         >
                           <div className="text-4xl mb-2">{option.emoji}</div>
                           <div className="text-xs text-foreground">{option.label}</div>
@@ -340,11 +361,10 @@ export function DailyCheckIn({ onComplete, onClose }: DailyCheckInProps) {
                           key={option.id}
                           whileTap={{ scale: 0.98 }}
                           onClick={() => handleAnswer(option.id)}
-                          className={`w-full p-4 rounded-2xl border-2 transition-all flex items-center gap-3 ${
-                            isSelected
-                              ? 'bg-gradient-to-r from-[var(--lavender)]/10 to-[var(--soft-purple)]/10 border-[var(--lavender)] shadow-lg'
-                              : 'bg-card border-[var(--border)]'
-                          }`}
+                          className={`w-full p-4 rounded-2xl border-2 transition-all flex items-center gap-3 ${isSelected
+                            ? 'bg-gradient-to-r from-[var(--lavender)]/10 to-[var(--soft-purple)]/10 border-[var(--lavender)] shadow-lg'
+                            : 'bg-card border-[var(--border)]'
+                            }`}
                         >
                           <span className="text-2xl">{option.emoji}</span>
                           <span className="text-foreground">{option.label}</span>
@@ -371,11 +391,10 @@ export function DailyCheckIn({ onComplete, onClose }: DailyCheckInProps) {
                               : [...currentSelections, option.id];
                             handleAnswer(newSelections);
                           }}
-                          className={`px-4 py-2.5 rounded-full border-2 transition-all flex items-center gap-2 ${
-                            isSelected
-                              ? 'bg-gradient-to-r from-[var(--lavender)] to-[var(--soft-purple)] border-[var(--lavender)] text-white shadow-lg'
-                              : 'bg-card border-[var(--border)] text-foreground'
-                          }`}
+                          className={`px-4 py-2.5 rounded-full border-2 transition-all flex items-center gap-2 ${isSelected
+                            ? 'bg-gradient-to-r from-[var(--lavender)] to-[var(--soft-purple)] border-[var(--lavender)] text-white shadow-lg'
+                            : 'bg-card border-[var(--border)] text-foreground'
+                            }`}
                         >
                           <span className="text-lg">{option.emoji}</span>
                           <span className="text-sm font-medium">{option.label}</span>
@@ -395,11 +414,10 @@ export function DailyCheckIn({ onComplete, onClose }: DailyCheckInProps) {
                           key={option.id}
                           whileTap={{ scale: 0.98 }}
                           onClick={() => handleAnswer(option.id)}
-                          className={`w-full p-4 rounded-2xl border-2 transition-all flex items-center gap-3 ${
-                            isSelected
-                              ? 'bg-gradient-to-r from-[var(--lavender)]/10 to-[var(--soft-purple)]/10 border-[var(--lavender)] shadow-lg'
-                              : 'bg-card border-[var(--border)]'
-                          }`}
+                          className={`w-full p-4 rounded-2xl border-2 transition-all flex items-center gap-3 ${isSelected
+                            ? 'bg-gradient-to-r from-[var(--lavender)]/10 to-[var(--soft-purple)]/10 border-[var(--lavender)] shadow-lg'
+                            : 'bg-card border-[var(--border)]'
+                            }`}
                         >
                           <span className="text-2xl">{option.emoji}</span>
                           <span className="text-foreground">{option.label}</span>
