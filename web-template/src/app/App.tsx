@@ -910,47 +910,60 @@ const handleQuestionnaireComplete = async (data: any) => {
         appointmentData={bookingData}
         price={bookingData.price || 120}
         onClose={() => {
-          setShowPaymentCheckout(false);
-          setBookingStep(3);
-          setShowBookingFlow(true);
-        }}
-        onPaymentSuccess={async (paymentId) => {
-          const currentUser = getAuth().currentUser;
-          try {
-            if (bookingData.id) {
-              // Obstoječi appointment (terapevt je sprejel request) — samo posodobimo status
-              await updateAppointmentStatus(bookingData.id, 'CONFIRMED', paymentId || 'simulated');
-            } else {
-              // Nov appointment (normal booking) — ustvarimo direktno kot CONFIRMED
-              await createAppointment({
-                therapistId: bookingData.therapistId,
-                therapistName: bookingData.therapistName,
-                userId: bookingData.userId || currentUser?.uid || '',
-                userName: bookingData.userName || userData.name || 'MindMend User',
-                appointmentType: bookingData.appointmentType,
-                date: bookingData.date,
-                startTime: bookingData.startTime,
-                endTime: bookingData.endTime,
-                status: 'CONFIRMED',
-                notes: bookingData.notes || '',
-                price: bookingData.price || 120,
-                paymentId: paymentId || 'simulated',
-              });
-            }
-          } catch (error) {
-            console.error('Error saving appointment:', error);
-          }
+  setShowPaymentCheckout(false);
 
-          setShowPaymentCheckout(false);
-          setBookingData(null);
-          setBookingStep(1);
-          setBookingTherapistId(null);
-          setCurrentScreen('appointments');
-          alert('Appointment confirmed! Check your appointments to view details.');
-        }}
-        onPaymentFailed={async () => {
-          // Payment failed — appointment ni bil ustvarjen, user lahko poskusi znova
-        }}
+  if (bookingData.id) {
+    setBookingData(null);
+    setCurrentScreen('appointments');
+    return;
+  }
+
+  setBookingStep(3);
+  setShowBookingFlow(true);
+}}
+onPaymentSuccess={async (paymentId) => {
+  const currentUser = getAuth().currentUser;
+
+  try {
+    if (bookingData.id) {
+      await updateAppointmentStatus(bookingData.id, 'CONFIRMED', paymentId);
+    } else {
+      await createAppointment({
+        therapistId: bookingData.therapistId,
+        therapistName: bookingData.therapistName,
+        userId: bookingData.userId || currentUser?.uid || '',
+        userName: bookingData.userName || userData.name || 'MindMend User',
+        appointmentType: bookingData.appointmentType,
+        date: bookingData.date,
+        startTime: bookingData.startTime,
+        endTime: bookingData.endTime,
+        status: 'CONFIRMED',
+        notes: bookingData.notes || '',
+        price: bookingData.price || 120,
+        paymentId,
+      });
+    }
+
+    setShowPaymentCheckout(false);
+    setBookingData(null);
+    setBookingStep(1);
+    setBookingTherapistId(null);
+    setCurrentScreen('appointments');
+  } catch (error) {
+    console.error('Error saving paid appointment:', error);
+
+    if (bookingData.id) {
+      await updateAppointmentStatus(bookingData.id, 'PAYMENT_FAILED', paymentId);
+    }
+
+    alert('Payment succeeded, but appointment could not be updated. Please contact support.');
+  }
+}}
+onPaymentFailed={async () => {
+  if (bookingData?.id) {
+    await updateAppointmentStatus(bookingData.id, 'PAYMENT_FAILED');
+  }
+}}
       />
     );
   }

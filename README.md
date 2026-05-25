@@ -48,6 +48,10 @@ Mobilna aplikacija je zato trenutno tehnično:
 - Figma
 - Figma Make
 
+## Plačila
+- Stripe
+- Firebase Cloud Functions
+
 ---
 
 # Struktura projekta
@@ -64,6 +68,11 @@ mind-mend/
 │   ├── package.json
 │   ├── vite.config.ts
 │   └── ...
+│
+├── functions/
+│   ├── src/
+│   ├── package.json
+│   └── .env
 │
 └── assets/
 
@@ -122,6 +131,17 @@ EXPO_PUBLIC_WEB_APP_URL=http://192.168.x.x:5173
 ```
 
 > ⚠️ `.env` je dodan v `.gitignore` in se ne committa v repozitorij. Vsak razvijalec ima svoj lokalni IP!
+
+## 5. Setup Stripe plačil
+
+Projekt uporablja Stripe za plačilo appointmentov. Stripe secret key se ne sme uporabljati v frontend aplikaciji, zato je plačilna logika dodana v Firebase Functions.
+
+### Namestitev Firebase CLI
+
+Če Firebase CLI še ni nameščen:
+
+```bash
+npm install -g firebase-tools
 
 ---
 
