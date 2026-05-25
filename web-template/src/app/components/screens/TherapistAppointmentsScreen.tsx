@@ -42,10 +42,9 @@ export function TherapistAppointmentsScreen() {
     apt.status === 'REQUESTED'
   ), [appointments]);
 
-  const pastAppointments = useMemo(() => appointments.filter((apt) => {
-    const endDate = new Date(`${apt.date}T${apt.endTime}`);
-    return apt.status === 'COMPLETED' || endDate < now || apt.status === 'CANCELLED' || apt.status === 'CANCELLED_BY_THERAPIST';
-  }), [appointments]);
+  const pastAppointments = useMemo(() => appointments.filter((apt) =>
+    apt.status === 'COMPLETED'
+  ), [appointments]);
 
   const handleAcceptRequest = async (id: string) => {
     await updateAppointmentStatus(id, 'PENDING_PAYMENT');

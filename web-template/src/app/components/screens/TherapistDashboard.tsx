@@ -42,10 +42,7 @@ export function TherapistDashboard({ therapistName = 'Dr. Sarah', onViewNotifica
   // PENDING_PAYMENT NE sodi sem — terapevt je že sprejel, čaka na plačilo
   const appointmentRequests = appointments.filter(apt => apt.status === 'REQUESTED' && !isPast(apt));
 
-  // Past: pretekli ali cancelled
-  const pastAppointments = appointments.filter(apt =>
-    isPast(apt) || apt.status === 'COMPLETED' || apt.status === 'CANCELLED' || apt.status === 'CANCELLED_BY_THERAPIST'
-  );
+  const pastAppointments = appointments.filter(apt => apt.status === 'COMPLETED');
 
   const handleAcceptRequest = async (id: string) => {
     await updateAppointmentStatus(id, 'PENDING_PAYMENT');
