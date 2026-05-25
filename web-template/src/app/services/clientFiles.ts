@@ -1,9 +1,9 @@
 import {
   collection,
+  deleteField,
   doc,
   getDoc,
   getDocs,
-  orderBy,
   query,
   serverTimestamp,
   setDoc,
@@ -17,8 +17,10 @@ import type {
   ClientFile,
   ClientFileDetailsData,
   ClientFileSummary,
+  ClientProfileSummary,
   ClientWellbeingSummary,
   CreateClientFileInput,
+  LatestCheckInSummary,
 } from '../types/clientFiles';
 
 const getClientFileId = (therapistId: string, userId: string): string => {
@@ -45,6 +47,68 @@ const mapClientFileDocument = (documentSnapshot: any): ClientFile => {
     nextAppointmentAt: mapDateValue(data.nextAppointmentAt),
     createdAt: mapDateValue(data.createdAt),
     updatedAt: mapDateValue(data.updatedAt),
+  };
+};
+
+const getClientProfileSummary = async (userId: string): Promise<ClientProfileSummary> => {
+  const userSnapshot = await getDoc(doc(db, 'users', userId));
+
+  if (!userSnapshot.exists()) {
+    return {
+      gender: '',
+      age: null,
+      medications: '',
+      medicationSpec: [],
+      professionalHelp: '',
+      symptoms: [],
+      createdAt: '',
+    };
+  }
+
+  const data = userSnapshot.data();
+
+  return {
+    gender: data.gender ?? '',
+    age: typeof data.age === 'number' ? data.age : null,
+    medications: data.medications ?? '',
+    medicationSpec: Array.isArray(data.medicationSpec) ? data.medicationSpec : [],
+    professionalHelp: data.professionalHelp ?? '',
+    symptoms: Array.isArray(data.symptoms) ? data.symptoms : [],
+    createdAt: mapDateValue(data.createdAt),
+  };
+};
+
+const getLatestCheckInSummary = async (userId: string): Promise<LatestCheckInSummary | null> => {
+  const checkInsQuery = query(
+    collection(db, 'dnevniki'),
+    where('userId', '==', userId)
+  );
+
+  const snapshot = await getDocs(checkInsQuery);
+
+  const latestCheckIn = snapshot.docs
+    .map((item) => item.data())
+    .sort((firstCheckIn, secondCheckIn) => {
+      const firstDate = new Date(firstCheckIn.date ?? firstCheckIn.timestamp ?? '').getTime();
+      const secondDate = new Date(secondCheckIn.date ?? secondCheckIn.timestamp ?? '').getTime();
+
+      return secondDate - firstDate;
+    })[0];
+
+  if (!latestCheckIn) return null;
+
+  return {
+    date: latestCheckIn.date ?? '',
+    emotionalState: latestCheckIn.emotionalState ?? '',
+    dominantEmotion: Array.isArray(latestCheckIn.dominantEmotion) ? latestCheckIn.dominantEmotion : [],
+    stressLevel: typeof latestCheckIn.stressLevel === 'number' ? latestCheckIn.stressLevel : null,
+    sleepQuality: latestCheckIn.sleepQuality ?? '',
+    socialConnection: typeof latestCheckIn.socialConnection === 'number' ? latestCheckIn.socialConnection : null,
+    gratitude: latestCheckIn.gratitude ?? '',
+    difficulties: latestCheckIn.difficulties ?? '',
+    thoughtsToday: latestCheckIn.thoughtsToday ?? '',
+    tomorrowHelp: latestCheckIn.tomorrowHelp ?? '',
+    energySource: latestCheckIn.energySource ?? '',
   };
 };
 
@@ -78,23 +142,36 @@ const getClientAppointments = async (therapistId: string, userId: string): Promi
   const appointmentsQuery = query(
     collection(db, 'appointments'),
     where('therapistId', '==', therapistId),
-    where('userId', '==', userId),
-    orderBy('date', 'desc')
+    where('userId', '==', userId)
   );
 
   const snapshot = await getDocs(appointmentsQuery);
-  return snapshot.docs.map(mapAppointmentDocument);
+
+  return snapshot.docs
+    .map(mapAppointmentDocument)
+    .sort((firstAppointment, secondAppointment) => {
+      const firstDate = new Date(`${firstAppointment.date}T${firstAppointment.startTime}`).getTime();
+      const secondDate = new Date(`${secondAppointment.date}T${secondAppointment.startTime}`).getTime();
+
+      return secondDate - firstDate;
+    });
 };
 
 const getClientWellbeingSummary = async (userId: string): Promise<ClientWellbeingSummary> => {
   const checkInsQuery = query(
-    collection(db, 'dnevniki'),
-    where('userId', '==', userId),
-    orderBy('date', 'desc')
-  );
+  collection(db, 'dnevniki'),
+  where('userId', '==', userId)
+);
 
-  const snapshot = await getDocs(checkInsQuery);
-  const checkIns = snapshot.docs.map((item) => item.data());
+const snapshot = await getDocs(checkInsQuery);
+const checkIns = snapshot.docs
+  .map((item) => item.data())
+  .sort((firstCheckIn, secondCheckIn) => {
+    const firstDate = new Date(firstCheckIn.date).getTime();
+    const secondDate = new Date(secondCheckIn.date).getTime();
+
+    return secondDate - firstDate;
+  });
   const lastThirtyDays = new Date();
   lastThirtyDays.setDate(lastThirtyDays.getDate() - 30);
 
@@ -154,33 +231,75 @@ export const upsertClientFileForAppointment = async (input: CreateClientFileInpu
   });
 };
 
+const getAppointmentStartDate = (appointment: Appointment) => {
+  return new Date(`${appointment.date}T${appointment.startTime}`);
+};
+
+const getAppointmentEndDate = (appointment: Appointment) => {
+  return new Date(`${appointment.date}T${appointment.endTime}`);
+};
+
+const getCompletedAppointments = (appointments: Appointment[]) => {
+  const now = new Date();
+
+  return appointments.filter((appointment) => {
+    if (appointment.status !== 'CONFIRMED') return false;
+
+    return getAppointmentEndDate(appointment) < now;
+  });
+};
+
+const getUpcomingAppointments = (appointments: Appointment[]) => {
+  const now = new Date();
+
+  return appointments.filter((appointment) => {
+    if (appointment.status !== 'CONFIRMED') return false;
+
+    return getAppointmentEndDate(appointment) >= now;
+  });
+};
+
+const getLastCompletedAppointment = (appointments: Appointment[]) => {
+  return [...getCompletedAppointments(appointments)].sort((firstAppointment, secondAppointment) => {
+    return getAppointmentEndDate(secondAppointment).getTime() - getAppointmentEndDate(firstAppointment).getTime();
+  })[0];
+};
+
+const getNextUpcomingAppointment = (appointments: Appointment[]) => {
+  return [...getUpcomingAppointments(appointments)].sort((firstAppointment, secondAppointment) => {
+    return getAppointmentStartDate(firstAppointment).getTime() - getAppointmentStartDate(secondAppointment).getTime();
+  })[0];
+};
+
 export const getTherapistClientFiles = async (therapistId: string): Promise<ClientFileSummary[]> => {
   const clientFilesQuery = query(
-    collection(db, 'clientFiles'),
-    where('therapistId', '==', therapistId),
-    orderBy('updatedAt', 'desc')
-  );
+  collection(db, 'clientFiles'),
+  where('therapistId', '==', therapistId)
+);
 
   const snapshot = await getDocs(clientFilesQuery);
-  const clientFiles = snapshot.docs.map(mapClientFileDocument);
+  const clientFiles = snapshot.docs
+  .map(mapClientFileDocument)
+  .sort((a, b) => {
+    const firstDate = new Date(a.updatedAt || a.createdAt).getTime();
+    const secondDate = new Date(b.updatedAt || b.createdAt).getTime();
+
+    return secondDate - firstDate;
+  });
 
   const summaries = await Promise.all(
     clientFiles.map(async (clientFile) => {
       const appointments = await getClientAppointments(therapistId, clientFile.userId);
-      const now = new Date();
-      const nextAppointment = appointments
-        .filter((appointment) => appointment.status === 'CONFIRMED' && new Date(`${appointment.date}T${appointment.endTime}`) >= now)
-        .sort((a, b) => new Date(`${a.date}T${a.startTime}`).getTime() - new Date(`${b.date}T${b.startTime}`).getTime())[0];
-      const lastAppointment = appointments
-        .filter((appointment) => appointment.status === 'COMPLETED' || new Date(`${appointment.date}T${appointment.endTime}`) < now)
-        .sort((a, b) => new Date(`${b.date}T${b.startTime}`).getTime() - new Date(`${a.date}T${a.startTime}`).getTime())[0];
+const completedAppointments = getCompletedAppointments(appointments);
+const lastAppointment = getLastCompletedAppointment(appointments);
+const nextAppointment = getNextUpcomingAppointment(appointments);
 
-      return {
-        ...clientFile,
-        totalSessions: appointments.length,
-        lastAppointment,
-        nextAppointment,
-      };
+return {
+  ...clientFile,
+  totalSessions: completedAppointments.length,
+  lastAppointment,
+  nextAppointment,
+};
     })
   );
 
@@ -199,13 +318,17 @@ export const getClientFileDetails = async (
 
   const clientFile = mapClientFileDocument(snapshot);
   const appointments = await getClientAppointments(therapistId, userId);
-  const wellbeingSummary = await getClientWellbeingSummary(userId);
+const wellbeingSummary = await getClientWellbeingSummary(userId);
+const clientProfile = await getClientProfileSummary(userId);
+const latestCheckIn = await getLatestCheckInSummary(userId);
 
-  return {
-    clientFile,
-    appointments,
-    wellbeingSummary,
-  };
+return {
+  clientFile,
+  appointments,
+  wellbeingSummary,
+  clientProfile,
+  latestCheckIn,
+};
 };
 
 export const updateClientAppointmentNotes = async (
@@ -213,13 +336,11 @@ export const updateClientAppointmentNotes = async (
   therapistNotes: string,
   nextSteps: string
 ): Promise<void> => {
-  const updateData = {
-    ...(therapistNotes.trim() ? { therapistNotes: therapistNotes.trim() } : { therapistNotes: '' }),
-    ...(nextSteps.trim() ? { nextSteps: nextSteps.trim() } : { nextSteps: '' }),
+  await updateDoc(doc(db, 'appointments', appointmentId), {
+    therapistNotes: therapistNotes.trim() || deleteField(),
+    nextSteps: nextSteps.trim() || deleteField(),
     updatedAt: serverTimestamp(),
-  };
-
-  await updateDoc(doc(db, 'appointments', appointmentId), updateData);
+  });
 };
 
 export const getAppointmentMessages = async (
@@ -228,13 +349,20 @@ export const getAppointmentMessages = async (
   userId: string
 ): Promise<AppointmentMessage[]> => {
   const messagesQuery = query(
-    collection(db, 'appointmentMessages'),
-    where('appointmentId', '==', appointmentId),
-    where('therapistId', '==', therapistId),
-    where('userId', '==', userId),
-    orderBy('createdAt', 'asc')
-  );
+  collection(db, 'appointmentMessages'),
+  where('appointmentId', '==', appointmentId),
+  where('therapistId', '==', therapistId),
+  where('userId', '==', userId)
+);
 
-  const snapshot = await getDocs(messagesQuery);
-  return snapshot.docs.map(mapAppointmentMessageDocument);
+const snapshot = await getDocs(messagesQuery);
+
+return snapshot.docs
+  .map(mapAppointmentMessageDocument)
+  .sort((firstMessage, secondMessage) => {
+    const firstDate = new Date(firstMessage.createdAt).getTime();
+    const secondDate = new Date(secondMessage.createdAt).getTime();
+
+    return firstDate - secondDate;
+  });
 };

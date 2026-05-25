@@ -45,6 +45,8 @@ export interface ClientFileDetailsData {
   clientFile: ClientFile;
   appointments: Appointment[];
   wellbeingSummary: ClientWellbeingSummary;
+  clientProfile: ClientProfileSummary;
+  latestCheckIn: LatestCheckInSummary | null;
 }
 
 export interface CreateClientFileInput {
@@ -55,4 +57,28 @@ export interface CreateClientFileInput {
   userPhotoURL?: string;
   appointmentType?: AppointmentType;
   appointmentDate?: string;
+}
+
+export interface ClientProfileSummary {
+  gender: string;
+  age: number | null;
+  medications: string;
+  medicationSpec: string[];
+  professionalHelp: string;
+  symptoms: string[];
+  createdAt: string;
+}
+
+export interface LatestCheckInSummary {
+  date: string;
+  emotionalState: string;
+  dominantEmotion: string[];
+  stressLevel: number | null;
+  sleepQuality: string;
+  socialConnection: number | null;
+  gratitude: string;
+  difficulties: string;
+  thoughtsToday: string;
+  tomorrowHelp: string;
+  energySource: string;
 }

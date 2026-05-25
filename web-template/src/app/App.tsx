@@ -678,14 +678,25 @@ export default function App() {
   }
 
   if (selectedClientUserId) {
-    return (
+  return (
+    <>
       <ClientFileDetails
         therapistId={getAuth().currentUser?.uid || ''}
         userId={selectedClientUserId}
         onBack={() => setSelectedClientUserId(null)}
       />
-    );
-  }
+
+      <BottomNav
+        activeTab="clients"
+        role={userRole}
+        onTabChange={(tab) => {
+          setSelectedClientUserId(null);
+          handleTabChange(tab);
+        }}
+      />
+    </>
+  );
+}
 
   if (showTherapistProfileEdit) {
     return (
