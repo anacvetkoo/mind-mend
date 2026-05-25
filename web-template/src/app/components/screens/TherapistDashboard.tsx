@@ -42,10 +42,7 @@ export function TherapistDashboard({ therapistName = 'Dr. Sarah', onViewNotifica
   // PENDING_PAYMENT NE sodi sem — terapevt je že sprejel, čaka na plačilo
   const appointmentRequests = appointments.filter(apt => apt.status === 'REQUESTED' && !isPast(apt));
 
-  // Past: pretekli ali cancelled
-  const pastAppointments = appointments.filter(apt =>
-    isPast(apt) || apt.status === 'COMPLETED' || apt.status === 'CANCELLED' || apt.status === 'CANCELLED_BY_THERAPIST'
-  );
+  const pastAppointments = appointments.filter(apt => apt.status === 'COMPLETED');
 
   const handleAcceptRequest = async (id: string) => {
     await updateAppointmentStatus(id, 'PENDING_PAYMENT');
@@ -207,8 +204,8 @@ export function TherapistDashboard({ therapistName = 'Dr. Sarah', onViewNotifica
                     )}
                   </div>
                   <div className="flex gap-2">
-                    <motion.button whileTap={{ scale: 0.95 }} className="flex-1 px-4 py-2 rounded-xl bg-gradient-to-r from-[var(--lavender)] to-[var(--soft-purple)] text-white text-sm">Start Session</motion.button>
-                    <motion.button whileTap={{ scale: 0.95 }} onClick={() => handleCancelAppointment(apt.id)} className="px-4 py-2 rounded-xl border-2 border-red-200 bg-red-50 text-red-600 dark:border-red-900/50 dark:bg-red-900/20 dark:text-red-400 text-sm">Cancel</motion.button>
+                    <motion.button whileTap={{ scale: 0.95 }} className="flex-1 px-4 py-2.5 rounded-2xl bg-gradient-to-r from-[var(--lavender)] to-[var(--soft-purple)] text-white text-sm font-medium shadow-sm">Start Session</motion.button>
+                    <motion.button whileTap={{ scale: 0.95 }} onClick={() => handleCancelAppointment(apt.id)} className="px-4 py-2.5 rounded-2xl border-2 border-[var(--lavender)] text-[var(--lavender)] bg-card text-sm font-medium">Cancel</motion.button>
                   </div>
                 </motion.div>
               );
@@ -247,8 +244,8 @@ export function TherapistDashboard({ therapistName = 'Dr. Sarah', onViewNotifica
                     {apt.notes && <div className="bg-[var(--muted)] rounded-xl p-3 mt-2"><p className="text-sm text-muted-foreground">{apt.notes}</p></div>}
                   </div>
                   <div className="flex gap-2">
-                    <motion.button whileTap={{ scale: 0.95 }} onClick={() => handleAcceptRequest(apt.id)} className="flex-1 px-4 py-2 rounded-xl bg-gradient-to-r from-[var(--lavender)] to-[var(--soft-purple)] text-white text-sm">Accept</motion.button>
-                    <motion.button whileTap={{ scale: 0.95 }} onClick={() => handleDeclineRequest(apt.id)} className="flex-1 px-4 py-2 rounded-xl border-2 border-red-200 bg-red-50 text-red-600 dark:border-red-900/50 dark:bg-red-900/20 dark:text-red-400 text-sm flex items-center justify-center gap-1"><X className="w-4 h-4" />Decline</motion.button>
+                    <motion.button whileTap={{ scale: 0.95 }} onClick={() => handleAcceptRequest(apt.id)} className="flex-1 px-4 py-2.5 rounded-2xl bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400 border-2 border-green-200 dark:border-green-900/50 text-sm font-medium flex items-center justify-center gap-1.5">Accept</motion.button>
+                    <motion.button whileTap={{ scale: 0.95 }} onClick={() => handleDeclineRequest(apt.id)} className="flex-1 px-4 py-2.5 rounded-2xl bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400 border-2 border-red-200 dark:border-red-900/50 text-sm font-medium flex items-center justify-center gap-1.5"><X className="w-4 h-4" />Decline</motion.button>
                   </div>
                 </motion.div>
               );
