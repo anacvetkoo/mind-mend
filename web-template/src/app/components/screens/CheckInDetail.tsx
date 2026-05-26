@@ -45,11 +45,11 @@ export function CheckInDetail({ checkIn, onClose, onTabChange, userRole = 'user'
 
         const { generateAIRecommendations } = await import('../../services/gemini.js');
         const { getLibraryContent } = await import('../../services/content');
-        
+
         const vsebine = await getLibraryContent().catch(() => []);
         const trenutenUid = userId || "";
         const result = await generateAIRecommendations([checkIn], trenutenUid, vsebine);
-        
+
         if (isMounted) {
           let finalRecs = [];
           if (result && result.length > 0) {
@@ -69,7 +69,7 @@ export function CheckInDetail({ checkIn, onClose, onTabChange, userRole = 'user'
               await updateDoc(checkInDocRef, {
                 aiRecommendations: finalRecs
               });
-              
+
               checkIn.aiRecommendations = finalRecs;
             } catch (dbError) {
               console.error("Napaka pri shranjevanju priporočil v Firestore:", dbError);
@@ -113,9 +113,9 @@ export function CheckInDetail({ checkIn, onClose, onTabChange, userRole = 'user'
 
         console.log("AI nasvetov ni v zbirki. Sprožam enkratni klic Geminija za:", checkIn.date);
         const { generateAIWellnessTips } = await import('../../services/gemini.js');
-        
+
         const result = await generateAIWellnessTips([checkIn]);
-        
+
         if (isMounted) {
           let finalInsights: string[] = [];
           if (result && result.length > 0) {
@@ -133,14 +133,14 @@ export function CheckInDetail({ checkIn, onClose, onTabChange, userRole = 'user'
             try {
               const { doc, updateDoc } = await import('firebase/firestore');
               const { db } = await import('../../services/firebaseConfig');
-              
+
               const journalDocRef = doc(db, "dnevniki", checkIn.id);
               await updateDoc(journalDocRef, {
                 aiInsights: finalInsights
               });
-              
+
               console.log("Nasveti trajno shranjeni v kolekcijo 'dnevniki' pod ID:", checkIn.id);
-              
+
               checkIn.aiInsights = finalInsights;
             } catch (dbError) {
               console.error("Napaka pri shranjevanju AI nasvetov v Firestore zbirko 'dnevniki':", dbError);
@@ -229,184 +229,186 @@ export function CheckInDetail({ checkIn, onClose, onTabChange, userRole = 'user'
         {/* CONTENT - scrollable, completely below header */}
         <div className="flex-1 overflow-y-auto px-6 pb-24">
 
-        {/* Date & Mood Overview */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="mb-6"
-        >
-          <Card variant="gradient" className="text-white text-center">
-            <div className="text-6xl mb-4">{getEmotionEmoji(checkIn.emotionalState)}</div>
-            <h2 className="text-2xl mb-2">{formatDate(checkIn.date)}</h2>
-            {checkIn.dominantEmotion && (
-              <Badge variant="secondary" className="bg-white/20 text-white border-white/30">
-                {checkIn.dominantEmotion}
-              </Badge>
-            )}
-          </Card>
-        </motion.div>
+          {/* Date & Mood Overview */}
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="mb-6"
+          >
+            <Card variant="gradient" className="text-white text-center">
+              <div className="text-6xl mb-4">{getEmotionEmoji(checkIn.emotionalState)}</div>
+              <h2 className="text-2xl mb-2">{formatDate(checkIn.date)}</h2>
+              {checkIn.dominantEmotion && (
+                <Badge variant="secondary" className="bg-white/20 text-white border-white/30">
+                  {Array.isArray(checkIn.dominantEmotion)
+                    ? checkIn.dominantEmotion.join(', ')
+                    : checkIn.dominantEmotion}
+                </Badge>
+              )}
+            </Card>
+          </motion.div>
 
-        {/* AI Analysis */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.1 }}
-          className="mb-6"
-        >
-          <h3 className="text-lg text-foreground mb-3 flex items-center gap-2">
-            <Sparkles className="w-5 h-5 text-[var(--lavender)]" />
-            AI Insights
-          </h3>
-          <div className="space-y-3">
-            {isInsightsLoading ? (
-              <Card variant="glass" className="py-6 text-center text-sm text-muted-foreground animate-pulse">
-                ✨ Interpreting your reflections for this day...
-              </Card>
-            ) : (
-              singleInsights.map((insight, idx) => (
-                <Card key={idx} variant="glass">
-                  <p className="text-sm text-foreground">{insight}</p>
+          {/* AI Analysis */}
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.1 }}
+            className="mb-6"
+          >
+            <h3 className="text-lg text-foreground mb-3 flex items-center gap-2">
+              <Sparkles className="w-5 h-5 text-[var(--lavender)]" />
+              AI Insights
+            </h3>
+            <div className="space-y-3">
+              {isInsightsLoading ? (
+                <Card variant="glass" className="py-6 text-center text-sm text-muted-foreground animate-pulse">
+                  ✨ Interpreting your reflections for this day...
                 </Card>
-              ))
-            )}
-          </div>
-        </motion.div>
-
-        {/* Stress & Social Metrics */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.2 }}
-          className="mb-6"
-        >
-          <h3 className="text-lg text-foreground mb-3 flex items-center gap-2">
-            <Activity className="w-5 h-5 text-[var(--lavender)]" />
-            Your Metrics
-          </h3>
-          <Card>
-            <div className="space-y-4">
-              {/* Stress Level */}
-              {checkIn.stressLevel !== undefined && (
-                <div>
-                  <div className="flex justify-between mb-2">
-                    <span className="text-sm text-foreground">Stress Level</span>
-                    <span className="text-sm font-medium text-foreground">{checkIn.stressLevel}/10</span>
-                  </div>
-                  <div className="h-3 bg-[var(--muted)] rounded-full overflow-hidden">
-                    <div
-                      className="h-full bg-gradient-to-r from-[var(--soft-mint)] to-[var(--soft-pink)] rounded-full transition-all"
-                      style={{ width: `${(checkIn.stressLevel / 10) * 100}%` }}
-                    />
-                  </div>
-                </div>
-              )}
-
-              {/* Social Connection */}
-              {checkIn.socialConnection !== undefined && (
-                <div>
-                  <div className="flex justify-between mb-2">
-                    <span className="text-sm text-foreground">Social Connection</span>
-                    <span className="text-sm font-medium text-foreground">{checkIn.socialConnection}/10</span>
-                  </div>
-                  <div className="h-3 bg-[var(--muted)] rounded-full overflow-hidden">
-                    <div
-                      className="h-full bg-gradient-to-r from-[var(--lavender)] to-[var(--soft-purple)] rounded-full transition-all"
-                      style={{ width: `${(checkIn.socialConnection / 10) * 100}%` }}
-                    />
-                  </div>
-                </div>
-              )}
-
-              {/* Sleep Quality */}
-              {checkIn.sleepQuality && (
-                <div className="flex items-center justify-between pt-2 border-t border-[var(--border)]">
-                  <div className="flex items-center gap-2">
-                    <Moon className="w-5 h-5 text-[var(--muted-blue)]" />
-                    <span className="text-sm text-foreground">Sleep Quality</span>
-                  </div>
-                  <span className="text-sm font-medium text-foreground">{getSleepQualityLabel(checkIn.sleepQuality)}</span>
-                </div>
+              ) : (
+                singleInsights.map((insight, idx) => (
+                  <Card key={idx} variant="glass">
+                    <p className="text-sm text-foreground">{insight}</p>
+                  </Card>
+                ))
               )}
             </div>
-          </Card>
-        </motion.div>
+          </motion.div>
 
-        {/* Reflections */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.3 }}
-          className="mb-6"
-        >
-          <h3 className="text-lg text-foreground mb-3 flex items-center gap-2">
-            <Brain className="w-5 h-5 text-[var(--lavender)]" />
-            Your Reflections
-          </h3>
-          <div className="space-y-3">
-            {checkIn.thoughtsToday && (
-              <Card>
-                <div className="flex items-start gap-3">
-                  <Cloud className="w-5 h-5 text-[var(--lavender)] flex-shrink-0 mt-1" />
+          {/* Stress & Social Metrics */}
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.2 }}
+            className="mb-6"
+          >
+            <h3 className="text-lg text-foreground mb-3 flex items-center gap-2">
+              <Activity className="w-5 h-5 text-[var(--lavender)]" />
+              Your Metrics
+            </h3>
+            <Card>
+              <div className="space-y-4">
+                {/* Stress Level */}
+                {checkIn.stressLevel !== undefined && (
                   <div>
-                    <h4 className="text-sm font-medium text-foreground mb-1">On Your Mind</h4>
-                    <p className="text-sm text-muted-foreground">{checkIn.thoughtsToday}</p>
+                    <div className="flex justify-between mb-2">
+                      <span className="text-sm text-foreground">Stress Level</span>
+                      <span className="text-sm font-medium text-foreground">{checkIn.stressLevel}/10</span>
+                    </div>
+                    <div className="h-3 bg-[var(--muted)] rounded-full overflow-hidden">
+                      <div
+                        className="h-full bg-gradient-to-r from-[var(--soft-mint)] to-[var(--soft-pink)] rounded-full transition-all"
+                        style={{ width: `${(checkIn.stressLevel / 10) * 100}%` }}
+                      />
+                    </div>
                   </div>
-                </div>
-              </Card>
-            )}
+                )}
 
-            {checkIn.energySource && (
-              <Card>
-                <div className="flex items-start gap-3">
-                  <Sun className="w-5 h-5 text-[var(--soft-mint)] flex-shrink-0 mt-1" />
+                {/* Social Connection */}
+                {checkIn.socialConnection !== undefined && (
                   <div>
-                    <h4 className="text-sm font-medium text-foreground mb-1">Energy Source</h4>
-                    <p className="text-sm text-muted-foreground">{checkIn.energySource}</p>
+                    <div className="flex justify-between mb-2">
+                      <span className="text-sm text-foreground">Social Connection</span>
+                      <span className="text-sm font-medium text-foreground">{checkIn.socialConnection}/10</span>
+                    </div>
+                    <div className="h-3 bg-[var(--muted)] rounded-full overflow-hidden">
+                      <div
+                        className="h-full bg-gradient-to-r from-[var(--lavender)] to-[var(--soft-purple)] rounded-full transition-all"
+                        style={{ width: `${(checkIn.socialConnection / 10) * 100}%` }}
+                      />
+                    </div>
                   </div>
-                </div>
-              </Card>
-            )}
+                )}
 
-            {checkIn.difficulties && (
-              <Card>
-                <div className="flex items-start gap-3">
-                  <Cloud className="w-5 h-5 text-[var(--soft-pink)] flex-shrink-0 mt-1" />
-                  <div>
-                    <h4 className="text-sm font-medium text-foreground mb-1">Difficulties</h4>
-                    <p className="text-sm text-muted-foreground">{checkIn.difficulties}</p>
+                {/* Sleep Quality */}
+                {checkIn.sleepQuality && (
+                  <div className="flex items-center justify-between pt-2 border-t border-[var(--border)]">
+                    <div className="flex items-center gap-2">
+                      <Moon className="w-5 h-5 text-[var(--muted-blue)]" />
+                      <span className="text-sm text-foreground">Sleep Quality</span>
+                    </div>
+                    <span className="text-sm font-medium text-foreground">{getSleepQualityLabel(checkIn.sleepQuality)}</span>
                   </div>
-                </div>
-              </Card>
-            )}
+                )}
+              </div>
+            </Card>
+          </motion.div>
 
-            {checkIn.gratitude && (
-              <Card>
-                <div className="flex items-start gap-3">
-                  <Heart className="w-5 h-5 text-red-500 flex-shrink-0 mt-1" />
-                  <div>
-                    <h4 className="text-sm font-medium text-foreground mb-1">Gratitude</h4>
-                    <p className="text-sm text-muted-foreground">{checkIn.gratitude}</p>
+          {/* Reflections */}
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.3 }}
+            className="mb-6"
+          >
+            <h3 className="text-lg text-foreground mb-3 flex items-center gap-2">
+              <Brain className="w-5 h-5 text-[var(--lavender)]" />
+              Your Reflections
+            </h3>
+            <div className="space-y-3">
+              {checkIn.thoughtsToday && (
+                <Card>
+                  <div className="flex items-start gap-3">
+                    <Cloud className="w-5 h-5 text-[var(--lavender)] flex-shrink-0 mt-1" />
+                    <div>
+                      <h4 className="text-sm font-medium text-foreground mb-1">On Your Mind</h4>
+                      <p className="text-sm text-muted-foreground">{checkIn.thoughtsToday}</p>
+                    </div>
                   </div>
-                </div>
-              </Card>
-            )}
+                </Card>
+              )}
 
-            {checkIn.tomorrowHelp && (
-              <Card>
-                <div className="flex items-start gap-3">
-                  <Sparkles className="w-5 h-5 text-[var(--lavender)] flex-shrink-0 mt-1" />
-                  <div>
-                    <h4 className="text-sm font-medium text-foreground mb-1">For Tomorrow</h4>
-                    <p className="text-sm text-muted-foreground">{checkIn.tomorrowHelp}</p>
+              {checkIn.energySource && (
+                <Card>
+                  <div className="flex items-start gap-3">
+                    <Sun className="w-5 h-5 text-[var(--soft-mint)] flex-shrink-0 mt-1" />
+                    <div>
+                      <h4 className="text-sm font-medium text-foreground mb-1">Energy Source</h4>
+                      <p className="text-sm text-muted-foreground">{checkIn.energySource}</p>
+                    </div>
                   </div>
-                </div>
-              </Card>
-            )}
-          </div>
-        </motion.div>
+                </Card>
+              )}
 
-       {/* Recommended Content */}
-       <motion.div
+              {checkIn.difficulties && (
+                <Card>
+                  <div className="flex items-start gap-3">
+                    <Cloud className="w-5 h-5 text-[var(--soft-pink)] flex-shrink-0 mt-1" />
+                    <div>
+                      <h4 className="text-sm font-medium text-foreground mb-1">Difficulties</h4>
+                      <p className="text-sm text-muted-foreground">{checkIn.difficulties}</p>
+                    </div>
+                  </div>
+                </Card>
+              )}
+
+              {checkIn.gratitude && (
+                <Card>
+                  <div className="flex items-start gap-3">
+                    <Heart className="w-5 h-5 text-red-500 flex-shrink-0 mt-1" />
+                    <div>
+                      <h4 className="text-sm font-medium text-foreground mb-1">Gratitude</h4>
+                      <p className="text-sm text-muted-foreground">{checkIn.gratitude}</p>
+                    </div>
+                  </div>
+                </Card>
+              )}
+
+              {checkIn.tomorrowHelp && (
+                <Card>
+                  <div className="flex items-start gap-3">
+                    <Sparkles className="w-5 h-5 text-[var(--lavender)] flex-shrink-0 mt-1" />
+                    <div>
+                      <h4 className="text-sm font-medium text-foreground mb-1">For Tomorrow</h4>
+                      <p className="text-sm text-muted-foreground">{checkIn.tomorrowHelp}</p>
+                    </div>
+                  </div>
+                </Card>
+              )}
+            </div>
+          </motion.div>
+
+          {/* Recommended Content */}
+          <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.4 }}
@@ -433,26 +435,26 @@ export function CheckInDetail({ checkIn, onClose, onTabChange, userRole = 'user'
 
                   return (
                     <Card key={item.id || idx} className="cursor-pointer hover:shadow-xl transition-all"
-                    onClick={async () => {
-                      try {
-                        const { getLibraryContent } = await import('../../services/content');
-                        const vsaVsebina = await getLibraryContent();
-                        
-                        const ujemajocaVsebina = vsaVsebina.find(
-                          (c: any) => c.title.toLowerCase().trim() === item.title.toLowerCase().trim()
-                        );
+                      onClick={async () => {
+                        try {
+                          const { getLibraryContent } = await import('../../services/content');
+                          const vsaVsebina = await getLibraryContent();
 
-                        if (ujemajocaVsebina) {
-                          setDashboardSelectedContent(ujemajocaVsebina);
-                        } else {
-                          if (vsaVsebina.length > 0) {
-                            setDashboardSelectedContent(vsaVsebina[0]);
+                          const ujemajocaVsebina = vsaVsebina.find(
+                            (c: any) => c.title.toLowerCase().trim() === item.title.toLowerCase().trim()
+                          );
+
+                          if (ujemajocaVsebina) {
+                            setDashboardSelectedContent(ujemajocaVsebina);
+                          } else {
+                            if (vsaVsebina.length > 0) {
+                              setDashboardSelectedContent(vsaVsebina[0]);
+                            }
                           }
+                        } catch (err) {
+                          console.error("Napaka pri preusmeritvi na vsebino iz Dashboarda:", err);
                         }
-                      } catch (err) {
-                        console.error("Napaka pri preusmeritvi na vsebino iz Dashboarda:", err);
-                      }
-                    }}>
+                      }}>
                       <div className="flex items-center gap-4">
                         <div className={`w-14 h-14 rounded-xl bg-gradient-to-br ${gradientClass} flex items-center justify-center flex-shrink-0`}>
                           <IconComponent className="w-7 h-7 text-white" />
@@ -463,7 +465,7 @@ export function CheckInDetail({ checkIn, onClose, onTabChange, userRole = 'user'
                               {item.duration || '5 min'}
                             </span>
                           </div>
-                          
+
                           <h4 className="mt-1 text-sm font-medium text-foreground truncate">{item.title}</h4>
                           <p className="text-xs text-muted-foreground line-clamp-1">{item.description}</p>
                         </div>

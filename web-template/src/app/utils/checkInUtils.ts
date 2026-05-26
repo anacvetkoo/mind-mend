@@ -11,7 +11,7 @@ export interface CheckInData {
   date: string;
   timestamp: number;
   emotionalState?: string;
-  dominantEmotion?: string;
+  dominantEmotion?: string | string[];
   thoughtsToday?: string;
   stressLevel?: number;
   sleepQuality?: string;

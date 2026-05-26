@@ -27,28 +27,28 @@ export function JournalHistory({ onSelectCheckIn }: JournalHistoryProps = {}) {
 
   useEffect(() => {
     const loadData = async () => {
-      try{
+      try {
         const firebaseCheckIns = await getFirebaseCheckIns();//pridobi vse check-ine
         setCheckIns(firebaseCheckIns);
-  
+
         const count7Days = countRecentCheckIns(firebaseCheckIns, 7); //izračunan tedenski napredek
         setCompletedThisWeek(count7Days);
-  
+
         const realStreak = await getStreakDataFromFirestore(); //funkcija za izračun streaka
         setStreakData(realStreak);
-  
+
         const filteredDays = firebaseCheckIns //označenje dni na koledarju
           .filter(checkIn => {
             const checkInDate = new Date(checkIn.date);
             return checkInDate.getMonth() === currentMonth && checkInDate.getFullYear() === currentYear;
           })
           .map(checkIn => new Date(checkIn.date).getDate());
-        
+
         setCompletedDays([...new Set(filteredDays)]);
         setWeeklyTrend(getWeeklyTrend(firebaseCheckIns));
       } catch (error) {
         console.error("Napaka pri nalaganju podatkov za JournalHistory:", error);
-      }finally {
+      } finally {
         setIsLoading(false);
       }
     };
@@ -217,19 +217,18 @@ export function JournalHistory({ onSelectCheckIn }: JournalHistoryProps = {}) {
                 const day = i + 1;
                 const isCompleted = completedDays.includes(day);
                 const isToday = new Date().getDate() === day &&
-                               new Date().getMonth() === currentMonth &&
-                               new Date().getFullYear() === currentYear;
+                  new Date().getMonth() === currentMonth &&
+                  new Date().getFullYear() === currentYear;
 
                 return (
                   <div
                     key={day}
-                    className={`aspect-square rounded-lg flex items-center justify-center text-xs transition-all ${
-                      isCompleted
+                    className={`aspect-square rounded-lg flex items-center justify-center text-xs transition-all ${isCompleted
                         ? 'bg-gradient-to-br from-[var(--lavender)] to-[var(--soft-purple)] text-white shadow-md font-medium'
                         : isToday
-                        ? 'bg-[var(--muted)] text-foreground border-2 border-[var(--lavender)]'
-                        : 'bg-[var(--muted)]/30 text-muted-foreground'
-                    }`}
+                          ? 'bg-[var(--muted)] text-foreground border-2 border-[var(--lavender)]'
+                          : 'bg-[var(--muted)]/30 text-muted-foreground'
+                      }`}
                   >
                     {day}
                   </div>
@@ -295,10 +294,12 @@ export function JournalHistory({ onSelectCheckIn }: JournalHistoryProps = {}) {
 
                         {/* Content */}
                         <div className="flex-1 min-w-0">
-                          {checkIn.dominantEmotion && (
-                            <div className="mb-2">
-                              <span className="text-xs px-2 py-1 rounded-full bg-[var(--lavender)]/10 text-[var(--lavender)]">
-                                {checkIn.dominantEmotion}
+                        {checkIn.dominantEmotion && (
+                            <div className="mb-2 flex flex-wrap gap-1">
+                              <span className="inline-block px-2.5 py-0.5 rounded-full bg-[var(--soft-purple)]/20 text-[var(--lavender)] text-xs font-medium">
+                                {Array.isArray(checkIn.dominantEmotion)
+                                  ? checkIn.dominantEmotion.join(', ')
+                                  : checkIn.dominantEmotion}
                               </span>
                             </div>
                           )}
@@ -329,8 +330,8 @@ export function JournalHistory({ onSelectCheckIn }: JournalHistoryProps = {}) {
                 );
               })}
               {checkIns.length > visibleCheckInCount && (
-                <motion.div 
-                  initial={{ opacity: 0 }} 
+                <motion.div
+                  initial={{ opacity: 0 }}
                   animate={{ opacity: 1 }}
                   className="pt-2 text-center"
                 >
