@@ -255,7 +255,7 @@ export function getWeeklyTrend(checkIns: any[]): string {
   cutoffDate.setDate(cutoffDate.getDate() - 7);
   cutoffDate.setHours(0, 0, 0, 0);
 
-  // 2. Filtriramo samo dnevnike iz zadnjih 7 dni
+  //samo dnevniki iz zadnjih 7 dni
   const recentCheckIns = checkIns.filter(checkIn => {
     const checkInDate = new Date(checkIn.date);
     checkInDate.setHours(0, 0, 0, 0);
@@ -263,10 +263,9 @@ export function getWeeklyTrend(checkIns: any[]): string {
   });
 
   if (recentCheckIns.length === 0) {
-    return 'Stable'; // Privzeta vrednost, če uporabnik še nima vnosov v tem tednu
+    return 'Stable'; //privzeta vrednost, če uporabnik še nima vnosov v tem tednu
   }
 
-  // 3. Izluščimo nivoje stresa
   const stressLevels = recentCheckIns
     .map(c => c.stressLevel)
     .filter(s => s !== undefined && s !== null) as number[];
@@ -275,10 +274,9 @@ export function getWeeklyTrend(checkIns: any[]): string {
     return 'Stable';
   }
 
-  // 4. Izračunamo povprečje stresa v zadnjih 7 dneh
   const avgStress = stressLevels.reduce((a, b) => Number(a) + Number(b), 0) / stressLevels.length;
 
   if (avgStress >= 7) return 'High stress';
   if (avgStress <= 3) return 'Low stress';
-  return 'Moderate';
+  return 'Medium';
 }
