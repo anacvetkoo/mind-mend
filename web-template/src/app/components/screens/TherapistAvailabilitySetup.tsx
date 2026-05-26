@@ -28,6 +28,7 @@ export function TherapistAvailabilitySetup({ onClose, existingAvailability, onSa
     existingAvailability?.enabledTypes || ['Chat', 'Video Call']
   );
   const [inPersonAddress, setInPersonAddress] = useState(existingAvailability?.inPersonAddress || '');
+  const [zoomLink, setZoomLink] = useState(existingAvailability?.zoomLink || '');
 
   const appointmentTypes: { type: AppointmentType; icon: typeof MessageCircle; label: string }[] = [
     { type: 'Chat', icon: MessageCircle, label: 'Chat' },
@@ -58,12 +59,13 @@ export function TherapistAvailabilitySetup({ onClose, existingAvailability, onSa
 
   const handleSave = () => {
     const availability: TherapistAvailability = {
-      therapistId: 'current-therapist-id', // In real app, get from context
+      therapistId: 'current-therapist-id',
       workingHours,
       appointmentDuration,
       breakDuration,
       enabledTypes,
       inPersonAddress: enabledTypes.includes('In Person') ? inPersonAddress : undefined,
+      zoomLink: enabledTypes.includes('Video Call') ? zoomLink : undefined,
       isSetupComplete: true
     };
     onSave(availability);
@@ -271,6 +273,22 @@ export function TherapistAvailabilitySetup({ onClose, existingAvailability, onSa
                 </div>
               )}
 
+              {enabledTypes.includes('Video Call') && (
+                <div className="mb-6">
+                  <label className="block text-sm text-foreground mb-2">
+                    Zoom Meeting Link <span className="text-red-500">*</span>
+                  </label>
+                  <input
+                    type="url"
+                    value={zoomLink}
+                    onChange={(e) => setZoomLink(e.target.value)}
+                    placeholder="https://zoom.us/j/123456789"
+                    className="w-full px-4 py-3 rounded-xl bg-[var(--input-background)] border-2 border-[var(--border)] text-foreground placeholder:text-muted-foreground"
+                  />
+                  <p className="text-xs text-muted-foreground mt-1">Clients will use this to join video sessions</p>
+                </div>
+              )}
+
               <div className="flex gap-3">
                 <motion.button
                   whileTap={{ scale: 0.98 }}
@@ -282,7 +300,7 @@ export function TherapistAvailabilitySetup({ onClose, existingAvailability, onSa
                 <motion.button
                   whileTap={{ scale: 0.98 }}
                   onClick={handleSave}
-                  disabled={enabledTypes.length === 0 || (enabledTypes.includes('In Person') && !inPersonAddress.trim())}
+                  disabled={enabledTypes.length === 0 || (enabledTypes.includes('In Person') && !inPersonAddress.trim()) || (enabledTypes.includes('Video Call') && !zoomLink.trim())}
                   className="flex-1 py-4 rounded-2xl bg-gradient-to-r from-[var(--lavender)] to-[var(--soft-purple)] text-white disabled:opacity-50"
                 >
                   Save Availability

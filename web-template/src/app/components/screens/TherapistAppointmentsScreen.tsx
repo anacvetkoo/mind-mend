@@ -7,6 +7,7 @@ import {
   cancelAppointment,
   getAppointmentsForTherapist,
   updateAppointmentStatus,
+  endSession,
 } from '../../services/appointments';
 
 export function TherapistAppointmentsScreen({ onStartSession }: { onStartSession?: (appointment: Appointment) => void }) {
@@ -138,7 +139,25 @@ export function TherapistAppointmentsScreen({ onStartSession }: { onStartSession
         </div>
 
         {/* Upcoming buttons */}
-        {mode === 'upcoming' && (
+        {mode === 'upcoming' && apt.status === 'IN_SESSION' && (
+          <div className="flex gap-2">
+            <motion.button
+              whileTap={{ scale: 0.95 }}
+              onClick={() => onStartSession?.(apt)}
+              className="flex-1 px-4 py-2.5 rounded-2xl bg-gradient-to-r from-[var(--lavender)] to-[var(--soft-purple)] text-white text-sm font-medium shadow-sm"
+            >
+              Rejoin Session
+            </motion.button>
+            <motion.button
+              whileTap={{ scale: 0.95 }}
+              onClick={async () => { await endSession(apt.id); await loadAppointments(); }}
+              className="px-4 py-2.5 rounded-2xl bg-red-500 text-white text-sm font-medium"
+            >
+              End
+            </motion.button>
+          </div>
+        )}
+        {mode === 'upcoming' && apt.status !== 'IN_SESSION' && (
           <div className="flex gap-2">
             <motion.button
               whileTap={{ scale: 0.95 }}
