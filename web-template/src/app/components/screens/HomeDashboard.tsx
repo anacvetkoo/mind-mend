@@ -11,6 +11,7 @@ import { getStreakDataFromFirestore } from '../../utils/StreakCalculator';
 import { generateAIWellnessTips } from '../../services/gemini';
 import { collection, doc, getDoc, getDocs } from 'firebase/firestore';
 import { db } from '../../services/firebaseConfig.js';
+import { ContentDetail } from './ContentDetail';
 
 interface HomeDashboardProps {
   userId: string;
@@ -48,6 +49,8 @@ export function HomeDashboard({ userId, userName, onCheckIn, onViewAiInsights, o
     title: string; 
     description: string; 
   }[]>([]);
+
+  const [dashboardSelectedContent, setDashboardSelectedContent] = useState<any | null>(null);
 
   useEffect(() => {
     const loadDashboardData = async () => {
@@ -356,8 +359,26 @@ export function HomeDashboard({ userId, userName, onCheckIn, onViewAiInsights, o
                   <Card 
                     key={item.id || idx}
                     className="hover:shadow-xl transition-shadow cursor-pointer"
-                    onClick={() => {
-                      console.log("Uporabnik želi predvajati vsebino z ID-jem:", item.id);
+                    onClick={async () => {
+                      try {
+                        console.log("Iščem pravo vsebino v knjižnici za:", item.title);
+                        const { getLibraryContent } = await import('../../services/content');
+                        const vsaVsebina = await getLibraryContent();
+                        
+                        const ujemajocaVsebina = vsaVsebina.find(
+                          (c: any) => c.title.toLowerCase().trim() === item.title.toLowerCase().trim()
+                        );
+
+                        if (ujemajocaVsebina) {
+                          setDashboardSelectedContent(ujemajocaVsebina);
+                        } else {
+                          if (vsaVsebina.length > 0) {
+                            setDashboardSelectedContent(vsaVsebina[0]);
+                          }
+                        }
+                      } catch (err) {
+                        console.error("Napaka pri preusmeritvi na vsebino iz Dashboarda:", err);
+                      }
                     }}
                   >
                     <div className="flex items-center gap-4">
@@ -366,12 +387,11 @@ export function HomeDashboard({ userId, userName, onCheckIn, onViewAiInsights, o
                       </div>
                       
                       <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-2 flex-wrap">
-                          <Badge variant="secondary">{item.duration}</Badge>
-                          <span className={`text-[10px] uppercase font-bold tracking-wider px-2 py-0.5 rounded-full ${difficultyColor}`}>
-                            {item.difficulty}
-                          </span>
-                        </div>
+                          <div className="mb-1">
+                            <span className="inline-block px-2.5 py-0.5 rounded-full bg-[var(--soft-purple)]/20 text-[var(--lavender)] text-xs font-medium">
+                              {item.duration || '5 min'}
+                            </span>
+                          </div>
                         <h4 className="mt-1.5 text-sm font-medium text-foreground truncate">{item.title}</h4>
                         <p className="text-xs text-muted-foreground line-clamp-1">{item.description}</p>
                       </div>
@@ -383,6 +403,14 @@ export function HomeDashboard({ userId, userName, onCheckIn, onViewAiInsights, o
           </div>
         </motion.div>
       </div>
+      {dashboardSelectedContent && (
+        <ContentDetail
+          content={dashboardSelectedContent}
+          onClose={() => setDashboardSelectedContent(null)}
+          moreFromTherapist={[]} // Pustimo prazno ali naložimo naknadno
+          onOpenContent={(novaVsebina) => setDashboardSelectedContent(novaVsebina)}
+        />
+      )}
     </div>
   );
 }

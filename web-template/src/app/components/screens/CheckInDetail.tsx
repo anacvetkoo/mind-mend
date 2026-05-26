@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { motion } from 'motion/react';
 import { Card } from '../ui/Card';
 import { Badge } from '../ui/Badge';
@@ -6,17 +6,96 @@ import { X, Sparkles, Heart, Moon, Users, Sun, Cloud, Brain, Activity } from 'lu
 import { generateAIInsights, type CheckInData } from '../../utils/checkInUtils';
 import { BottomNav } from '../navigation/BottomNav';
 import type { UserRole } from './AuthScreen';
+import { doc, updateDoc } from 'firebase/firestore';
+import { db } from '../../services/firebaseConfig';
+import { ContentDetail } from './ContentDetail';
 
 interface CheckInDetailProps {
-  checkIn: CheckInData;
+  checkIn: CheckInData & { aiRecommendations?: any[] };
   onClose: () => void;
   onTabChange?: (tab: string) => void;
   userRole?: UserRole;
   activeTab?: string;
+  userId?: string;
 }
 
-export function CheckInDetail({ checkIn, onClose, onTabChange, userRole = 'user', activeTab = 'journal' }: CheckInDetailProps) {
+export function CheckInDetail({ checkIn, onClose, onTabChange, userRole = 'user', activeTab = 'journal', userId }: CheckInDetailProps) {
   const insights = generateAIInsights(checkIn);
+
+  const [singleRecommendations, setSingleRecommendations] = useState<any[]>([]);
+  const [isRecsLoading, setIsRecsLoading] = useState(true);
+
+  const [dashboardSelectedContent, setDashboardSelectedContent] = useState<any | null>(null);
+
+  useEffect(() => {
+    let isMounted = true;
+
+    const fetchSingleRecommendations = async () => {
+      setIsRecsLoading(true);
+      try {
+        if (checkIn.aiRecommendations && checkIn.aiRecommendations.length > 0) {
+          console.log("Najdena obstoječa priporočila v bazi za dan:", checkIn.date);
+          if (isMounted) {
+            setSingleRecommendations(checkIn.aiRecommendations);
+            setIsRecsLoading(false);
+          }
+          return;
+        }
+
+        console.log("Priporočil ni v bazi. Sprožam enkratni klic AI za:", checkIn.date);
+        const { generateAIRecommendations } = await import('../../services/gemini.js');
+        const { getLibraryContent } = await import('../../services/content'); // Uvozimo knjižnico vsebin
+        
+        const vsebine = await getLibraryContent().catch(() => []);
+        const trenutenUid = userId || "";
+        const result = await generateAIRecommendations([checkIn], trenutenUid, vsebine);
+        
+        if (isMounted) {
+          let finalRecs = [];
+          if (result && result.length > 0) {
+            finalRecs = result;
+          } else {
+            finalRecs = [
+              { id: "s-1", category: 'breathing', difficulty: 'easy', duration: '5 min', title: 'Grounding Breath', description: 'Return to the present moment.' },
+              { id: "s-2", category: 'relaxation', difficulty: 'medium', duration: '10 min', title: 'Self-Compassion Practice', description: 'Be kind to your mind today.' }
+            ];
+          }
+
+          setSingleRecommendations(finalRecs);
+
+          if (checkIn.id) {
+            try {
+              const checkInDocRef = doc(db, "dnevniki", checkIn.id);
+              await updateDoc(checkInDocRef, {
+                aiRecommendations: finalRecs
+              });
+              console.log("Priporočila uspešno shranjena v Firestore dokument:", checkIn.id);
+              
+              checkIn.aiRecommendations = finalRecs;
+            } catch (dbError) {
+              console.error("Napaka pri shranjevanju priporočil v Firestore:", dbError);
+            }
+          }
+        }
+      } catch (error) {
+        console.error("Napaka pri generiranju ali pridobivanju priporočil:", error);
+        if (isMounted) {
+          setSingleRecommendations([
+            { id: "s-1", category: 'breathing', difficulty: 'easy', duration: '5 min', title: 'Grounding Breath', description: 'Return to the present moment.' },
+            { id: "s-2", category: 'relaxation', difficulty: 'medium', duration: '10 min', title: 'Self-Compassion Practice', description: 'Be kind to your mind today.' }
+          ]);
+        }
+      } finally {
+        if (isMounted) setIsRecsLoading(false);
+      }
+    };
+
+    fetchSingleRecommendations();
+
+    return () => {
+      isMounted = false;
+    };
+  }, [checkIn]);
 
   const handleTabChange = (tab: string) => {
     if (tab !== activeTab) {
@@ -250,42 +329,76 @@ export function CheckInDetail({ checkIn, onClose, onTabChange, userRole = 'user'
           </div>
         </motion.div>
 
-        {/* Recommended Content */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.4 }}
-          className="mb-6"
-        >
-          <h3 className="text-lg text-foreground mb-3">Recommended for You</h3>
-          <div className="space-y-3">
-            <Card className="cursor-pointer hover:shadow-xl transition-all">
-              <div className="flex items-center gap-4">
-                <div className="w-14 h-14 rounded-xl bg-gradient-to-br from-[var(--muted-blue)] to-[var(--soft-mint)] flex items-center justify-center flex-shrink-0">
-                  <Brain className="w-7 h-7 text-white" />
-                </div>
-                <div className="flex-1">
-                  <Badge variant="secondary">5 min</Badge>
-                  <h4 className="mt-1 text-sm">Grounding Exercise</h4>
-                  <p className="text-xs text-muted-foreground">Return to the present</p>
-                </div>
-              </div>
-            </Card>
+       {/* Recommended Content */}
+       <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.4 }}
+            className="mb-6"
+          >
+            <h3 className="text-lg text-foreground mb-3">Recommended for You</h3>
+            <div className="space-y-3">
+              {isRecsLoading ? (
+                <Card variant="glass" className="py-6 text-center text-sm text-muted-foreground animate-pulse">
+                  ✨ Loading personalized suggestions...
+                </Card>
+              ) : (
+                singleRecommendations.map((item, idx) => {
+                  let IconComponent = Brain;
+                  let gradientClass = "from-[var(--muted-blue)] to-[var(--soft-mint)]";
 
-            <Card className="cursor-pointer hover:shadow-xl transition-all">
-              <div className="flex items-center gap-4">
-                <div className="w-14 h-14 rounded-xl bg-gradient-to-br from-[var(--lavender)] to-[var(--soft-purple)] flex items-center justify-center flex-shrink-0">
-                  <Heart className="w-7 h-7 text-white" />
-                </div>
-                <div className="flex-1">
-                  <Badge variant="primary">8 min</Badge>
-                  <h4 className="mt-1 text-sm">Self-Compassion Practice</h4>
-                  <p className="text-xs text-muted-foreground">Be kind to yourself</p>
-                </div>
-              </div>
-            </Card>
-          </div>
-        </motion.div>
+                  if (item.category === 'breathing') {
+                    IconComponent = Heart;
+                    gradientClass = "from-[var(--soft-purple)] to-[var(--soft-pink)]";
+                  } else if (item.category === 'sound therapy' || item.category === 'relaxation') {
+                    IconComponent = Moon;
+                    gradientClass = "from-[var(--lavender)] to-[var(--soft-purple)]";
+                  }
+
+                  return (
+                    <Card key={item.id || idx} className="cursor-pointer hover:shadow-xl transition-all"
+                    onClick={async () => {
+                      try {
+                        console.log("Iščem pravo vsebino v knjižnici za:", item.title);
+                        const { getLibraryContent } = await import('../../services/content');
+                        const vsaVsebina = await getLibraryContent();
+                        
+                        const ujemajocaVsebina = vsaVsebina.find(
+                          (c: any) => c.title.toLowerCase().trim() === item.title.toLowerCase().trim()
+                        );
+
+                        if (ujemajocaVsebina) {
+                          setDashboardSelectedContent(ujemajocaVsebina);
+                        } else {
+                          if (vsaVsebina.length > 0) {
+                            setDashboardSelectedContent(vsaVsebina[0]);
+                          }
+                        }
+                      } catch (err) {
+                        console.error("Napaka pri preusmeritvi na vsebino iz Dashboarda:", err);
+                      }
+                    }}>
+                      <div className="flex items-center gap-4">
+                        <div className={`w-14 h-14 rounded-xl bg-gradient-to-br ${gradientClass} flex items-center justify-center flex-shrink-0`}>
+                          <IconComponent className="w-7 h-7 text-white" />
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <div className="mb-1">
+                            <span className="inline-block px-2.5 py-0.5 rounded-full bg-[var(--soft-purple)]/20 text-[var(--lavender)] text-xs font-medium">
+                              {item.duration || '5 min'}
+                            </span>
+                          </div>
+                          
+                          <h4 className="mt-1 text-sm font-medium text-foreground truncate">{item.title}</h4>
+                          <p className="text-xs text-muted-foreground line-clamp-1">{item.description}</p>
+                        </div>
+                      </div>
+                    </Card>
+                  );
+                })
+              )}
+            </div>
+          </motion.div>
         </div>
 
         {/* Bottom Navigation */}
@@ -295,6 +408,14 @@ export function CheckInDetail({ checkIn, onClose, onTabChange, userRole = 'user'
           role={userRole}
         />
       </div>
+      {dashboardSelectedContent && (
+        <ContentDetail
+          content={dashboardSelectedContent}
+          onClose={() => setDashboardSelectedContent(null)}
+          moreFromTherapist={[]} // Pustimo prazno ali naložimo naknadno
+          onOpenContent={(novaVsebina) => setDashboardSelectedContent(novaVsebina)}
+        />
+      )}
     </div>
   );
 }

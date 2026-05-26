@@ -595,6 +595,7 @@ export default function App() {
     return (
       <CheckInDetail
         checkIn={selectedCheckIn}
+        userId={auth.currentUser?.uid}
         onClose={() => setSelectedCheckIn(null)}
         onTabChange={(tab) => {
           setSelectedCheckIn(null);
