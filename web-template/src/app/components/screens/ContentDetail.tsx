@@ -13,7 +13,8 @@ import {
 import {
   getLibraryContent,
   getMoreContentFromTherapist,
-  type LibraryContentItem
+  type LibraryContentItem,
+  incrementContentViews
 } from '../../services/content';
 
 type ContentItem = LibraryContentItem;
@@ -25,6 +26,7 @@ interface ContentDetailProps {
   onViewTherapist?: (therapistId: string) => void;
   moreFromTherapist?: ContentItem[];
   initialProgress?: ContentProgressItem | null;
+  shouldCountView?: boolean;
 }
 
 export function ContentDetail({
@@ -33,7 +35,8 @@ export function ContentDetail({
   onOpenContent,
   onViewTherapist,
   moreFromTherapist = [],
-  initialProgress = null
+  initialProgress = null,
+  shouldCountView = true
 }: ContentDetailProps) {
   const [, forceUpdate] = useState({});
   const [isPlaying, setIsPlaying] = useState(false);
@@ -48,7 +51,7 @@ export function ContentDetail({
   const [likedContentIds, setLikedContentIds] = useState<string[]>([]);
   const [savedContentIds, setSavedContentIds] = useState<string[]>([]);
 
-  
+  const countedContentViewIds = new Set<string>();
 
   const audioRef = useRef<HTMLAudioElement | null>(null);
 const videoRef = useRef<HTMLVideoElement | null>(null);
@@ -235,7 +238,6 @@ useEffect(() => {
   audioRef.current?.pause();
   videoRef.current?.pause();
   stopAudioVisualization();
-
   setCurrentStep(1);
   setHasFinishedSteps(false);
   setIsPlaying(false);
@@ -382,6 +384,25 @@ useEffect(() => {
     applyInitialMediaProgress(audioRef.current);
   }
 }, [content.id, activeInitialProgress]);
+
+useEffect(() => {
+  const countContentView = async () => {
+    if (!shouldCountView || !content?.id) return;
+
+    if (countedContentViewIds.has(content.id)) return;
+
+    countedContentViewIds.add(content.id);
+
+    try {
+      await incrementContentViews(content.id);
+    } catch (error) {
+      countedContentViewIds.delete(content.id);
+      console.error('Error incrementing content views:', error);
+    }
+  };
+
+  countContentView();
+}, [content?.id, shouldCountView]);
 
 const handleMediaLoadedMetadata = (
   duration: number,

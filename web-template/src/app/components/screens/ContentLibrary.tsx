@@ -18,7 +18,6 @@ import {
 import { ContentDetail } from './ContentDetail';
 import {
   getLibraryContent,
-  incrementContentViews,
   type LibraryContentItem
 } from '../../services/content';
 import {
@@ -343,19 +342,13 @@ useEffect(() => {
     currentPage * itemsPerPage
   );
 
-  const handleOpenContent = async (
+  const handleOpenContent = (
   content: LibraryContentItem,
   progressItem: ContentProgressItem | null = null
 ) => {
   setSelectedContent(content);
   setSelectedContentProgress(progressItem);
   onSelectContent?.(content);
-
-  try {
-    await incrementContentViews(content.id);
-  } catch (error) {
-    console.error('Error incrementing content views:', error);
-  }
 };
 
   const handleCategoryClick = (category: ContentType) => {

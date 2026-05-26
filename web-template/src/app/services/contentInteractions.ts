@@ -1,16 +1,16 @@
 import {
   arrayRemove,
   arrayUnion,
-  doc,
-  getDoc,
-  increment,
-  setDoc,
-  updateDoc,
   collection,
   deleteDoc,
+  doc,
+  getDoc,
   getDocs,
+  increment,
   query,
   serverTimestamp,
+  setDoc,
+  updateDoc,
   where
 } from 'firebase/firestore';
 import { auth, db } from './firebaseConfig';
@@ -35,8 +35,8 @@ export interface ContentProgressItem {
 
 const getCurrentUserId = () => auth.currentUser?.uid || '';
 
-const getUserInteractionsRef = (userId: string) => {
-  return doc(db, 'userContentInteractions', userId);
+const getUserRef = (userId: string) => {
+  return doc(db, 'users', userId);
 };
 
 export const getUserContentInteractions = async (): Promise<UserContentInteractions> => {
@@ -50,7 +50,7 @@ export const getUserContentInteractions = async (): Promise<UserContentInteracti
     };
   }
 
-  const snapshot = await getDoc(getUserInteractionsRef(userId));
+  const snapshot = await getDoc(getUserRef(userId));
 
   if (!snapshot.exists()) {
     return {
@@ -75,7 +75,7 @@ export const toggleLikedContent = async (contentId: string, isCurrentlyLiked: bo
   if (!userId) return;
 
   await setDoc(
-    getUserInteractionsRef(userId),
+    getUserRef(userId),
     {
       likedContentIds: isCurrentlyLiked ? arrayRemove(contentId) : arrayUnion(contentId)
     },
@@ -95,12 +95,16 @@ export const toggleSavedContent = async (contentId: string, isCurrentlySaved: bo
   if (!userId) return;
 
   await setDoc(
-    getUserInteractionsRef(userId),
+    getUserRef(userId),
     {
       savedContentIds: isCurrentlySaved ? arrayRemove(contentId) : arrayUnion(contentId)
     },
     { merge: true }
   );
+
+  await updateDoc(doc(db, 'content', contentId), {
+    saves: increment(isCurrentlySaved ? -1 : 1)
+  });
 };
 
 export const markContentAsCompleted = async (contentId: string) => {
@@ -109,7 +113,7 @@ export const markContentAsCompleted = async (contentId: string) => {
   if (!userId) return;
 
   await setDoc(
-    getUserInteractionsRef(userId),
+    getUserRef(userId),
     {
       completedContentIds: arrayUnion(contentId)
     },
