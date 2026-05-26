@@ -44,9 +44,11 @@ import { createAppointment, updateAppointmentStatus } from './services/appointme
 import { PrivacyPolicyPage } from './components/screens/PrivacyPolicy.js';
 import { TermsConditionsPage } from './components/screens/TermsAndConditions.js';
 import { AiInsightsScreen } from './components/screens/AiInsightsScreen.js';
+import { ClientFilesScreen } from './components/screens/ClientFilesScreen';
+import { ClientFileDetails } from './components/screens/ClientFileDetails';
+import { auth } from './services/firebaseConfig';
 import { SessionScreen } from './components/screens/SessionScreen';
 import { startSession } from './services/appointments';
-import { ClientFileDetails } from './components/screens/ClientFileDetails';
 
 type AppState = 'splash' | 'welcome' | 'auth' | 'questionnaire' | 'therapist-profile-setup' | 'app';
 type ContentReturnScreen = 'likedContent' | 'savedContent' | 'completedContent' | null;
@@ -229,24 +231,24 @@ export default function App() {
   useEffect(() => {
     window.scrollTo({ top: 0, behavior: 'instant' });
   }, [
-  currentScreen,
-  appState,
-  showDailyCheckIn,
-  selectedCheckIn,
-  selectedContent,
-  selectedTherapistId,
-  showChatConversation,
-  showCallScreen,
-  showVideoCallScreen,
-  showBookingFlow,
-  showCustomRequest,
-  showPaymentCheckout,
-  showCustomRequestConfirmation,
-  showLikedContent,
-  showSavedContent,
-  showCompletedContent,
-  selectedClientUserId
-]);
+    currentScreen,
+    appState,
+    showDailyCheckIn,
+    selectedCheckIn,
+    selectedContent,
+    selectedTherapistId,
+    showChatConversation,
+    showCallScreen,
+    showVideoCallScreen,
+    showBookingFlow,
+    showCustomRequest,
+    showPaymentCheckout,
+    showCustomRequestConfirmation,
+    showLikedContent,
+    showSavedContent,
+    showCompletedContent,
+    selectedClientUserId
+  ]);
 
   const toggleDarkMode = async () => {
     const newValue = !darkMode;
@@ -597,6 +599,7 @@ const handleQuestionnaireComplete = async (data: any) => {
     return (
       <CheckInDetail
         checkIn={selectedCheckIn}
+        userId={auth.currentUser?.uid}
         onClose={() => setSelectedCheckIn(null)}
         onTabChange={(tab) => {
           setSelectedCheckIn(null);
@@ -609,47 +612,47 @@ const handleQuestionnaireComplete = async (data: any) => {
   }
 
   if (selectedContent) {
-  return (
-    <ContentDetail
-      content={selectedContent}
-      onClose={() => {
-  const returnScreen = contentReturnScreen;
+    return (
+      <ContentDetail
+        content={selectedContent}
+        onClose={() => {
+          const returnScreen = contentReturnScreen;
 
-  setSelectedContent(null);
-  setContentReturnScreen(null);
+          setSelectedContent(null);
+          setContentReturnScreen(null);
 
-  if (returnScreen === 'liked') {
-    setShowLikedContent(true);
-    return;
+          if (returnScreen === 'liked') {
+            setShowLikedContent(true);
+            return;
+          }
+
+          if (returnScreen === 'saved') {
+            setShowSavedContent(true);
+            return;
+          }
+
+          if (returnScreen === 'completed') {
+            setShowCompletedContent(true);
+          }
+        }}
+        onViewTherapist={(therapistId) => {
+          setContentBeforeTherapistProfile(selectedContent);
+          setSelectedContent(null);
+          setSelectedTherapistId(therapistId);
+        }}
+      />
+    );
   }
-
-  if (returnScreen === 'saved') {
-    setShowSavedContent(true);
-    return;
-  }
-
-  if (returnScreen === 'completed') {
-    setShowCompletedContent(true);
-  }
-}}
-      onViewTherapist={(therapistId) => {
-        setContentBeforeTherapistProfile(selectedContent);
-        setSelectedContent(null);
-        setSelectedTherapistId(therapistId);
-      }}
-    />
-  );
-}
 
   if (showLikedContent) {
     return (
       <LikedContentScreen
         onBack={() => setShowLikedContent(false)}
         onSelectContent={(content) => {
-  setContentReturnScreen('liked');
-  setShowLikedContent(false);
-  setSelectedContent(content);
-}}
+          setContentReturnScreen('liked');
+          setShowLikedContent(false);
+          setSelectedContent(content);
+        }}
       />
     );
   }
@@ -659,33 +662,44 @@ const handleQuestionnaireComplete = async (data: any) => {
       <SavedContentScreen
         onBack={() => setShowSavedContent(false)}
         onSelectContent={(content) => {
-  setContentReturnScreen('saved');
-  setShowSavedContent(false);
-  setSelectedContent(content);
-}}
+          setContentReturnScreen('saved');
+          setShowSavedContent(false);
+          setSelectedContent(content);
+        }}
       />
     );
   }
+
   if (showCompletedContent) {
-  return (
-    <CompletedContentScreen
-      onBack={() => setShowCompletedContent(false)}
-      onSelectContent={(content) => {
-  setContentReturnScreen('completed');
-  setShowCompletedContent(false);
-  setSelectedContent(content);
-}}
-    />
-  );
-}
+    return (
+      <CompletedContentScreen
+        onBack={() => setShowCompletedContent(false)}
+        onSelectContent={(content) => {
+          setContentReturnScreen('completed');
+          setShowCompletedContent(false);
+          setSelectedContent(content);
+        }}
+      />
+    );
+  }
 
   if (selectedClientUserId) {
     return (
-      <ClientFileDetails
-        therapistId={getAuth().currentUser?.uid || ''}
-        userId={selectedClientUserId}
-        onBack={() => setSelectedClientUserId(null)}
-      />
+      <>
+        <ClientFileDetails
+          therapistId={getAuth().currentUser?.uid || ''}
+          userId={selectedClientUserId}
+          onBack={() => setSelectedClientUserId(null)}
+        />
+        <BottomNav
+          activeTab="clients"
+          role={userRole}
+          onTabChange={(tab) => {
+            setSelectedClientUserId(null);
+            handleTabChange(tab);
+          }}
+        />
+      </>
     );
   }
 
@@ -714,13 +728,13 @@ const handleQuestionnaireComplete = async (data: any) => {
       <TherapistProfile
         therapistId={selectedTherapistId}
         onClose={() => {
-  setSelectedTherapistId(null);
+          setSelectedTherapistId(null);
 
-  if (contentBeforeTherapistProfile) {
-    setSelectedContent(contentBeforeTherapistProfile);
-    setContentBeforeTherapistProfile(null);
-  }
-}}
+          if (contentBeforeTherapistProfile) {
+            setSelectedContent(contentBeforeTherapistProfile);
+            setContentBeforeTherapistProfile(null);
+          }
+        }}
         onMessage={() => {
           setChatTarget({
             name: 'Dr. Sarah Mitchell',
@@ -750,9 +764,9 @@ const handleQuestionnaireComplete = async (data: any) => {
           setShowBookingFlow(true);
         }}
         onSelectContent={(content) => {
-  setSelectedTherapistId(null);
-  setSelectedContent(content);
-}}
+          setSelectedTherapistId(null);
+          setSelectedContent(content);
+        }}
       />
     );
   }
@@ -791,8 +805,7 @@ const handleQuestionnaireComplete = async (data: any) => {
     );
   }
 
-  // ─── Active Session ───────────────────────────────────────────────────────
-
+  // ─── Active Session ───────────────────────────────────────────────────────────
   if (activeSession) {
     return (
       <SessionScreen
@@ -933,17 +946,23 @@ const handleQuestionnaireComplete = async (data: any) => {
         price={bookingData.price || 120}
         onClose={() => {
           setShowPaymentCheckout(false);
+
+          if (bookingData.id) {
+            setBookingData(null);
+            setCurrentScreen('appointments');
+            return;
+          }
+
           setBookingStep(3);
           setShowBookingFlow(true);
         }}
         onPaymentSuccess={async (paymentId) => {
           const currentUser = getAuth().currentUser;
+
           try {
             if (bookingData.id) {
-              // Obstoječi appointment (terapevt je sprejel request) — samo posodobimo status
-              await updateAppointmentStatus(bookingData.id, 'CONFIRMED', paymentId || 'simulated');
+              await updateAppointmentStatus(bookingData.id, 'CONFIRMED', paymentId);
             } else {
-              // Nov appointment (normal booking) — ustvarimo direktno kot CONFIRMED
               await createAppointment({
                 therapistId: bookingData.therapistId,
                 therapistName: bookingData.therapistName,
@@ -956,22 +975,29 @@ const handleQuestionnaireComplete = async (data: any) => {
                 status: 'CONFIRMED',
                 notes: bookingData.notes || '',
                 price: bookingData.price || 120,
-                paymentId: paymentId || 'simulated',
+                paymentId,
               });
             }
-          } catch (error) {
-            console.error('Error saving appointment:', error);
-          }
 
-          setShowPaymentCheckout(false);
-          setBookingData(null);
-          setBookingStep(1);
-          setBookingTherapistId(null);
-          setCurrentScreen('appointments');
-          alert('Appointment confirmed! Check your appointments to view details.');
+            setShowPaymentCheckout(false);
+            setBookingData(null);
+            setBookingStep(1);
+            setBookingTherapistId(null);
+            setCurrentScreen('appointments');
+          } catch (error) {
+            console.error('Error saving paid appointment:', error);
+
+            if (bookingData.id) {
+              await updateAppointmentStatus(bookingData.id, 'PAYMENT_FAILED', paymentId);
+            }
+
+            alert('Payment succeeded, but appointment could not be updated. Please contact support.');
+          }
         }}
         onPaymentFailed={async () => {
-          // Payment failed — appointment ni bil ustvarjen, user lahko poskusi znova
+          if (bookingData?.id) {
+            await updateAppointmentStatus(bookingData.id, 'PAYMENT_FAILED');
+          }
         }}
       />
     );
@@ -990,8 +1016,6 @@ const handleQuestionnaireComplete = async (data: any) => {
               onFindTherapist={() => setCurrentScreen('therapists')}
               onViewAppointments={() => setCurrentScreen('appointments')}
               onViewNotifications={() => setCurrentScreen('notifications')}
-              onViewPrivacy={() => setCurrentScreen('privacy-policy')}
-              onViewTerms={() => setCurrentScreen('terms-conditions')}
             />
           )}
           {currentScreen === 'journal' && (
@@ -999,32 +1023,33 @@ const handleQuestionnaireComplete = async (data: any) => {
           )}
           {currentScreen === 'explore' && (
             <ContentLibrary
-  onSelectContent={(content) => setSelectedContent(content)}
-  onViewTherapist={(therapistId) => {
-    setSelectedTherapistId(therapistId);
-    setCurrentScreen('therapistProfile');
-  }}
-/>
+              userId={auth.currentUser?.uid}
+              onSelectContent={(content) => setSelectedContent(content)}
+              onViewTherapist={(therapistId) => {
+                setSelectedTherapistId(therapistId);
+                setCurrentScreen('therapistProfile');
+              }}
+            />
           )}
           {currentScreen === 'therapists' && (
-          <TherapistList
-            onSelectTherapist={(id) => setSelectedTherapistId(id)}
-            onBookTherapist={async (id, name) => {
-              const availability = await getTherapistAvailability(id);
+            <TherapistList
+              onSelectTherapist={(id) => setSelectedTherapistId(id)}
+              onBookTherapist={async (id, name) => {
+                const availability = await getTherapistAvailability(id);
 
-              if (!availability || !availability.isSetupComplete) {
-                return;
-              }
-              
-              setBookingTherapistId(id);
-              setBookingTherapistName(name);
-              setBookingTherapistAvailability({ ...availability, therapistId: id });
-              setSelectedTherapistId(null);
-              setBookingStep(1);
-              setBookingData(null);
-              setShowBookingFlow(true);
-            }}
-          />
+                if (!availability || !availability.isSetupComplete) {
+                  return;
+                }
+
+                setBookingTherapistId(id);
+                setBookingTherapistName(name);
+                setBookingTherapistAvailability({ ...availability, therapistId: id });
+                setSelectedTherapistId(null);
+                setBookingStep(1);
+                setBookingData(null);
+                setShowBookingFlow(true);
+              }}
+            />
           )}
           {currentScreen === 'chat' && (
             <ChatScreen
@@ -1051,14 +1076,16 @@ const handleQuestionnaireComplete = async (data: any) => {
                 });
                 setShowPaymentCheckout(true);
               }}
-              onJoinSession={(appointment) => {
-                setActiveSession({ appointment, isTherapist: false });
+              onJoinSession={async (appointment) => {
+                const therapistAvailability = await getTherapistAvailability(appointment.therapistId);
+                const zoomLink = therapistAvailability?.zoomLink || null;
+                setActiveSession({ appointment: { ...appointment, therapistZoomLink: zoomLink }, isTherapist: false });
               }}
             />
           )}
           {currentScreen === 'notifications' && <NotificationsScreen onClose={() => setCurrentScreen('home')} />}
           {currentScreen === 'ai-insights' && (
-            <AiInsightsScreen 
+            <AiInsightsScreen
               userId={getAuth().currentUser?.uid || ""}
               onBack={() => setCurrentScreen('home')}
               onCheckIn={() => {
@@ -1068,10 +1095,10 @@ const handleQuestionnaireComplete = async (data: any) => {
             />
           )}
           {currentScreen === 'privacy-policy' && (
-            <PrivacyPolicyPage onBack={() => setCurrentScreen('home')} />
+            <PrivacyPolicyPage onBack={() => setCurrentScreen('profile')} />
           )}
           {currentScreen === 'terms-conditions' && (
-            <TermsConditionsPage onBack={() => setCurrentScreen('home')} />
+            <TermsConditionsPage onBack={() => setCurrentScreen('profile')} />
           )}
           {currentScreen === 'profile' && (
             <ProfileScreen
@@ -1088,6 +1115,8 @@ const handleQuestionnaireComplete = async (data: any) => {
               onNavigateToSavedContent={() => setShowSavedContent(true)}
               onUpdateName={handleUpdateName}
               onNavigateToCompletedContent={() => setShowCompletedContent(true)}
+              onViewPrivacy={() => setCurrentScreen('privacy-policy')}
+              onViewTerms={() => setCurrentScreen('terms-conditions')}
             />
           )}
         </>
@@ -1101,7 +1130,10 @@ const handleQuestionnaireComplete = async (data: any) => {
               onViewNotifications={() => setCurrentScreen('notifications')}
               onStartSession={async (appointment) => {
                 await startSession(appointment.id);
-                setActiveSession({ appointment, isTherapist: true });
+                const currentUser = getAuth().currentUser;
+                const availability = currentUser ? await getTherapistAvailability(currentUser.uid) : null;
+                const zoomLink = availability?.zoomLink || null;
+                setActiveSession({ appointment: { ...appointment, therapistZoomLink: zoomLink }, isTherapist: true });
               }}
             />
           )}
@@ -1111,7 +1143,10 @@ const handleQuestionnaireComplete = async (data: any) => {
             <TherapistAppointmentsScreen
               onStartSession={async (appointment) => {
                 await startSession(appointment.id);
-                setActiveSession({ appointment, isTherapist: true });
+                const currentUser = getAuth().currentUser;
+                const availability = currentUser ? await getTherapistAvailability(currentUser.uid) : null;
+                const zoomLink = availability?.zoomLink || null;
+                setActiveSession({ appointment: { ...appointment, therapistZoomLink: zoomLink }, isTherapist: true });
               }}
             />
           )}

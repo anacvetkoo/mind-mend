@@ -207,8 +207,17 @@ export function TherapistDashboard({ therapistName = 'Dr. Sarah', onViewNotifica
                     )}
                   </div>
                   <div className="flex gap-2">
-                    <motion.button whileTap={{ scale: 0.95 }} onClick={() => onStartSession?.(apt)} className="flex-1 px-4 py-2.5 rounded-2xl bg-gradient-to-r from-[var(--lavender)] to-[var(--soft-purple)] text-white text-sm font-medium shadow-sm">Start Session</motion.button>
-                    <motion.button whileTap={{ scale: 0.95 }} onClick={() => handleCancelAppointment(apt.id)} className="px-4 py-2.5 rounded-2xl border-2 border-[var(--lavender)] text-[var(--lavender)] bg-card text-sm font-medium">Cancel</motion.button>
+                    {apt.status === 'IN_SESSION' ? (
+                      <>
+                        <motion.button whileTap={{ scale: 0.95 }} onClick={() => onStartSession?.(apt)} className="flex-1 px-4 py-2.5 rounded-2xl bg-gradient-to-r from-[var(--lavender)] to-[var(--soft-purple)] text-white text-sm font-medium shadow-sm">Rejoin Session</motion.button>
+                        <motion.button whileTap={{ scale: 0.95 }} onClick={async () => { const { endSession } = await import('../../services/appointments'); await endSession(apt.id); await loadAppointments(); }} className="px-4 py-2.5 rounded-2xl bg-red-500 text-white text-sm font-medium">End</motion.button>
+                      </>
+                    ) : (
+                      <>
+                        <motion.button whileTap={{ scale: 0.95 }} onClick={() => onStartSession?.(apt)} className="flex-1 px-4 py-2.5 rounded-2xl bg-gradient-to-r from-[var(--lavender)] to-[var(--soft-purple)] text-white text-sm font-medium shadow-sm">Start Session</motion.button>
+                        <motion.button whileTap={{ scale: 0.95 }} onClick={() => handleCancelAppointment(apt.id)} className="px-4 py-2.5 rounded-2xl border-2 border-[var(--lavender)] text-[var(--lavender)] bg-card text-sm font-medium">Cancel</motion.button>
+                      </>
+                    )}
                   </div>
                 </motion.div>
               );

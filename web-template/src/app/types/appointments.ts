@@ -27,6 +27,7 @@ export interface TherapistAvailability {
   breakDuration: number; // in minutes
   enabledTypes: AppointmentType[];
   inPersonAddress?: string;
+  zoomLink?: string;
   isSetupComplete: boolean;
 }
 

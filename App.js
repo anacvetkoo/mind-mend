@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { ActivityIndicator, SafeAreaView, StatusBar, StyleSheet, Text, TouchableOpacity, View } from "react-native";
+import { ActivityIndicator, Linking, SafeAreaView, StatusBar, StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import { WebView } from "react-native-webview";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import * as LocalAuthentication from "expo-local-authentication";
@@ -60,9 +60,10 @@ export default function App() {
         await AsyncStorage.setItem(BIOMETRIC_AUTH_KEY, String(data.enabled));
       }
 
-      // if (data.type === "logout") {
-      //   await AsyncStorage.removeItem(BIOMETRIC_AUTH_KEY);
-      // }
+      if (data.type === "openURL") {
+        await Linking.openURL(data.url);
+      }
+
     } catch (error) {
       console.log("Invalid WebView message:", error);
     }
