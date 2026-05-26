@@ -92,6 +92,16 @@ export const cancelAppointment = async (
   await updateAppointmentStatus(appointmentId, status);
 };
 
+// Terapevt začne sejo → status IN_SESSION → user vidi aktivni "Join Session"
+export const startSession = async (appointmentId: string): Promise<void> => {
+  await updateAppointmentStatus(appointmentId, 'IN_SESSION');
+};
+
+// Terapevt konča sejo → status COMPLETED
+export const endSession = async (appointmentId: string): Promise<void> => {
+  await updateAppointmentStatus(appointmentId, 'COMPLETED');
+};
+
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
 export const isAppointmentUpcoming = (apt: Appointment): boolean => {

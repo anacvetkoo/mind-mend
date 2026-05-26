@@ -44,9 +44,9 @@ import { createAppointment, updateAppointmentStatus } from './services/appointme
 import { PrivacyPolicyPage } from './components/screens/PrivacyPolicy.js';
 import { TermsConditionsPage } from './components/screens/TermsAndConditions.js';
 import { AiInsightsScreen } from './components/screens/AiInsightsScreen.js';
-import { ClientFilesScreen } from './components/screens/ClientFilesScreen';
+import { SessionScreen } from './components/screens/SessionScreen';
+import { startSession } from './services/appointments';
 import { ClientFileDetails } from './components/screens/ClientFileDetails';
-import { auth } from './services/firebaseConfig';
 
 type AppState = 'splash' | 'welcome' | 'auth' | 'questionnaire' | 'therapist-profile-setup' | 'app';
 type ContentReturnScreen = 'likedContent' | 'savedContent' | 'completedContent' | null;
@@ -95,6 +95,7 @@ export default function App() {
   const [showCompletedContent, setShowCompletedContent] = useState(false);
   const [showTherapistProfileEdit, setShowTherapistProfileEdit] = useState(false);
   const [selectedClientUserId, setSelectedClientUserId] = useState<string | null>(null);
+  const [activeSession, setActiveSession] = useState<{ appointment: any; isTherapist: boolean } | null>(null);
 
   const getAppointmentPrice = (appointmentType?: string | null) => {
     switch (appointmentType) {
@@ -228,24 +229,24 @@ export default function App() {
   useEffect(() => {
     window.scrollTo({ top: 0, behavior: 'instant' });
   }, [
-    currentScreen,
-    appState,
-    showDailyCheckIn,
-    selectedCheckIn,
-    selectedContent,
-    selectedTherapistId,
-    showChatConversation,
-    showCallScreen,
-    showVideoCallScreen,
-    showBookingFlow,
-    showCustomRequest,
-    showPaymentCheckout,
-    showCustomRequestConfirmation,
-    showLikedContent,
-    showSavedContent,
-    showCompletedContent,
-    selectedClientUserId
-  ]);
+  currentScreen,
+  appState,
+  showDailyCheckIn,
+  selectedCheckIn,
+  selectedContent,
+  selectedTherapistId,
+  showChatConversation,
+  showCallScreen,
+  showVideoCallScreen,
+  showBookingFlow,
+  showCustomRequest,
+  showPaymentCheckout,
+  showCustomRequestConfirmation,
+  showLikedContent,
+  showSavedContent,
+  showCompletedContent,
+  selectedClientUserId
+]);
 
   const toggleDarkMode = async () => {
     const newValue = !darkMode;
@@ -293,29 +294,29 @@ export default function App() {
     setAppState('auth');
   };
 
-  const handleQuestionnaireComplete = async (data: any) => {
-    const { auth } = await import('./services/firebaseConfig');
-    const currentUser = auth.currentUser;
+const handleQuestionnaireComplete = async (data: any) => {
+  const { auth } = await import('./services/firebaseConfig');
+  const currentUser = auth.currentUser;
 
-    if (currentUser) {
-      await completeUserOnboarding(currentUser.uid, data);
-    }
+  if (currentUser) {
+    await completeUserOnboarding(currentUser.uid, data);
+  }
 
-    setUserData({ name: data.name || '' });
-    localStorage.setItem('userName', data.name || '');
-    localStorage.setItem('hasSeenOnboarding', 'true');
-    localStorage.setItem('isAuthenticated', 'true');
-    localStorage.setItem('userRole', 'user');
+  setUserData({ name: data.name || '' });
+  localStorage.setItem('userName', data.name || '');
+  localStorage.setItem('hasSeenOnboarding', 'true');
+  localStorage.setItem('isAuthenticated', 'true');
+  localStorage.setItem('userRole', 'user');
 
-    setUserRole('user');
-    setAppState('app');
-    setCurrentScreen('home');
+  setUserRole('user');
+  setAppState('app');
+  setCurrentScreen('home');
 
-    const hasSeenTutorial = localStorage.getItem('hasSeenTutorial');
-    if (!hasSeenTutorial) {
-      setTimeout(() => setShowTutorial(true), 500);
-    }
-  };
+  const hasSeenTutorial = localStorage.getItem('hasSeenTutorial');
+  if (!hasSeenTutorial) {
+    setTimeout(() => setShowTutorial(true), 500);
+  }
+};
 
   const handleAuthComplete = async (role: UserRole, skipQuestionnaire: boolean = false) => {
     setUserRole(role);
@@ -452,6 +453,7 @@ export default function App() {
     setBookingTherapistId(null);
     setBookingStep(1);
     setSelectedClientUserId(null);
+    setActiveSession(null);
   };
 
   const handleTutorialComplete = () => {
@@ -607,47 +609,47 @@ export default function App() {
   }
 
   if (selectedContent) {
-    return (
-      <ContentDetail
-        content={selectedContent}
-        onClose={() => {
-          const returnScreen = contentReturnScreen;
+  return (
+    <ContentDetail
+      content={selectedContent}
+      onClose={() => {
+  const returnScreen = contentReturnScreen;
 
-          setSelectedContent(null);
-          setContentReturnScreen(null);
+  setSelectedContent(null);
+  setContentReturnScreen(null);
 
-          if (returnScreen === 'liked') {
-            setShowLikedContent(true);
-            return;
-          }
-
-          if (returnScreen === 'saved') {
-            setShowSavedContent(true);
-            return;
-          }
-
-          if (returnScreen === 'completed') {
-            setShowCompletedContent(true);
-          }
-        }}
-        onViewTherapist={(therapistId) => {
-          setContentBeforeTherapistProfile(selectedContent);
-          setSelectedContent(null);
-          setSelectedTherapistId(therapistId);
-        }}
-      />
-    );
+  if (returnScreen === 'liked') {
+    setShowLikedContent(true);
+    return;
   }
+
+  if (returnScreen === 'saved') {
+    setShowSavedContent(true);
+    return;
+  }
+
+  if (returnScreen === 'completed') {
+    setShowCompletedContent(true);
+  }
+}}
+      onViewTherapist={(therapistId) => {
+        setContentBeforeTherapistProfile(selectedContent);
+        setSelectedContent(null);
+        setSelectedTherapistId(therapistId);
+      }}
+    />
+  );
+}
 
   if (showLikedContent) {
     return (
       <LikedContentScreen
         onBack={() => setShowLikedContent(false)}
         onSelectContent={(content) => {
-          setContentReturnScreen('liked');
-          setShowLikedContent(false);
-          setSelectedContent(content);
-        }}
+  setContentReturnScreen('liked');
+  setShowLikedContent(false);
+  setSelectedContent(content);
+}}
       />
     );
   }
@@ -657,46 +659,35 @@ export default function App() {
       <SavedContentScreen
         onBack={() => setShowSavedContent(false)}
         onSelectContent={(content) => {
-          setContentReturnScreen('saved');
-          setShowSavedContent(false);
-          setSelectedContent(content);
-        }}
+  setContentReturnScreen('saved');
+  setShowSavedContent(false);
+  setSelectedContent(content);
+}}
       />
     );
   }
   if (showCompletedContent) {
-    return (
-      <CompletedContentScreen
-        onBack={() => setShowCompletedContent(false)}
-        onSelectContent={(content) => {
-          setContentReturnScreen('completed');
-          setShowCompletedContent(false);
-          setSelectedContent(content);
-        }}
-      />
-    );
-  }
+  return (
+    <CompletedContentScreen
+      onBack={() => setShowCompletedContent(false)}
+      onSelectContent={(content) => {
+  setContentReturnScreen('completed');
+  setShowCompletedContent(false);
+  setSelectedContent(content);
+}}
+    />
+  );
+}
 
   if (selectedClientUserId) {
-  return (
-    <>
+    return (
       <ClientFileDetails
         therapistId={getAuth().currentUser?.uid || ''}
         userId={selectedClientUserId}
         onBack={() => setSelectedClientUserId(null)}
       />
-
-      <BottomNav
-        activeTab="clients"
-        role={userRole}
-        onTabChange={(tab) => {
-          setSelectedClientUserId(null);
-          handleTabChange(tab);
-        }}
-      />
-    </>
-  );
-}
+    );
+  }
 
   if (showTherapistProfileEdit) {
     return (
@@ -723,13 +714,13 @@ export default function App() {
       <TherapistProfile
         therapistId={selectedTherapistId}
         onClose={() => {
-          setSelectedTherapistId(null);
+  setSelectedTherapistId(null);
 
-          if (contentBeforeTherapistProfile) {
-            setSelectedContent(contentBeforeTherapistProfile);
-            setContentBeforeTherapistProfile(null);
-          }
-        }}
+  if (contentBeforeTherapistProfile) {
+    setSelectedContent(contentBeforeTherapistProfile);
+    setContentBeforeTherapistProfile(null);
+  }
+}}
         onMessage={() => {
           setChatTarget({
             name: 'Dr. Sarah Mitchell',
@@ -759,9 +750,9 @@ export default function App() {
           setShowBookingFlow(true);
         }}
         onSelectContent={(content) => {
-          setSelectedTherapistId(null);
-          setSelectedContent(content);
-        }}
+  setSelectedTherapistId(null);
+  setSelectedContent(content);
+}}
       />
     );
   }
@@ -796,6 +787,25 @@ export default function App() {
         therapistName="Dr. Sarah Mitchell"
         therapistAvatar="https://images.unsplash.com/photo-1594744803145-a7bf00e71852?w=200&h=200&fit=crop"
         onEndCall={() => setShowVideoCallScreen(false)}
+      />
+    );
+  }
+
+  // ─── Active Session ───────────────────────────────────────────────────────
+
+  if (activeSession) {
+    return (
+      <SessionScreen
+        appointment={activeSession.appointment}
+        isTherapist={activeSession.isTherapist}
+        onEndSession={() => {
+          setActiveSession(null);
+          setCurrentScreen('appointments');
+        }}
+        onLeaveSession={() => {
+          setActiveSession(null);
+          setCurrentScreen('appointments');
+        }}
       />
     );
   }
@@ -922,60 +932,47 @@ export default function App() {
         appointmentData={bookingData}
         price={bookingData.price || 120}
         onClose={() => {
-  setShowPaymentCheckout(false);
+          setShowPaymentCheckout(false);
+          setBookingStep(3);
+          setShowBookingFlow(true);
+        }}
+        onPaymentSuccess={async (paymentId) => {
+          const currentUser = getAuth().currentUser;
+          try {
+            if (bookingData.id) {
+              // Obstoječi appointment (terapevt je sprejel request) — samo posodobimo status
+              await updateAppointmentStatus(bookingData.id, 'CONFIRMED', paymentId || 'simulated');
+            } else {
+              // Nov appointment (normal booking) — ustvarimo direktno kot CONFIRMED
+              await createAppointment({
+                therapistId: bookingData.therapistId,
+                therapistName: bookingData.therapistName,
+                userId: bookingData.userId || currentUser?.uid || '',
+                userName: bookingData.userName || userData.name || 'MindMend User',
+                appointmentType: bookingData.appointmentType,
+                date: bookingData.date,
+                startTime: bookingData.startTime,
+                endTime: bookingData.endTime,
+                status: 'CONFIRMED',
+                notes: bookingData.notes || '',
+                price: bookingData.price || 120,
+                paymentId: paymentId || 'simulated',
+              });
+            }
+          } catch (error) {
+            console.error('Error saving appointment:', error);
+          }
 
-  if (bookingData.id) {
-    setBookingData(null);
-    setCurrentScreen('appointments');
-    return;
-  }
-
-  setBookingStep(3);
-  setShowBookingFlow(true);
-}}
-onPaymentSuccess={async (paymentId) => {
-  const currentUser = getAuth().currentUser;
-
-  try {
-    if (bookingData.id) {
-      await updateAppointmentStatus(bookingData.id, 'CONFIRMED', paymentId);
-    } else {
-      await createAppointment({
-        therapistId: bookingData.therapistId,
-        therapistName: bookingData.therapistName,
-        userId: bookingData.userId || currentUser?.uid || '',
-        userName: bookingData.userName || userData.name || 'MindMend User',
-        appointmentType: bookingData.appointmentType,
-        date: bookingData.date,
-        startTime: bookingData.startTime,
-        endTime: bookingData.endTime,
-        status: 'CONFIRMED',
-        notes: bookingData.notes || '',
-        price: bookingData.price || 120,
-        paymentId,
-      });
-    }
-
-    setShowPaymentCheckout(false);
-    setBookingData(null);
-    setBookingStep(1);
-    setBookingTherapistId(null);
-    setCurrentScreen('appointments');
-  } catch (error) {
-    console.error('Error saving paid appointment:', error);
-
-    if (bookingData.id) {
-      await updateAppointmentStatus(bookingData.id, 'PAYMENT_FAILED', paymentId);
-    }
-
-    alert('Payment succeeded, but appointment could not be updated. Please contact support.');
-  }
-}}
-onPaymentFailed={async () => {
-  if (bookingData?.id) {
-    await updateAppointmentStatus(bookingData.id, 'PAYMENT_FAILED');
-  }
-}}
+          setShowPaymentCheckout(false);
+          setBookingData(null);
+          setBookingStep(1);
+          setBookingTherapistId(null);
+          setCurrentScreen('appointments');
+          alert('Appointment confirmed! Check your appointments to view details.');
+        }}
+        onPaymentFailed={async () => {
+          // Payment failed — appointment ni bil ustvarjen, user lahko poskusi znova
+        }}
       />
     );
   }
@@ -993,6 +990,8 @@ onPaymentFailed={async () => {
               onFindTherapist={() => setCurrentScreen('therapists')}
               onViewAppointments={() => setCurrentScreen('appointments')}
               onViewNotifications={() => setCurrentScreen('notifications')}
+              onViewPrivacy={() => setCurrentScreen('privacy-policy')}
+              onViewTerms={() => setCurrentScreen('terms-conditions')}
             />
           )}
           {currentScreen === 'journal' && (
@@ -1000,33 +999,32 @@ onPaymentFailed={async () => {
           )}
           {currentScreen === 'explore' && (
             <ContentLibrary
-              userId={auth.currentUser?.uid}
-              onSelectContent={(content) => setSelectedContent(content)}
-              onViewTherapist={(therapistId) => {
-                setSelectedTherapistId(therapistId);
-                setCurrentScreen('therapistProfile');
-              }}
-            />
+  onSelectContent={(content) => setSelectedContent(content)}
+  onViewTherapist={(therapistId) => {
+    setSelectedTherapistId(therapistId);
+    setCurrentScreen('therapistProfile');
+  }}
+/>
           )}
           {currentScreen === 'therapists' && (
-            <TherapistList
-              onSelectTherapist={(id) => setSelectedTherapistId(id)}
-              onBookTherapist={async (id, name) => {
-                const availability = await getTherapistAvailability(id);
+          <TherapistList
+            onSelectTherapist={(id) => setSelectedTherapistId(id)}
+            onBookTherapist={async (id, name) => {
+              const availability = await getTherapistAvailability(id);
 
-                if (!availability || !availability.isSetupComplete) {
-                  return;
-                }
-
-                setBookingTherapistId(id);
-                setBookingTherapistName(name);
-                setBookingTherapistAvailability({ ...availability, therapistId: id });
-                setSelectedTherapistId(null);
-                setBookingStep(1);
-                setBookingData(null);
-                setShowBookingFlow(true);
-              }}
-            />
+              if (!availability || !availability.isSetupComplete) {
+                return;
+              }
+              
+              setBookingTherapistId(id);
+              setBookingTherapistName(name);
+              setBookingTherapistAvailability({ ...availability, therapistId: id });
+              setSelectedTherapistId(null);
+              setBookingStep(1);
+              setBookingData(null);
+              setShowBookingFlow(true);
+            }}
+          />
           )}
           {currentScreen === 'chat' && (
             <ChatScreen
@@ -1053,11 +1051,14 @@ onPaymentFailed={async () => {
                 });
                 setShowPaymentCheckout(true);
               }}
+              onJoinSession={(appointment) => {
+                setActiveSession({ appointment, isTherapist: false });
+              }}
             />
           )}
           {currentScreen === 'notifications' && <NotificationsScreen onClose={() => setCurrentScreen('home')} />}
           {currentScreen === 'ai-insights' && (
-            <AiInsightsScreen
+            <AiInsightsScreen 
               userId={getAuth().currentUser?.uid || ""}
               onBack={() => setCurrentScreen('home')}
               onCheckIn={() => {
@@ -1067,10 +1068,10 @@ onPaymentFailed={async () => {
             />
           )}
           {currentScreen === 'privacy-policy' && (
-            <PrivacyPolicyPage onBack={() => setCurrentScreen('profile')} />
+            <PrivacyPolicyPage onBack={() => setCurrentScreen('home')} />
           )}
           {currentScreen === 'terms-conditions' && (
-            <TermsConditionsPage onBack={() => setCurrentScreen('profile')} />
+            <TermsConditionsPage onBack={() => setCurrentScreen('home')} />
           )}
           {currentScreen === 'profile' && (
             <ProfileScreen
@@ -1087,8 +1088,6 @@ onPaymentFailed={async () => {
               onNavigateToSavedContent={() => setShowSavedContent(true)}
               onUpdateName={handleUpdateName}
               onNavigateToCompletedContent={() => setShowCompletedContent(true)}
-              onViewPrivacy={() => setCurrentScreen('privacy-policy')}
-              onViewTerms={() => setCurrentScreen('terms-conditions')}
             />
           )}
         </>
@@ -1100,11 +1099,22 @@ onPaymentFailed={async () => {
             <TherapistDashboard
               therapistName={therapistName || 'Therapist'}
               onViewNotifications={() => setCurrentScreen('notifications')}
+              onStartSession={async (appointment) => {
+                await startSession(appointment.id);
+                setActiveSession({ appointment, isTherapist: true });
+              }}
             />
           )}
           {currentScreen === 'mycontent' && <TherapistMyContent />}
           {currentScreen === 'availability' && <TherapistAvailabilityScreen />}
-          {currentScreen === 'appointments' && <TherapistAppointmentsScreen />}
+          {currentScreen === 'appointments' && (
+            <TherapistAppointmentsScreen
+              onStartSession={async (appointment) => {
+                await startSession(appointment.id);
+                setActiveSession({ appointment, isTherapist: true });
+              }}
+            />
+          )}
           {currentScreen === 'clients' && (
             <ClientFilesScreen
               therapistId={getAuth().currentUser?.uid || ''}
