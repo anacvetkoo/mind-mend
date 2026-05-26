@@ -11,7 +11,7 @@ import { db } from '../../services/firebaseConfig';
 import { ContentDetail } from './ContentDetail';
 
 interface CheckInDetailProps {
-  checkIn: CheckInData & { aiRecommendations?: any[] };
+  checkIn: CheckInData & { aiRecommendations?: any[]; aiInsights?: string[] };
   onClose: () => void;
   onTabChange?: (tab: string) => void;
   userRole?: UserRole;
@@ -24,6 +24,8 @@ export function CheckInDetail({ checkIn, onClose, onTabChange, userRole = 'user'
 
   const [singleRecommendations, setSingleRecommendations] = useState<any[]>([]);
   const [isRecsLoading, setIsRecsLoading] = useState(true);
+  const [singleInsights, setSingleInsights] = useState<string[]>([]);
+  const [isInsightsLoading, setIsInsightsLoading] = useState(true);
 
   const [dashboardSelectedContent, setDashboardSelectedContent] = useState<any | null>(null);
 
@@ -34,7 +36,6 @@ export function CheckInDetail({ checkIn, onClose, onTabChange, userRole = 'user'
       setIsRecsLoading(true);
       try {
         if (checkIn.aiRecommendations && checkIn.aiRecommendations.length > 0) {
-          console.log("Najdena obstoječa priporočila v bazi za dan:", checkIn.date);
           if (isMounted) {
             setSingleRecommendations(checkIn.aiRecommendations);
             setIsRecsLoading(false);
@@ -42,9 +43,8 @@ export function CheckInDetail({ checkIn, onClose, onTabChange, userRole = 'user'
           return;
         }
 
-        console.log("Priporočil ni v bazi. Sprožam enkratni klic AI za:", checkIn.date);
         const { generateAIRecommendations } = await import('../../services/gemini.js');
-        const { getLibraryContent } = await import('../../services/content'); // Uvozimo knjižnico vsebin
+        const { getLibraryContent } = await import('../../services/content');
         
         const vsebine = await getLibraryContent().catch(() => []);
         const trenutenUid = userId || "";
@@ -69,7 +69,6 @@ export function CheckInDetail({ checkIn, onClose, onTabChange, userRole = 'user'
               await updateDoc(checkInDocRef, {
                 aiRecommendations: finalRecs
               });
-              console.log("Priporočila uspešno shranjena v Firestore dokument:", checkIn.id);
               
               checkIn.aiRecommendations = finalRecs;
             } catch (dbError) {
@@ -91,6 +90,77 @@ export function CheckInDetail({ checkIn, onClose, onTabChange, userRole = 'user'
     };
 
     fetchSingleRecommendations();
+
+    return () => {
+      isMounted = false;
+    };
+  }, [checkIn]);
+
+  useEffect(() => {
+    let isMounted = true;
+
+    const fetchSingleInsights = async () => {
+      setIsInsightsLoading(true);
+      try {
+        if (checkIn.aiInsights && checkIn.aiInsights.length > 0) {
+          console.log("Najdeni obstoječi AI Insights v zbirki za dan:", checkIn.date);
+          if (isMounted) {
+            setSingleInsights(checkIn.aiInsights);
+            setIsInsightsLoading(false);
+          }
+          return;
+        }
+
+        console.log("AI nasvetov ni v zbirki. Sprožam enkratni klic Geminija za:", checkIn.date);
+        const { generateAIWellnessTips } = await import('../../services/gemini.js');
+        
+        const result = await generateAIWellnessTips([checkIn]);
+        
+        if (isMounted) {
+          let finalInsights: string[] = [];
+          if (result && result.length > 0) {
+            finalInsights = result;
+          } else {
+            finalInsights = [
+              "Take a deep breath and acknowledge your efforts today. Reflecting on your emotions is a powerful step toward healing.",
+              "Consider taking a short 5-minute break to clear your mind and focus on gentle chest breathing."
+            ];
+          }
+
+          setSingleInsights(finalInsights);
+
+          if (checkIn.id) {
+            try {
+              const { doc, updateDoc } = await import('firebase/firestore');
+              const { db } = await import('../../services/firebaseConfig');
+              
+              const journalDocRef = doc(db, "dnevniki", checkIn.id);
+              await updateDoc(journalDocRef, {
+                aiInsights: finalInsights
+              });
+              
+              console.log("Nasveti trajno shranjeni v kolekcijo 'dnevniki' pod ID:", checkIn.id);
+              
+              checkIn.aiInsights = finalInsights;
+            } catch (dbError) {
+              console.error("Napaka pri shranjevanju AI nasvetov v Firestore zbirko 'dnevniki':", dbError);
+            }
+          }
+        }
+      } catch (error) {
+        console.error("Napaka pri generiranju AI Insights za posamezen dnevnik:", error);
+        if (isMounted) {
+          setSingleInsights([
+            "Focus on grounding yourself in the present moment today.",
+            "Remember to treat yourself with patience and empathy."
+          ]);
+        }
+      } finally {
+        if (isMounted) setIsInsightsLoading(false);
+      }
+    };
+
+    fetchSingleInsights();
 
     return () => {
       isMounted = false;
@@ -188,11 +258,17 @@ export function CheckInDetail({ checkIn, onClose, onTabChange, userRole = 'user'
             AI Insights
           </h3>
           <div className="space-y-3">
-            {insights.map((insight, idx) => (
-              <Card key={idx} variant="glass">
-                <p className="text-sm text-foreground">{insight}</p>
+            {isInsightsLoading ? (
+              <Card variant="glass" className="py-6 text-center text-sm text-muted-foreground animate-pulse">
+                ✨ Interpreting your reflections for this day...
               </Card>
-            ))}
+            ) : (
+              singleInsights.map((insight, idx) => (
+                <Card key={idx} variant="glass">
+                  <p className="text-sm text-foreground">{insight}</p>
+                </Card>
+              ))
+            )}
           </div>
         </motion.div>
 
@@ -359,7 +435,6 @@ export function CheckInDetail({ checkIn, onClose, onTabChange, userRole = 'user'
                     <Card key={item.id || idx} className="cursor-pointer hover:shadow-xl transition-all"
                     onClick={async () => {
                       try {
-                        console.log("Iščem pravo vsebino v knjižnici za:", item.title);
                         const { getLibraryContent } = await import('../../services/content');
                         const vsaVsebina = await getLibraryContent();
                         

@@ -93,10 +93,8 @@ export function HomeDashboard({ userId, userName, onCheckIn, onViewAiInsights, o
 
           //latestAIRecommendations
           if (userData.latestAIRecommendations && userData.latestAIRecommendations.length > 0) {
-            console.log("Najdena priporočila v bazi, nalagam na UI...", userData.latestAIRecommendations);
             setRecommendedContent(userData.latestAIRecommendations as any);
           } else {
-            console.log("Priporočil ni v bazi, nalagam fallback...");
             setRecommendedContent([
               { id: "default-1", category: 'breathing', difficulty: 'easy', duration: '5 min', title: 'Box Breathing Technique', description: 'Calm your nervous system instantly.' },
               { id: "default-2", category: 'relaxation', difficulty: 'medium', duration: '10 min', title: 'Progressive Muscle Relaxation', description: 'Release physical tension from head to toe.' },
@@ -361,7 +359,6 @@ export function HomeDashboard({ userId, userName, onCheckIn, onViewAiInsights, o
                     className="hover:shadow-xl transition-shadow cursor-pointer"
                     onClick={async () => {
                       try {
-                        console.log("Iščem pravo vsebino v knjižnici za:", item.title);
                         const { getLibraryContent } = await import('../../services/content');
                         const vsaVsebina = await getLibraryContent();
                         

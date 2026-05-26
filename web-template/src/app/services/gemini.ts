@@ -44,7 +44,7 @@ export async function generateAIWellnessTips(checkIns: any[]): Promise<string[]>
     const response = result.response;
     const text = response.text().trim();
 
-    console.log("Uraden Firebase AI odgovor:", text);
+    console.log("odgovor od AI:", text);
 
     let cleanJson = text;
     if (cleanJson.includes("```")) {
@@ -205,7 +205,6 @@ export async function generateAIRecommendations(checkIns: any[], userId: string,
       await updateDoc(userDocRef, {
         latestAIRecommendations: parsedRecommendations
       });
-      console.log("Uporabnikova personalizirana priporočila iz baze so shranjena!");
     }
     return parsedRecommendations;
   } catch (error) {

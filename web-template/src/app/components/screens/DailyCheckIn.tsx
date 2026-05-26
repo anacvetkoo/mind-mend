@@ -166,7 +166,6 @@ export function DailyCheckIn({ onComplete, onClose }: DailyCheckInProps) {
       setIsSaving(true);
       try {
         const docRef = await addDoc(collection(db, "dnevniki"), checkInData);
-        console.log("Check-in uspešno shranjen z ID:", docRef.id);
 
         const runAIInBackground = async () => {
           try {
@@ -202,7 +201,6 @@ export function DailyCheckIn({ onComplete, onClose }: DailyCheckInProps) {
               latestAIWellnessTip: generatedTips,
               latestAIRecommendations: recommendations
             });
-            console.log("🔥 [Ozadje] Nasveti in priporočila uspešno shranjeni!");
 
           } catch (aiError) {
             console.error("[Ozadje] AI generiranje v ozadju ni uspelo:", aiError);
