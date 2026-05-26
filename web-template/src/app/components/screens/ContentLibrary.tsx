@@ -439,6 +439,15 @@ const handleRemoveProgress = async (contentId: string) => {
   return formatStoredDuration(content.duration);
 };
 
+const getRecommendedContentItem = (recommendation: any) => {
+  return contentItems.find((content) => {
+    return (
+      content.id === recommendation.id ||
+      content.title.toLowerCase().trim() === recommendation.title?.toLowerCase().trim()
+    );
+  });
+};
+
   const renderFeaturedContentCard = (content: LibraryContentItem) => {
   const Icon = getCategoryIcon(content.category);
 
@@ -717,59 +726,56 @@ const renderContinueContentCard = ({
           aiRecommendations.length > 0 ? (
             <div className="space-y-3">
               {aiRecommendations.map((item, idx) => {
-                let IconComponent = Brain;
-                let gradientClass = "from-[var(--muted-blue)] to-[var(--soft-mint)]";
+  const recommendedContent = getRecommendedContentItem(item);
+  const displayContent = recommendedContent || item;
+  const IconComponent = recommendedContent
+    ? getCategoryIcon(recommendedContent.category)
+    : Brain;
 
-                if (item.category === 'breathing') {
-                  IconComponent = Heart;
-                  gradientClass = "from-[var(--soft-purple)] to-[var(--soft-pink)]";
-                } else if (item.category === 'sound therapy' || item.category === 'relaxation') {
-                  IconComponent = getCategoryIcon(item.category as any) || Volume2;
-                  gradientClass = "from-[var(--lavender)] to-[var(--soft-purple)]";
-                }
+  const difficultyColor =
+    displayContent.difficulty === 'easy' ? 'bg-green-500/10 text-green-500 border-none' :
+    displayContent.difficulty === 'medium' ? 'bg-amber-500/10 text-amber-500 border-none' :
+    'bg-rose-500/10 text-rose-500 border-none';
 
-                const difficultyColor = 
-                  item.difficulty === 'easy' ? 'bg-green-500/10 text-green-500 border-none' :
-                  item.difficulty === 'medium' ? 'bg-amber-500/10 text-amber-500 border-none' : 
-                  'bg-rose-500/10 text-rose-500 border-none';
-
-                return (
+  return (
                   <motion.div
                     key={item.id || idx}
                     whileTap={{ scale: 0.98 }}
                     className="bg-card rounded-2xl p-4 shadow-md hover:shadow-xl transition-all cursor-pointer relative"
                     onClick={() => {
-                      // Poiščemo pravo vsebino v knjižnici po naslovu (odstranimo presledke in ignoriramo velike/male črke)
-                      const pravaVsebina = contentItems.find(
-                        (c) => c.title.toLowerCase().trim() === item.title.toLowerCase().trim()
-                      );
-
-                      if (pravaVsebina) {
-                        handleOpenContent(pravaVsebina);
-                      } else {
-                        if (contentItems.length > 0) {
-                          console.log("Ujemanja ni v knjižnici, odpiram prvo razpoložljivo vsebino kot zasilni izhod.");
-                          handleOpenContent(contentItems[0]);
-                        }
-                      }
-                    }}
+  if (recommendedContent) {
+    handleOpenContent(recommendedContent);
+  }
+}}
                   >
                     <div className="flex gap-4">
-                      <div className={`w-16 h-16 rounded-2xl bg-gradient-to-br ${gradientClass} flex items-center justify-center flex-shrink-0`}>
-                        <IconComponent className="w-7 h-7 text-white/90" />
-                      </div>
+                      <div
+  className="w-16 h-16 rounded-2xl flex items-center justify-center flex-shrink-0 relative overflow-hidden"
+  style={{
+    background:
+      recommendedContent?.thumbnailType === 'image' && recommendedContent.thumbnailImage
+        ? `url(${recommendedContent.thumbnailImage}) center/cover`
+        : recommendedContent?.thumbnailGradient || 'linear-gradient(135deg, var(--lavender), var(--soft-purple))'
+  }}
+>
+  {recommendedContent?.thumbnailType === 'image' && recommendedContent.thumbnailImage ? (
+    <div className="absolute inset-0 bg-black/10" />
+  ) : (
+    <IconComponent className="w-7 h-7 text-white/90" />
+  )}
+</div>
                       
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2 flex-wrap">
                           <span className="inline-block px-2 py-0.5 rounded-full bg-[var(--soft-purple)]/20 text-[var(--lavender)] text-xs">
-                            {item.duration || '5 min'}
+                            {recommendedContent ? getContentDuration(recommendedContent) : item.duration || '5 min'}
                           </span>
                           <span className={`text-[10px] uppercase font-bold tracking-wider px-2 py-0.5 rounded-full ${difficultyColor}`}>
-                            {item.difficulty}
+                            {displayContent.difficulty || 'easy'}
                           </span>
                         </div>
-                        <h4 className="mt-1 text-foreground font-medium truncate">{item.title}</h4>
-                        <p className="text-xs text-muted-foreground line-clamp-1">{item.description}</p>
+                        <h4 className="mt-1 text-foreground font-medium truncate">{displayContent.title}</h4>
+                        <p className="text-xs text-muted-foreground line-clamp-1">{displayContent.description}</p>
                       </div>
                     </div>
                   </motion.div>
