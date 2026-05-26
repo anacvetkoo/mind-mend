@@ -5,6 +5,7 @@ export type AppointmentStatus =
   | 'REQUESTED'
   | 'PENDING_PAYMENT'
   | 'CONFIRMED'
+  | 'IN_SESSION'
   | 'CANCELLED'
   | 'CANCELLED_BY_THERAPIST'
   | 'PAYMENT_FAILED'
