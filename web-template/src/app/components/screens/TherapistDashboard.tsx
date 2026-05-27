@@ -5,23 +5,17 @@ import { Users, FileText, Star, Calendar, Clock, MessageCircle, Phone, Video, Ma
 import type { Appointment, AppointmentStatus } from '../../types/appointments';
 import { getAuth } from 'firebase/auth';
 import { cancelAppointment, getAppointmentsForTherapist, updateAppointmentStatus } from '../../services/appointments';
-import { getTherapistDashboardStats, type TherapistDashboardStats } from '../../services/therapistDashboard';
 
 interface TherapistDashboardProps {
   therapistName?: string;
   onViewNotifications?: () => void;
+  onStartSession?: (appointment: Appointment) => void;
 }
 
-export function TherapistDashboard({ therapistName = 'Dr. Sarah', onViewNotifications }: TherapistDashboardProps) {
+export function TherapistDashboard({ therapistName = 'Dr. Sarah', onViewNotifications, onStartSession }: TherapistDashboardProps) {
   const [selectedTab, setSelectedTab] = useState<'upcoming' | 'requests' | 'past'>('upcoming');
   const [appointments, setAppointments] = useState<Appointment[]>([]);
   const [isLoadingAppointments, setIsLoadingAppointments] = useState(true);
-  const [dashboardStats, setDashboardStats] = useState<TherapistDashboardStats>({
-  totalSessions: 0,
-  activeClients: 0,
-  contentPublished: 0,
-  rating: null,
-});
 
   const loadAppointments = async () => {
     const currentUser = getAuth().currentUser;
@@ -29,10 +23,7 @@ export function TherapistDashboard({ therapistName = 'Dr. Sarah', onViewNotifica
     try {
       setIsLoadingAppointments(true);
       const data = await getAppointmentsForTherapist(currentUser.uid);
-const stats = await getTherapistDashboardStats(currentUser.uid, data);
-
-setAppointments(data);
-setDashboardStats(stats);
+      setAppointments(data);
     } catch (error) {
       console.error('Error loading appointments:', error);
       setAppointments([]);
@@ -46,15 +37,15 @@ setDashboardStats(stats);
   const isPast = (apt: Appointment) => new Date(`${apt.date}T${apt.endTime}`) < new Date();
 
   // Upcoming: samo CONFIRMED ki niso pretekli
-  const upcomingAppointments = appointments.filter(apt => apt.status === 'CONFIRMED' && !isPast(apt));
+  const upcomingAppointments = appointments.filter(apt =>
+    (apt.status === 'CONFIRMED' || apt.status === 'IN_SESSION') && !isPast(apt)
+  );
 
   // Requests: samo REQUESTED (čaka na terapevtov odgovor)
   // PENDING_PAYMENT NE sodi sem — terapevt je že sprejel, čaka na plačilo
   const appointmentRequests = appointments.filter(apt => apt.status === 'REQUESTED' && !isPast(apt));
 
-  const pastAppointments = appointments.filter(
-  (apt) => apt.status === 'CONFIRMED' && isPast(apt)
-);
+  const pastAppointments = appointments.filter(apt => apt.status === 'COMPLETED');
 
   const handleAcceptRequest = async (id: string) => {
     await updateAppointmentStatus(id, 'PENDING_PAYMENT');
@@ -108,31 +99,11 @@ setDashboardStats(stats);
     new Date(dateStr).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
 
   const stats = [
-  {
-    label: 'Total Sessions',
-    value: dashboardStats.totalSessions.toString(),
-    icon: Calendar,
-    color: 'var(--lavender)',
-  },
-  {
-    label: 'Active Clients',
-    value: dashboardStats.activeClients.toString(),
-    icon: Users,
-    color: 'var(--soft-mint)',
-  },
-  {
-    label: 'Content Published',
-    value: dashboardStats.contentPublished.toString(),
-    icon: FileText,
-    color: 'var(--muted-blue)',
-  },
-  {
-    label: 'Rating',
-    value: dashboardStats.rating !== null ? dashboardStats.rating.toFixed(1) : '—',
-    icon: Star,
-    color: 'var(--soft-pink)',
-  },
-];
+    { label: 'Total Sessions', value: '1,250', icon: Calendar, color: 'var(--lavender)' },
+    { label: 'Active Clients', value: '48', icon: Users, color: 'var(--soft-mint)' },
+    { label: 'Content Published', value: '24', icon: FileText, color: 'var(--muted-blue)' },
+    { label: 'Rating', value: '4.9', icon: Star, color: 'var(--soft-pink)' },
+  ];
 
   return (
     <div className="min-h-screen bg-background pb-24">
@@ -236,8 +207,17 @@ setDashboardStats(stats);
                     )}
                   </div>
                   <div className="flex gap-2">
-                    <motion.button whileTap={{ scale: 0.95 }} className="flex-1 px-4 py-2.5 rounded-2xl bg-gradient-to-r from-[var(--lavender)] to-[var(--soft-purple)] text-white text-sm font-medium shadow-sm">Start Session</motion.button>
-                    <motion.button whileTap={{ scale: 0.95 }} onClick={() => handleCancelAppointment(apt.id)} className="px-4 py-2.5 rounded-2xl border-2 border-[var(--lavender)] text-[var(--lavender)] bg-card text-sm font-medium">Cancel</motion.button>
+                    {apt.status === 'IN_SESSION' ? (
+                      <>
+                        <motion.button whileTap={{ scale: 0.95 }} onClick={() => onStartSession?.(apt)} className="flex-1 px-4 py-2.5 rounded-2xl bg-gradient-to-r from-[var(--lavender)] to-[var(--soft-purple)] text-white text-sm font-medium shadow-sm">Rejoin Session</motion.button>
+                        <motion.button whileTap={{ scale: 0.95 }} onClick={async () => { const { endSession } = await import('../../services/appointments'); await endSession(apt.id); await loadAppointments(); }} className="px-4 py-2.5 rounded-2xl bg-red-500 text-white text-sm font-medium">End</motion.button>
+                      </>
+                    ) : (
+                      <>
+                        <motion.button whileTap={{ scale: 0.95 }} onClick={() => onStartSession?.(apt)} className="flex-1 px-4 py-2.5 rounded-2xl bg-gradient-to-r from-[var(--lavender)] to-[var(--soft-purple)] text-white text-sm font-medium shadow-sm">Start Session</motion.button>
+                        <motion.button whileTap={{ scale: 0.95 }} onClick={() => handleCancelAppointment(apt.id)} className="px-4 py-2.5 rounded-2xl border-2 border-[var(--lavender)] text-[var(--lavender)] bg-card text-sm font-medium">Cancel</motion.button>
+                      </>
+                    )}
                   </div>
                 </motion.div>
               );

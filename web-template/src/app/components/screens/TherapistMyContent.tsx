@@ -163,6 +163,7 @@ const mapToContentDetailItem = (item: ContentItem): LibraryContentItem => {
     <ContentDetail
       content={mapToContentDetailItem(previewContent)}
       onClose={() => setPreviewContent(undefined)}
+      shouldCountView={false}
     />
   );
 }
@@ -282,7 +283,7 @@ const mapToContentDetailItem = (item: ContentItem): LibraryContentItem => {
                         </div>
                         <div className="flex items-center gap-1 text-sm text-muted-foreground">
                           <Bookmark className="w-4 h-4" />
-                          <span>0</span>
+                          <span>{item.saves ?? 0}</span>
                         </div>
                       </div>
                     )}

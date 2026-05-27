@@ -47,6 +47,8 @@ import { AiInsightsScreen } from './components/screens/AiInsightsScreen.js';
 import { ClientFilesScreen } from './components/screens/ClientFilesScreen';
 import { ClientFileDetails } from './components/screens/ClientFileDetails';
 import { auth } from './services/firebaseConfig';
+import { SessionScreen } from './components/screens/SessionScreen';
+import { startSession } from './services/appointments';
 
 type AppState = 'splash' | 'welcome' | 'auth' | 'questionnaire' | 'therapist-profile-setup' | 'app';
 type ContentReturnScreen = 'likedContent' | 'savedContent' | 'completedContent' | null;
@@ -95,6 +97,7 @@ export default function App() {
   const [showCompletedContent, setShowCompletedContent] = useState(false);
   const [showTherapistProfileEdit, setShowTherapistProfileEdit] = useState(false);
   const [selectedClientUserId, setSelectedClientUserId] = useState<string | null>(null);
+  const [activeSession, setActiveSession] = useState<{ appointment: any; isTherapist: boolean } | null>(null);
 
   const getAppointmentPrice = (appointmentType?: string | null) => {
     switch (appointmentType) {
@@ -293,29 +296,29 @@ export default function App() {
     setAppState('auth');
   };
 
-  const handleQuestionnaireComplete = async (data: any) => {
-    const { auth } = await import('./services/firebaseConfig');
-    const currentUser = auth.currentUser;
+const handleQuestionnaireComplete = async (data: any) => {
+  const { auth } = await import('./services/firebaseConfig');
+  const currentUser = auth.currentUser;
 
-    if (currentUser) {
-      await completeUserOnboarding(currentUser.uid, data);
-    }
+  if (currentUser) {
+    await completeUserOnboarding(currentUser.uid, data);
+  }
 
-    setUserData({ name: data.name || '' });
-    localStorage.setItem('userName', data.name || '');
-    localStorage.setItem('hasSeenOnboarding', 'true');
-    localStorage.setItem('isAuthenticated', 'true');
-    localStorage.setItem('userRole', 'user');
+  setUserData({ name: data.name || '' });
+  localStorage.setItem('userName', data.name || '');
+  localStorage.setItem('hasSeenOnboarding', 'true');
+  localStorage.setItem('isAuthenticated', 'true');
+  localStorage.setItem('userRole', 'user');
 
-    setUserRole('user');
-    setAppState('app');
-    setCurrentScreen('home');
+  setUserRole('user');
+  setAppState('app');
+  setCurrentScreen('home');
 
-    const hasSeenTutorial = localStorage.getItem('hasSeenTutorial');
-    if (!hasSeenTutorial) {
-      setTimeout(() => setShowTutorial(true), 500);
-    }
-  };
+  const hasSeenTutorial = localStorage.getItem('hasSeenTutorial');
+  if (!hasSeenTutorial) {
+    setTimeout(() => setShowTutorial(true), 500);
+  }
+};
 
   const handleAuthComplete = async (role: UserRole, skipQuestionnaire: boolean = false) => {
     setUserRole(role);
@@ -452,6 +455,7 @@ export default function App() {
     setBookingTherapistId(null);
     setBookingStep(1);
     setSelectedClientUserId(null);
+    setActiveSession(null);
   };
 
   const handleTutorialComplete = () => {
@@ -665,6 +669,7 @@ export default function App() {
       />
     );
   }
+
   if (showCompletedContent) {
     return (
       <CompletedContentScreen
@@ -679,25 +684,24 @@ export default function App() {
   }
 
   if (selectedClientUserId) {
-  return (
-    <>
-      <ClientFileDetails
-        therapistId={getAuth().currentUser?.uid || ''}
-        userId={selectedClientUserId}
-        onBack={() => setSelectedClientUserId(null)}
-      />
-
-      <BottomNav
-        activeTab="clients"
-        role={userRole}
-        onTabChange={(tab) => {
-          setSelectedClientUserId(null);
-          handleTabChange(tab);
-        }}
-      />
-    </>
-  );
-}
+    return (
+      <>
+        <ClientFileDetails
+          therapistId={getAuth().currentUser?.uid || ''}
+          userId={selectedClientUserId}
+          onBack={() => setSelectedClientUserId(null)}
+        />
+        <BottomNav
+          activeTab="clients"
+          role={userRole}
+          onTabChange={(tab) => {
+            setSelectedClientUserId(null);
+            handleTabChange(tab);
+          }}
+        />
+      </>
+    );
+  }
 
   if (showTherapistProfileEdit) {
     return (
@@ -797,6 +801,24 @@ export default function App() {
         therapistName="Dr. Sarah Mitchell"
         therapistAvatar="https://images.unsplash.com/photo-1594744803145-a7bf00e71852?w=200&h=200&fit=crop"
         onEndCall={() => setShowVideoCallScreen(false)}
+      />
+    );
+  }
+
+  // ─── Active Session ───────────────────────────────────────────────────────────
+  if (activeSession) {
+    return (
+      <SessionScreen
+        appointment={activeSession.appointment}
+        isTherapist={activeSession.isTherapist}
+        onEndSession={() => {
+          setActiveSession(null);
+          setCurrentScreen('appointments');
+        }}
+        onLeaveSession={() => {
+          setActiveSession(null);
+          setCurrentScreen('appointments');
+        }}
       />
     );
   }
@@ -923,60 +945,60 @@ export default function App() {
         appointmentData={bookingData}
         price={bookingData.price || 120}
         onClose={() => {
-  setShowPaymentCheckout(false);
+          setShowPaymentCheckout(false);
 
-  if (bookingData.id) {
-    setBookingData(null);
-    setCurrentScreen('appointments');
-    return;
-  }
+          if (bookingData.id) {
+            setBookingData(null);
+            setCurrentScreen('appointments');
+            return;
+          }
 
-  setBookingStep(3);
-  setShowBookingFlow(true);
-}}
-onPaymentSuccess={async (paymentId) => {
-  const currentUser = getAuth().currentUser;
+          setBookingStep(3);
+          setShowBookingFlow(true);
+        }}
+        onPaymentSuccess={async (paymentId) => {
+          const currentUser = getAuth().currentUser;
 
-  try {
-    if (bookingData.id) {
-      await updateAppointmentStatus(bookingData.id, 'CONFIRMED', paymentId);
-    } else {
-      await createAppointment({
-        therapistId: bookingData.therapistId,
-        therapistName: bookingData.therapistName,
-        userId: bookingData.userId || currentUser?.uid || '',
-        userName: bookingData.userName || userData.name || 'MindMend User',
-        appointmentType: bookingData.appointmentType,
-        date: bookingData.date,
-        startTime: bookingData.startTime,
-        endTime: bookingData.endTime,
-        status: 'CONFIRMED',
-        notes: bookingData.notes || '',
-        price: bookingData.price || 120,
-        paymentId,
-      });
-    }
+          try {
+            if (bookingData.id) {
+              await updateAppointmentStatus(bookingData.id, 'CONFIRMED', paymentId);
+            } else {
+              await createAppointment({
+                therapistId: bookingData.therapistId,
+                therapistName: bookingData.therapistName,
+                userId: bookingData.userId || currentUser?.uid || '',
+                userName: bookingData.userName || userData.name || 'MindMend User',
+                appointmentType: bookingData.appointmentType,
+                date: bookingData.date,
+                startTime: bookingData.startTime,
+                endTime: bookingData.endTime,
+                status: 'CONFIRMED',
+                notes: bookingData.notes || '',
+                price: bookingData.price || 120,
+                paymentId,
+              });
+            }
 
-    setShowPaymentCheckout(false);
-    setBookingData(null);
-    setBookingStep(1);
-    setBookingTherapistId(null);
-    setCurrentScreen('appointments');
-  } catch (error) {
-    console.error('Error saving paid appointment:', error);
+            setShowPaymentCheckout(false);
+            setBookingData(null);
+            setBookingStep(1);
+            setBookingTherapistId(null);
+            setCurrentScreen('appointments');
+          } catch (error) {
+            console.error('Error saving paid appointment:', error);
 
-    if (bookingData.id) {
-      await updateAppointmentStatus(bookingData.id, 'PAYMENT_FAILED', paymentId);
-    }
+            if (bookingData.id) {
+              await updateAppointmentStatus(bookingData.id, 'PAYMENT_FAILED', paymentId);
+            }
 
-    alert('Payment succeeded, but appointment could not be updated. Please contact support.');
-  }
-}}
-onPaymentFailed={async () => {
-  if (bookingData?.id) {
-    await updateAppointmentStatus(bookingData.id, 'PAYMENT_FAILED');
-  }
-}}
+            alert('Payment succeeded, but appointment could not be updated. Please contact support.');
+          }
+        }}
+        onPaymentFailed={async () => {
+          if (bookingData?.id) {
+            await updateAppointmentStatus(bookingData.id, 'PAYMENT_FAILED');
+          }
+        }}
       />
     );
   }
@@ -1054,6 +1076,11 @@ onPaymentFailed={async () => {
                 });
                 setShowPaymentCheckout(true);
               }}
+              onJoinSession={async (appointment) => {
+                const therapistAvailability = await getTherapistAvailability(appointment.therapistId);
+                const zoomLink = therapistAvailability?.zoomLink || null;
+                setActiveSession({ appointment: { ...appointment, therapistZoomLink: zoomLink }, isTherapist: false });
+              }}
             />
           )}
           {currentScreen === 'notifications' && <NotificationsScreen onClose={() => setCurrentScreen('home')} />}
@@ -1101,11 +1128,28 @@ onPaymentFailed={async () => {
             <TherapistDashboard
               therapistName={therapistName || 'Therapist'}
               onViewNotifications={() => setCurrentScreen('notifications')}
+              onStartSession={async (appointment) => {
+                await startSession(appointment.id);
+                const currentUser = getAuth().currentUser;
+                const availability = currentUser ? await getTherapistAvailability(currentUser.uid) : null;
+                const zoomLink = availability?.zoomLink || null;
+                setActiveSession({ appointment: { ...appointment, therapistZoomLink: zoomLink }, isTherapist: true });
+              }}
             />
           )}
           {currentScreen === 'mycontent' && <TherapistMyContent />}
           {currentScreen === 'availability' && <TherapistAvailabilityScreen />}
-          {currentScreen === 'appointments' && <TherapistAppointmentsScreen />}
+          {currentScreen === 'appointments' && (
+            <TherapistAppointmentsScreen
+              onStartSession={async (appointment) => {
+                await startSession(appointment.id);
+                const currentUser = getAuth().currentUser;
+                const availability = currentUser ? await getTherapistAvailability(currentUser.uid) : null;
+                const zoomLink = availability?.zoomLink || null;
+                setActiveSession({ appointment: { ...appointment, therapistZoomLink: zoomLink }, isTherapist: true });
+              }}
+            />
+          )}
           {currentScreen === 'clients' && (
             <ClientFilesScreen
               therapistId={getAuth().currentUser?.uid || ''}

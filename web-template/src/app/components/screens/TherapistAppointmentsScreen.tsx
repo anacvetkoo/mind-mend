@@ -7,9 +7,10 @@ import {
   cancelAppointment,
   getAppointmentsForTherapist,
   updateAppointmentStatus,
+  endSession,
 } from '../../services/appointments';
 
-export function TherapistAppointmentsScreen() {
+export function TherapistAppointmentsScreen({ onStartSession }: { onStartSession?: (appointment: Appointment) => void }) {
   const [selectedTab, setSelectedTab] = useState<'upcoming' | 'requests' | 'past'>('upcoming');
   const [appointments, setAppointments] = useState<Appointment[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -35,7 +36,7 @@ export function TherapistAppointmentsScreen() {
 
   const upcomingAppointments = useMemo(() => appointments.filter((apt) => {
     const endDate = new Date(`${apt.date}T${apt.endTime}`);
-    return apt.status === 'CONFIRMED' && endDate >= now;
+    return (apt.status === 'CONFIRMED' || apt.status === 'IN_SESSION') && endDate >= now;
   }), [appointments]);
 
   const appointmentRequests = useMemo(() => appointments.filter((apt) =>
@@ -138,10 +139,29 @@ export function TherapistAppointmentsScreen() {
         </div>
 
         {/* Upcoming buttons */}
-        {mode === 'upcoming' && (
+        {mode === 'upcoming' && apt.status === 'IN_SESSION' && (
           <div className="flex gap-2">
             <motion.button
               whileTap={{ scale: 0.95 }}
+              onClick={() => onStartSession?.(apt)}
+              className="flex-1 px-4 py-2.5 rounded-2xl bg-gradient-to-r from-[var(--lavender)] to-[var(--soft-purple)] text-white text-sm font-medium shadow-sm"
+            >
+              Rejoin Session
+            </motion.button>
+            <motion.button
+              whileTap={{ scale: 0.95 }}
+              onClick={async () => { await endSession(apt.id); await loadAppointments(); }}
+              className="px-4 py-2.5 rounded-2xl bg-red-500 text-white text-sm font-medium"
+            >
+              End
+            </motion.button>
+          </div>
+        )}
+        {mode === 'upcoming' && apt.status !== 'IN_SESSION' && (
+          <div className="flex gap-2">
+            <motion.button
+              whileTap={{ scale: 0.95 }}
+              onClick={() => onStartSession?.(apt)}
               className="flex-1 px-4 py-2.5 rounded-2xl bg-gradient-to-r from-[var(--lavender)] to-[var(--soft-purple)] text-white text-sm font-medium shadow-sm"
             >
               Start Session

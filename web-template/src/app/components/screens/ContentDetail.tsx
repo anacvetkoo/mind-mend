@@ -13,7 +13,8 @@ import {
 import {
   getLibraryContent,
   getMoreContentFromTherapist,
-  type LibraryContentItem
+  type LibraryContentItem,
+  incrementContentViews
 } from '../../services/content';
 
 type ContentItem = LibraryContentItem;
@@ -25,7 +26,10 @@ interface ContentDetailProps {
   onViewTherapist?: (therapistId: string) => void;
   moreFromTherapist?: ContentItem[];
   initialProgress?: ContentProgressItem | null;
+  shouldCountView?: boolean;
 }
+
+const countedContentViewIds = new Set<string>();
 
 export function ContentDetail({
   content,
@@ -33,8 +37,10 @@ export function ContentDetail({
   onOpenContent,
   onViewTherapist,
   moreFromTherapist = [],
-  initialProgress = null
+  initialProgress = null,
+  shouldCountView = true
 }: ContentDetailProps) {
+  const [activeContent, setActiveContent] = useState<ContentItem>(content);
   const [, forceUpdate] = useState({});
   const [isPlaying, setIsPlaying] = useState(false);
   const [progress, setProgress] = useState(0);
@@ -48,8 +54,7 @@ export function ContentDetail({
   const [likedContentIds, setLikedContentIds] = useState<string[]>([]);
   const [savedContentIds, setSavedContentIds] = useState<string[]>([]);
 
-  
-
+const contentDetailContainerRef = useRef<HTMLDivElement | null>(null);
   const audioRef = useRef<HTMLAudioElement | null>(null);
 const videoRef = useRef<HTMLVideoElement | null>(null);
 const audioContextRef = useRef<AudioContext | null>(null);
@@ -62,14 +67,14 @@ const [activeInitialProgress, setActiveInitialProgress] = useState<ContentProgre
   initialProgress
 );
 const hasAppliedInitialProgressRef = useRef(false);
-  const itemIsLiked = likedContentIds.includes(content.id);
-const itemIsBookmarked = savedContentIds.includes(content.id);
-  const likeCount = content.likes || 0;
+  const itemIsLiked = likedContentIds.includes(activeContent.id);
+const itemIsBookmarked = savedContentIds.includes(activeContent.id);
+  const likeCount = activeContent.likes || 0;
 
   const getContentType = () => {
-  if (content.contentType) return content.contentType;
-  if (content.category === 'sound') return 'audio';
-  if (content.category === 'breathing' || content.category === 'relaxation') return 'steps';
+  if (activeContent.contentType) return activeContent.contentType;
+  if (activeContent.category === 'sound') return 'audio';
+  if (activeContent.category === 'breathing' || activeContent.category === 'relaxation') return 'steps';
   return 'steps';
 };
 
@@ -101,16 +106,16 @@ const formatPlayerTime = (seconds: number) => {
 
 const getDuration = () => {
   if (getContentType() === 'steps') {
-    return content.duration || '';
+    return activeContent.duration || '';
   }
 
-  return mediaDuration || content.duration || '';
+  return mediaDuration || activeContent.duration || '';
 };
 
 const getCreatedAtText = () => {
-  if (!content.createdAt) return '';
+  if (!activeContent.createdAt) return '';
 
-  const date = content.createdAt?.toDate ? content.createdAt.toDate() : new Date(content.createdAt);
+  const date = activeContent.createdAt?.toDate ? activeContent.createdAt.toDate() : new Date(activeContent.createdAt);
   return date.toLocaleDateString('en-US', {
     day: 'numeric',
     month: 'short',
@@ -118,18 +123,18 @@ const getCreatedAtText = () => {
   });
 };
 
-const therapistName = content.therapistName || 'Therapist';
-const therapistTitle = content.therapistTitle || 'Wellness Coach';
-const therapistBio = content.therapistBio || 'A trusted guide for your wellness journey.';
+const therapistName = activeContent.therapistName || 'Therapist';
+const therapistTitle = activeContent.therapistTitle || 'Wellness Coach';
+const therapistBio = activeContent.therapistBio || 'A trusted guide for your wellness journey.';
 
-const headerBackground = content.thumbnailImage && content.thumbnailType === 'image'
+const headerBackground = activeContent.thumbnailImage && activeContent.thumbnailType === 'image'
   ? {
-      backgroundImage: `linear-gradient(rgba(0, 0, 0, 0.55), rgba(0, 0, 0, 0.75)), url(${content.thumbnailImage})`,
+      backgroundImage: `linear-gradient(rgba(0, 0, 0, 0.55), rgba(0, 0, 0, 0.75)), url(${activeContent.thumbnailImage})`,
       backgroundSize: 'cover',
       backgroundPosition: 'center'
     }
   : {
-      background: content.thumbnailGradient || content.gradient || 'linear-gradient(135deg, var(--lavender), var(--soft-purple))'
+      background: activeContent.thumbnailGradient || activeContent.gradient || 'linear-gradient(135deg, var(--lavender), var(--soft-purple))'
     };
 
 const getCategoryIcon = (category: ContentItem['category']) => {
@@ -142,12 +147,27 @@ const getContentScore = (item: ContentItem) => {
   return (item.likes || 0) + (item.views || 0);
 };   
 
+const handleOpenRelatedContent = async (selectedContent: ContentItem) => {
+  if (onOpenContent) {
+    await onOpenContent(selectedContent);
+  } else {
+    setActiveContent(selectedContent);
+  }
+
+  requestAnimationFrame(() => {
+    contentDetailContainerRef.current?.scrollTo({
+      top: 0,
+      behavior: 'auto'
+    });
+  });
+};
+
 
  useEffect(() => {
   let isMounted = true;
 
   const fetchMoreFromTherapist = async () => {
-    if (!content.therapistId) {
+    if (!activeContent.therapistId) {
       if (isMounted) setTherapistContent([]);
       return;
     }
@@ -159,8 +179,8 @@ const getContentScore = (item: ContentItem) => {
 
     try {
       const contentFromTherapist = await getMoreContentFromTherapist(
-        content.therapistId,
-        content.id
+        activeContent.therapistId,
+        activeContent.id
       );
 
       if (isMounted) {
@@ -180,7 +200,11 @@ const getContentScore = (item: ContentItem) => {
   return () => {
     isMounted = false;
   };
-}, [content.id, content.therapistId]);
+}, [activeContent.id, activeContent.therapistId]);
+
+useEffect(() => {
+  setActiveContent(content);
+}, [content]);
 
 useEffect(() => {
   let isMounted = true;
@@ -193,9 +217,9 @@ useEffect(() => {
       const sameCategoryContent = libraryContent
         .filter((item) => {
           return (
-            item.id !== content.id &&
-            item.category === content.category &&
-            item.therapistId !== content.therapistId &&
+            item.id !== activeContent.id &&
+            item.category === activeContent.category &&
+            item.therapistId !== activeContent.therapistId &&
             !therapistContentIds.includes(item.id)
           );
         })
@@ -204,8 +228,8 @@ useEffect(() => {
       const fallbackContent = libraryContent
         .filter((item) => {
           return (
-            item.id !== content.id &&
-            item.category !== content.category &&
+            item.id !== activeContent.id &&
+            item.category !== activeContent.category &&
             !therapistContentIds.includes(item.id) &&
             !sameCategoryContent.some((sameCategoryItem) => sameCategoryItem.id === item.id)
           );
@@ -229,13 +253,12 @@ useEffect(() => {
   return () => {
     isMounted = false;
   };
-}, [content.id, content.category, content.therapistId, therapistContent]);
+}, [activeContent.id, activeContent.category, activeContent.therapistId, therapistContent]);
 
 useEffect(() => {
   audioRef.current?.pause();
   videoRef.current?.pause();
   stopAudioVisualization();
-
   setCurrentStep(1);
   setHasFinishedSteps(false);
   setIsPlaying(false);
@@ -245,13 +268,13 @@ useEffect(() => {
   setCurrentAudioTime(0);
   setAudioDuration(0);
   hasAppliedInitialProgressRef.current = false;
-}, [content.id]);
+}, [activeContent.id]);
 
 useEffect(() => {
   let isMounted = true;
 
   const loadContentProgress = async () => {
-    const latestProgress = await getContentProgress(content.id);
+    const latestProgress = await getContentProgress(activeContent.id);
 
     if (!isMounted) return;
 
@@ -264,7 +287,7 @@ useEffect(() => {
   return () => {
     isMounted = false;
   };
-}, [content.id, initialProgress]);
+}, [activeContent.id, initialProgress]);
 
 useEffect(() => {
   if (!activeInitialProgress || hasAppliedInitialProgressRef.current) return;
@@ -276,7 +299,7 @@ useEffect(() => {
   setCurrentStep(savedStep);
   setProgress(activeInitialProgress.progress);
   hasAppliedInitialProgressRef.current = true;
-}, [content.id, activeInitialProgress]);
+}, [activeContent.id, activeInitialProgress]);
 
 
 
@@ -297,41 +320,41 @@ useEffect(() => {
   return () => {
     isMounted = false;
   };
-}, [content.id]);
+}, [activeContent.id]);
 
 
 
   const handleBookmark = async () => {
-  await toggleSavedContent(content.id, itemIsBookmarked);
+  await toggleSavedContent(activeContent.id, itemIsBookmarked);
 
   setSavedContentIds((previousIds) =>
     itemIsBookmarked
-      ? previousIds.filter((id) => id !== content.id)
-      : [...previousIds, content.id]
+      ? previousIds.filter((id) => id !== activeContent.id)
+      : [...previousIds, activeContent.id]
   );
 };
 
 const handleLike = async () => {
-  const isCurrentlyLiked = likedContentIds.includes(content.id);
+  const isCurrentlyLiked = likedContentIds.includes(activeContent.id);
 
   setLikedContentIds((previousIds) =>
     isCurrentlyLiked
-      ? previousIds.filter((id) => id !== content.id)
-      : [...previousIds, content.id]
+      ? previousIds.filter((id) => id !== activeContent.id)
+      : [...previousIds, activeContent.id]
   );
 
-  content.likes = Math.max((content.likes || 0) + (isCurrentlyLiked ? -1 : 1), 0);
+  activeContent.likes = Math.max((activeContent.likes || 0) + (isCurrentlyLiked ? -1 : 1), 0);
 
   try {
-    await toggleLikedContent(content.id, isCurrentlyLiked);
+    await toggleLikedContent(activeContent.id, isCurrentlyLiked);
   } catch (error) {
     setLikedContentIds((previousIds) =>
       isCurrentlyLiked
-        ? [...previousIds, content.id]
-        : previousIds.filter((id) => id !== content.id)
+        ? [...previousIds, activeContent.id]
+        : previousIds.filter((id) => id !== activeContent.id)
     );
 
-    content.likes = Math.max((content.likes || 0) + (isCurrentlyLiked ? 1 : -1), 0);
+    activeContent.likes = Math.max((activeContent.likes || 0) + (isCurrentlyLiked ? 1 : -1), 0);
   }
 };
 
@@ -342,7 +365,7 @@ const handleLike = async () => {
 
   setProgress(progressValue);
 
-  await saveContentProgress(content.id, getContentType(), {
+  await saveContentProgress(activeContent.id, getContentType(), {
     currentTime,
     progress: progressValue
   });
@@ -381,7 +404,26 @@ useEffect(() => {
   if (getContentType() === 'audio') {
     applyInitialMediaProgress(audioRef.current);
   }
-}, [content.id, activeInitialProgress]);
+}, [activeContent.id, activeInitialProgress]);
+
+useEffect(() => {
+  const countContentView = async () => {
+    if (!shouldCountView || !activeContent?.id) return;
+
+    if (countedContentViewIds.has(activeContent.id)) return;
+
+    countedContentViewIds.add(activeContent.id);
+
+    try {
+      await incrementContentViews(activeContent.id);
+    } catch (error) {
+      countedContentViewIds.delete(activeContent.id);
+      console.error('Error incrementing content views:', error);
+    }
+  };
+
+  countContentView();
+}, [activeContent?.id, shouldCountView]);
 
 const handleMediaLoadedMetadata = (
   duration: number,
@@ -424,7 +466,7 @@ const startAudioVisualization = () => {
 const handlePlayAudio = async () => {
   const audioElement = audioRef.current;
 
-  if (!audioElement || !content.audioUrl) return;
+  if (!audioElement || !activeContent.audioUrl) return;
 
   if (isPlaying) {
     audioElement.pause();
@@ -480,11 +522,11 @@ const handleOpenFullscreen = () => {
       transition={{ delay: 0.2 }}
       className="bg-card rounded-2xl p-4 shadow-lg mb-4"
     >
-      {content.videoUrl ? (
+      {activeContent.videoUrl ? (
         <div className="overflow-hidden rounded-2xl bg-black">
           <video
             ref={videoRef}
-            src={content.videoUrl}
+            src={activeContent.videoUrl}
             controls
             playsInline
             preload="metadata"
@@ -500,7 +542,7 @@ const handleOpenFullscreen = () => {
             onEnded={() => {
               setIsPlaying(false);
               setProgress(100);
-              markContentAsCompleted(content.id);
+              markContentAsCompleted(activeContent.id);
             }}
           >
             Your browser does not support the video tag.
@@ -523,11 +565,11 @@ if (getContentType() === 'audio') {
       transition={{ delay: 0.2 }}
       className="bg-card rounded-2xl p-6 shadow-lg mb-4"
     >
-      {content.audioUrl ? (
+      {activeContent.audioUrl ? (
         <>
           <audio
             ref={audioRef}
-            src={content.audioUrl}
+            src={activeContent.audioUrl}
             preload="metadata"
             className="hidden"
             onLoadedMetadata={(event) => {
@@ -549,7 +591,7 @@ if (getContentType() === 'audio') {
               setIsPlaying(false);
               setProgress(100);
               stopAudioVisualization();
-              markContentAsCompleted(content.id);
+              markContentAsCompleted(activeContent.id);
             }}
           />
 
@@ -607,8 +649,8 @@ if (getContentType() === 'audio') {
 
     // Relaxation exercises - Step by step
     // Step by step content
-if (getContentType() === 'steps' && content.steps && content.steps.length > 0) {
-  const isLastStep = currentStep === content.steps.length;
+if (getContentType() === 'steps' && activeContent.steps && activeContent.steps.length > 0) {
+  const isLastStep = currentStep === activeContent.steps.length;
 
   return (
     <motion.div
@@ -639,11 +681,11 @@ if (getContentType() === 'steps' && content.steps && content.steps.length > 0) {
         <>
           <div className="mb-4 flex items-center justify-between">
             <p className="text-sm text-muted-foreground">
-              Step {currentStep} of {content.steps.length}
+              Step {currentStep} of {activeContent.steps.length}
             </p>
 
             <div className="flex gap-1">
-              {content.steps.map((_, index) => (
+              {activeContent.steps.map((_, index) => (
                 <div
                   key={index}
                   className={`w-8 h-1 rounded-full ${
@@ -668,11 +710,11 @@ if (getContentType() === 'steps' && content.steps && content.steps.length > 0) {
                 </div>
 
                 <h4 className="text-lg mb-2 text-foreground">
-                  {content.steps[currentStep - 1].title}
+                  {activeContent.steps[currentStep - 1].title}
                 </h4>
 
                 <p className="text-sm text-muted-foreground">
-                  {content.steps[currentStep - 1].description}
+                  {activeContent.steps[currentStep - 1].description}
                 </p>
               </div>
             </motion.div>
@@ -692,17 +734,17 @@ if (getContentType() === 'steps' && content.steps && content.steps.length > 0) {
               onClick={() => {
                 if (isLastStep) {
   setHasFinishedSteps(true);
-  markContentAsCompleted(content.id);
+  markContentAsCompleted(activeContent.id);
   return;
 }
 
-                const nextStep = Math.min(content.steps!.length, currentStep + 1);
+                const nextStep = Math.min(activeContent.steps!.length, currentStep + 1);
 
 setCurrentStep(nextStep);
 
-saveContentProgress(content.id, 'steps', {
+saveContentProgress(activeContent.id, 'steps', {
   currentStep: nextStep,
-  progress: (nextStep / content.steps!.length) * 100
+  progress: (nextStep / activeContent.steps!.length) * 100
 });
               }}
               className="flex-1 py-3 rounded-2xl bg-gradient-to-r from-[var(--lavender)] to-[var(--soft-purple)] text-white"
@@ -723,7 +765,10 @@ saveContentProgress(content.id, 'steps', {
 
 
   return (
-    <div className="fixed inset-0 bg-background z-50 overflow-auto">
+    <div
+  ref={contentDetailContainerRef}
+  className="fixed inset-0 bg-background z-50 overflow-auto"
+>
       {/* Mobile screen container - 390x844px */}
       <div className="max-w-[390px] mx-auto min-h-screen pb-24">
         {/* Top Section - Fullscreen Gradient Header */}
@@ -776,13 +821,13 @@ saveContentProgress(content.id, 'steps', {
           {/* Content Info */}
           <div className="text-center text-white mt-auto mb-6">
             <span className="inline-block px-3 py-1 rounded-full bg-white/30 backdrop-blur-sm text-xs mb-3">
-              {content.categoryLabel}
+              {activeContent.categoryLabel}
             </span>
-            <h1 className="text-3xl mb-3">{content.title}</h1>
+            <h1 className="text-3xl mb-3">{activeContent.title}</h1>
             <div className="flex items-center justify-center gap-2 mb-2">
-              {content.therapistAvatar ? (
+              {activeContent.therapistAvatar ? (
                 <img
-                  src={content.therapistAvatar}
+                  src={activeContent.therapistAvatar}
                   alt={therapistName}
                   className="w-8 h-8 rounded-full border-2 border-white/50"
                 />
@@ -799,10 +844,10 @@ saveContentProgress(content.id, 'steps', {
             <div className="flex flex-col items-center gap-1">
               <div className="flex items-center justify-center gap-3 text-sm text-white/90">
                 {getDuration() && <span>{getDuration()}</span>}
-                {content.difficulty && (
+                {activeContent.difficulty && (
                   <>
                     <span>•</span>
-                    <span>{content.difficulty}</span>
+                    <span>{activeContent.difficulty}</span>
                   </>
                 )}
               </div>
@@ -819,7 +864,7 @@ saveContentProgress(content.id, 'steps', {
           {/* Dynamic Interactive Player - Primary focus */}
           {renderDynamicContent()}
           {/* About this session */}
-{content.description && (
+{activeContent.description && (
   <motion.div
     initial={{ opacity: 0, y: 20 }}
     animate={{ opacity: 1, y: 0 }}
@@ -828,7 +873,7 @@ saveContentProgress(content.id, 'steps', {
   >
     <h3 className="text-lg mb-3 text-foreground">About this session</h3>
     <p className="text-sm text-muted-foreground leading-relaxed">
-      {content.description}
+      {activeContent.description}
     </p>
   </motion.div>
 )}
@@ -841,9 +886,9 @@ saveContentProgress(content.id, 'steps', {
           >
             <h3 className="text-lg mb-4 text-foreground">About the Therapist</h3>
             <div className="flex gap-4 mb-4">
-              {content.therapistAvatar ? (
+              {activeContent.therapistAvatar ? (
                 <img
-                  src={content.therapistAvatar}
+                  src={activeContent.therapistAvatar}
                   alt={therapistName}
                   className="w-16 h-16 rounded-full object-cover shadow-md"
                 />
@@ -856,17 +901,17 @@ saveContentProgress(content.id, 'steps', {
                 <h4 className="text-foreground mb-1">{therapistName}</h4>
                 <p className="text-sm text-muted-foreground mb-2">{therapistTitle}</p>
                 <div className="flex items-center gap-2">
-  {(content.therapistReviews ?? 0) > 0 ? (
+  {(activeContent.therapistReviews ?? 0) > 0 ? (
     <>
       <div className="flex items-center gap-1">
         <Star className="w-4 h-4 text-yellow-500 fill-yellow-500" />
         <span className="text-sm">
-          {content.therapistRating ?? '5.0'}
+          {activeContent.therapistRating ?? '5.0'}
         </span>
       </div>
 
       <span className="text-xs text-muted-foreground">
-        ({content.therapistReviews} reviews)
+        ({activeContent.therapistReviews} reviews)
       </span>
     </>
   ) : (
@@ -881,8 +926,8 @@ saveContentProgress(content.id, 'steps', {
             <motion.button
   whileTap={{ scale: 0.98 }}
   onClick={() => {
-    if (content.therapistId) {
-      onViewTherapist?.(content.therapistId);
+    if (activeContent.therapistId) {
+      onViewTherapist?.(activeContent.therapistId);
     }
   }}
   className="w-full py-3 rounded-2xl border-2 border-[var(--lavender)] text-[var(--lavender)] flex items-center justify-center gap-2 transition-all hover:bg-[var(--lavender)]/5"
@@ -908,7 +953,7 @@ saveContentProgress(content.id, 'steps', {
         <motion.div
           key={item.id}
           whileTap={{ scale: 0.98 }}
-          onClick={() => onOpenContent?.(item)}
+          onClick={() => handleOpenRelatedContent(item)}
           className="flex-shrink-0 w-[160px] bg-card rounded-2xl p-4 shadow-md cursor-pointer hover:shadow-lg transition-shadow"
         >
           <div className="w-full h-20 rounded-xl overflow-hidden mb-3">
@@ -958,7 +1003,7 @@ saveContentProgress(content.id, 'steps', {
           <motion.div
             key={item.id}
             whileTap={{ scale: 0.98 }}
-            onClick={() => onOpenContent?.(item)}
+            onClick={() => handleOpenRelatedContent(item)}
             className="bg-card rounded-2xl p-4 shadow-md flex items-center gap-4 cursor-pointer hover:shadow-lg transition-shadow"
           >
             <div

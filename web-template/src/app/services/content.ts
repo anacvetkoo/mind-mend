@@ -36,6 +36,7 @@ export interface ContentItem {
   gradient: string;
   views?: number;
   likes?: number;
+  saves?: number;
   isDraft?: true;
   description?: string;
   difficulty?: 'Easy' | 'Medium' | 'Hard';
