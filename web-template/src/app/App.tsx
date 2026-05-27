@@ -182,16 +182,21 @@ export default function App() {
             const existingProfileRaw = localStorage.getItem('therapistProfile');
             const existingProfile = existingProfileRaw ? JSON.parse(existingProfileRaw) : null;
             const updatedProfile = {
-              name: (doc as any).name || existingProfile?.name || fullName,
-              profileImage: (doc as any).profileImage || existingProfile?.profileImage || '',
-              title: (doc as any).title || existingProfile?.title || '',
-              specializations: (doc as any).specializations || existingProfile?.specializations || [],
-              fieldOfWork: (doc as any).fieldOfWork || existingProfile?.fieldOfWork || '',
-              bio: (doc as any).bio || existingProfile?.bio || '',
-              yearsOfExperience: (doc as any).yearsOfExperience || existingProfile?.yearsOfExperience || '',
-              education: (doc as any).education || existingProfile?.education || '',
-              licenseNumber: (doc as any).licenseNumber || existingProfile?.licenseNumber || '',
-            };
+  ...existingProfile,
+  name: (doc as any).name || existingProfile?.name || fullName,
+  profileImage: (doc as any).profileImage || existingProfile?.profileImage || '',
+  title: (doc as any).title || existingProfile?.title || '',
+  specializations: (doc as any).specializations || existingProfile?.specializations || [],
+  fieldOfWork: (doc as any).fieldOfWork || existingProfile?.fieldOfWork || '',
+  bio: (doc as any).bio || existingProfile?.bio || '',
+  yearsOfExperience: (doc as any).yearsOfExperience || existingProfile?.yearsOfExperience || '',
+  education: (doc as any).education || existingProfile?.education || '',
+  licenseNumber: (doc as any).licenseNumber || existingProfile?.licenseNumber || '',
+  stripeAccountId: (doc as any).stripeAccountId || existingProfile?.stripeAccountId || '',
+  stripeAccountStatus: (doc as any).stripeAccountStatus || existingProfile?.stripeAccountStatus || 'notConnected',
+  stripeChargesEnabled: (doc as any).stripeChargesEnabled ?? existingProfile?.stripeChargesEnabled ?? false,
+  stripePayoutsEnabled: (doc as any).stripePayoutsEnabled ?? existingProfile?.stripePayoutsEnabled ?? false,
+};
             localStorage.setItem('therapistProfile', JSON.stringify(updatedProfile));
             setTherapistProfileData(updatedProfile);
             setCurrentScreen('dashboard');
@@ -352,16 +357,21 @@ const handleQuestionnaireComplete = async (data: any) => {
           const existingProfileRaw = localStorage.getItem('therapistProfile');
           const existingProfile = existingProfileRaw ? JSON.parse(existingProfileRaw) : null;
           const updatedProfile = {
-            name: (doc as any).name || existingProfile?.name || fullName,
-            profileImage: (doc as any).profileImage || existingProfile?.profileImage || '',
-            title: (doc as any).title || existingProfile?.title || '',
-            specializations: (doc as any).specializations || existingProfile?.specializations || [],
-            fieldOfWork: (doc as any).fieldOfWork || existingProfile?.fieldOfWork || '',
-            bio: (doc as any).bio || existingProfile?.bio || '',
-            yearsOfExperience: (doc as any).yearsOfExperience || existingProfile?.yearsOfExperience || '',
-            education: (doc as any).education || existingProfile?.education || '',
-            licenseNumber: (doc as any).licenseNumber || existingProfile?.licenseNumber || '',
-          };
+  ...existingProfile,
+  name: (doc as any).name || existingProfile?.name || fullName,
+  profileImage: (doc as any).profileImage || existingProfile?.profileImage || '',
+  title: (doc as any).title || existingProfile?.title || '',
+  specializations: (doc as any).specializations || existingProfile?.specializations || [],
+  fieldOfWork: (doc as any).fieldOfWork || existingProfile?.fieldOfWork || '',
+  bio: (doc as any).bio || existingProfile?.bio || '',
+  yearsOfExperience: (doc as any).yearsOfExperience || existingProfile?.yearsOfExperience || '',
+  education: (doc as any).education || existingProfile?.education || '',
+  licenseNumber: (doc as any).licenseNumber || existingProfile?.licenseNumber || '',
+  stripeAccountId: (doc as any).stripeAccountId || existingProfile?.stripeAccountId || '',
+  stripeAccountStatus: (doc as any).stripeAccountStatus || existingProfile?.stripeAccountStatus || 'notConnected',
+  stripeChargesEnabled: (doc as any).stripeChargesEnabled ?? existingProfile?.stripeChargesEnabled ?? false,
+  stripePayoutsEnabled: (doc as any).stripePayoutsEnabled ?? existingProfile?.stripePayoutsEnabled ?? false,
+};
           localStorage.setItem('therapistProfile', JSON.stringify(updatedProfile));
           setTherapistProfileData(updatedProfile);
 
@@ -852,24 +862,46 @@ const handleQuestionnaireComplete = async (data: any) => {
           setShowCustomRequest(true);
         }}
         onProceedToPayment={async (data) => {
-          const currentUser = getAuth().currentUser;
+  const currentUser = getAuth().currentUser;
 
-          if (!currentUser) {
-            alert('Please sign in before booking an appointment.');
-            return;
-          }
+  if (!currentUser) {
+    alert('Please sign in before booking an appointment.');
+    return;
+  }
 
-          const price = getAppointmentPrice(data.appointmentType);
-          // Appointment se ustvari šele po uspešnem plačilu — tukaj samo shranimo podatke
-          setBookingData({
-            ...data,
-            userId: currentUser.uid,
-            userName: userData.name || currentUser.displayName || 'MindMend User',
-            price,
-          });
-          setShowBookingFlow(false);
-          setShowPaymentCheckout(true);
-        }}
+  try {
+    const price = getAppointmentPrice(data.appointmentType);
+
+    const appointmentId = await createAppointment({
+      therapistId: data.therapistId,
+      therapistName: data.therapistName,
+      userId: currentUser.uid,
+      userName: userData.name || currentUser.displayName || 'MindMend User',
+      appointmentType: data.appointmentType,
+      date: data.date,
+      startTime: data.startTime,
+      endTime: data.endTime,
+      status: 'PENDING_PAYMENT',
+      notes: data.notes || '',
+      inPersonAddress: data.inPersonAddress || '',
+      price,
+    });
+
+    setBookingData({
+      ...data,
+      id: appointmentId,
+      userId: currentUser.uid,
+      userName: userData.name || currentUser.displayName || 'MindMend User',
+      price,
+    });
+
+    setShowBookingFlow(false);
+    setShowPaymentCheckout(true);
+  } catch (error) {
+    console.error('Error creating appointment before payment:', error);
+    alert('Appointment could not be created. Please try again.');
+  }
+}}
       />
     );
   }
@@ -957,43 +989,30 @@ const handleQuestionnaireComplete = async (data: any) => {
           setShowBookingFlow(true);
         }}
         onPaymentSuccess={async (paymentId) => {
-          const currentUser = getAuth().currentUser;
+  try {
+    if (!bookingData?.id) {
+      alert('Appointment is missing. Please try again.');
+      return;
+    }
 
-          try {
-            if (bookingData.id) {
-              await updateAppointmentStatus(bookingData.id, 'CONFIRMED', paymentId);
-            } else {
-              await createAppointment({
-                therapistId: bookingData.therapistId,
-                therapistName: bookingData.therapistName,
-                userId: bookingData.userId || currentUser?.uid || '',
-                userName: bookingData.userName || userData.name || 'MindMend User',
-                appointmentType: bookingData.appointmentType,
-                date: bookingData.date,
-                startTime: bookingData.startTime,
-                endTime: bookingData.endTime,
-                status: 'CONFIRMED',
-                notes: bookingData.notes || '',
-                price: bookingData.price || 120,
-                paymentId,
-              });
-            }
+    await updateAppointmentStatus(
+      bookingData.id,
+      'CONFIRMED',
+      paymentId
+    );
 
-            setShowPaymentCheckout(false);
-            setBookingData(null);
-            setBookingStep(1);
-            setBookingTherapistId(null);
-            setCurrentScreen('appointments');
-          } catch (error) {
-            console.error('Error saving paid appointment:', error);
-
-            if (bookingData.id) {
-              await updateAppointmentStatus(bookingData.id, 'PAYMENT_FAILED', paymentId);
-            }
-
-            alert('Payment succeeded, but appointment could not be updated. Please contact support.');
-          }
-        }}
+    setShowPaymentCheckout(false);
+    setBookingData(null);
+    setBookingStep(1);
+    setBookingTherapistId(null);
+    setBookingTherapistName('');
+    setBookingTherapistAvailability(null);
+    setCurrentScreen('appointments');
+  } catch (error) {
+    console.error('Error confirming appointment after payment:', error);
+    alert('Payment was completed, but appointment confirmation failed.');
+  }
+}}
         onPaymentFailed={async () => {
           if (bookingData?.id) {
             await updateAppointmentStatus(bookingData.id, 'PAYMENT_FAILED');

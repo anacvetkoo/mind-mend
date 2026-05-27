@@ -44,7 +44,9 @@ export function TherapistAppointmentsScreen({ onStartSession }: { onStartSession
   ), [appointments]);
 
   const pastAppointments = useMemo(() => appointments.filter((apt) =>
-    apt.status === 'COMPLETED'
+    apt.status === 'COMPLETED' ||
+apt.status === 'CANCELLED' ||
+apt.status === 'CANCELLED_BY_THERAPIST'
   ), [appointments]);
 
   const handleAcceptRequest = async (id: string) => {
@@ -58,9 +60,15 @@ export function TherapistAppointmentsScreen({ onStartSession }: { onStartSession
   };
 
   const handleCancelAppointment = async (id: string) => {
-    await cancelAppointment(id, true);
-    await loadAppointments();
-  };
+  const confirmed = window.confirm(
+    'Cancel this appointment? The client will receive a full refund.'
+  );
+
+  if (!confirmed) return;
+
+  await cancelAppointment(id, true);
+  await loadAppointments();
+};
 
   const getStatusColor = (status: AppointmentStatus) => {
     switch (status) {

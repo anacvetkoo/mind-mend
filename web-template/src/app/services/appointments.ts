@@ -12,6 +12,7 @@ import {
 import { db } from './firebaseConfig';
 import type { Appointment, AppointmentStatus } from '../types/appointments';
 import { upsertClientFileForAppointment } from './clientFiles';
+import { cancelAppointmentPayment, releaseTherapistPayout } from './payments';
 
 // ─── Create ───────────────────────────────────────────────────────────────────
 
@@ -20,10 +21,13 @@ export const createAppointment = async (
 ): Promise<string> => {
   const ref = collection(db, 'appointments');
   const docRef = await addDoc(ref, {
-    ...data,
-    createdAt: serverTimestamp(),
-    updatedAt: serverTimestamp(),
-  });
+  ...data,
+  paymentStatus: data.status === 'CONFIRMED' ? 'paid' : 'unpaid',
+  refundStatus: 'none',
+  therapistPayoutStatus: 'pending',
+  createdAt: serverTimestamp(),
+  updatedAt: serverTimestamp(),
+});
 
   await upsertClientFileForAppointment({
     therapistId: data.therapistId,
@@ -76,7 +80,8 @@ export const updateAppointmentStatus = async (
 ): Promise<void> => {
   await updateDoc(doc(db, 'appointments', appointmentId), {
     status,
-    ...(paymentId ? { paymentId } : {}),
+    ...(paymentId ? { paymentId, stripePaymentIntentId: paymentId } : {}),
+    ...(status === 'CONFIRMED' ? { paymentStatus: 'paid' } : {}),
     updatedAt: serverTimestamp(),
   });
 };
@@ -85,11 +90,10 @@ export const cancelAppointment = async (
   appointmentId: string,
   cancelledByTherapist = false
 ): Promise<void> => {
-  const status: AppointmentStatus = cancelledByTherapist
-    ? 'CANCELLED_BY_THERAPIST'
-    : 'CANCELLED';
-
-  await updateAppointmentStatus(appointmentId, status);
+  await cancelAppointmentPayment(
+    appointmentId,
+    cancelledByTherapist ? 'therapist' : 'user'
+  );
 };
 
 // Terapevt začne sejo → status IN_SESSION → user vidi aktivni "Join Session"
@@ -100,6 +104,7 @@ export const startSession = async (appointmentId: string): Promise<void> => {
 // Terapevt konča sejo → status COMPLETED
 export const endSession = async (appointmentId: string): Promise<void> => {
   await updateAppointmentStatus(appointmentId, 'COMPLETED');
+  await releaseTherapistPayout(appointmentId);
 };
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────

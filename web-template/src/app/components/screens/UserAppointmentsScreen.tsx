@@ -33,9 +33,15 @@ export function UserAppointmentsScreen({ onCompletePayment, onJoinSession }: Use
   useEffect(() => { loadAppointments(); }, []);
 
   const handleCancelAppointment = async (appointmentId: string) => {
-    await cancelAppointment(appointmentId, false);
-    await loadAppointments();
-  };
+  const confirmed = window.confirm(
+    'Cancel this appointment? You receive a full refund only if you cancel at least 72 hours before the session.'
+  );
+
+  if (!confirmed) return;
+
+  await cancelAppointment(appointmentId, false);
+  await loadAppointments();
+};
 
   const now = new Date();
 
@@ -53,7 +59,11 @@ export function UserAppointmentsScreen({ onCompletePayment, onJoinSession }: Use
   );
 
   const pastAppointments = useMemo(
-    () => appointments.filter((apt) => apt.status === 'COMPLETED'),
+    () => appointments.filter((apt) =>
+  apt.status === 'COMPLETED' ||
+  apt.status === 'CANCELLED' ||
+  apt.status === 'CANCELLED_BY_THERAPIST'
+),
     [appointments]
   );
 
