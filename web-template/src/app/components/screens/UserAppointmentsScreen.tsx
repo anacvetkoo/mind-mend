@@ -7,9 +7,10 @@ import { cancelAppointment, getAppointmentsForUser } from '../../services/appoin
 
 interface UserAppointmentsScreenProps {
   onCompletePayment?: (appointment: Appointment) => void;
+  onJoinSession?: (appointment: Appointment) => void;
 }
 
-export function UserAppointmentsScreen({ onCompletePayment }: UserAppointmentsScreenProps = {}) {
+export function UserAppointmentsScreen({ onCompletePayment, onJoinSession }: UserAppointmentsScreenProps = {}) {
   const [selectedTab, setSelectedTab] = useState<'upcoming' | 'pending' | 'past'>('upcoming');
   const [appointments, setAppointments] = useState<Appointment[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -41,7 +42,7 @@ export function UserAppointmentsScreen({ onCompletePayment }: UserAppointmentsSc
   const upcomingAppointments = useMemo(
     () => appointments.filter((apt) => {
       const endDate = new Date(`${apt.date}T${apt.endTime}`);
-      return apt.status === 'CONFIRMED' && endDate >= now;
+      return (apt.status === 'CONFIRMED' || apt.status === 'IN_SESSION') && endDate >= now;
     }),
     [appointments]
   );
@@ -174,10 +175,15 @@ export function UserAppointmentsScreen({ onCompletePayment }: UserAppointmentsSc
         {mode === 'upcoming' && (
           <div className="flex gap-2">
             <motion.button
-              whileTap={{ scale: 0.95 }}
-              className="flex-1 px-4 py-2.5 rounded-2xl bg-gradient-to-r from-[var(--lavender)] to-[var(--soft-purple)] text-white text-sm font-medium shadow-sm"
+              whileTap={{ scale: apt.status === 'IN_SESSION' ? 0.95 : 1 }}
+              onClick={() => apt.status === 'IN_SESSION' && onJoinSession?.(apt)}
+              className={`flex-1 px-4 py-2.5 rounded-2xl text-sm font-medium shadow-sm transition-all ${
+                apt.status === 'IN_SESSION'
+                  ? 'bg-gradient-to-r from-[var(--lavender)] to-[var(--soft-purple)] text-white'
+                  : 'bg-[var(--muted)] text-muted-foreground cursor-not-allowed'
+              }`}
             >
-              Join Session
+              {apt.status === 'IN_SESSION' ? 'Join Session' : 'Waiting for therapist...'}
             </motion.button>
             <motion.button
               whileTap={{ scale: 0.95 }}
