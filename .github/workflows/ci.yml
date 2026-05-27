@@ -26,7 +26,7 @@ jobs:
         cache-dependency-path: './web-template/package-lock.json'
 
     - name: Install dependencies
-      run: npm install
+      run: npm install --legacy-peer-deps
 
     - name: Run TypeScript Check
       run: npm run build --noEmit
