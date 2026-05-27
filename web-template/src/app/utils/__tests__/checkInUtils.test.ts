@@ -1,5 +1,11 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vi } from 'vitest';
 import { countRecentCheckIns } from '../checkInUtils';
+
+vi.mock('../../services/firebaseConfig', () => ({
+    db: {},
+    auth: {},
+    storage: {}
+  }));
 
 describe('checkInUtils - countRecentCheckIns', () => {
   it('should return 0 if check-ins list is empty', () => {
