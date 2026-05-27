@@ -25,10 +25,8 @@ jobs:
         cache: 'npm'
         cache-dependency-path: './web-template/package-lock.json'
 
-    - name: Create Mock Expo Config for Esbuild
-      run: |
-        mkdir -p ../node_modules/expo/tsconfig.base
-        echo '{"compilerOptions": {}}' > ../node_modules/expo/tsconfig.base/tsconfig.json
+    - name: Install dependencies
+      run: npm install --legacy-peer-deps
 
     - name: Run TypeScript Check
       run: npm run build --noEmit
