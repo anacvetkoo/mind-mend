@@ -650,6 +650,14 @@ const handleQuestionnaireComplete = async (data: any) => {
           setSelectedContent(null);
           setSelectedTherapistId(therapistId);
         }}
+        showBottomNav
+  activeTab={currentScreen}
+  role={userRole}
+  onTabChange={(tab) => {
+    setSelectedContent(null);
+    setContentReturnScreen(null);
+    handleTabChange(tab);
+  }}
       />
     );
   }
