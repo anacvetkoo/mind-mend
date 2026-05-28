@@ -396,3 +396,17 @@ export const getMoreContentFromTherapist = async (
     .filter((item) => item.therapistId === therapistId && item.id !== currentContentId)
     .slice(0, 4);
 };
+
+export const getPublishedContentCountForTherapist = async (therapistId: string): Promise<number> => {
+  const contentQuery = query(
+    collection(db, 'content'),
+    where('therapistId', '==', therapistId)
+  );
+
+  const snapshot = await getDocs(contentQuery);
+
+  return snapshot.docs.filter((contentDocument) => {
+    const data = contentDocument.data();
+    return data.isDraft !== true;
+  }).length;
+};

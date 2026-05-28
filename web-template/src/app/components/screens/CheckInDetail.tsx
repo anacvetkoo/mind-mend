@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { motion } from 'motion/react';
-import { Card } from '../ui/Card';
-import { Badge } from '../ui/Badge';
+import { Card } from '../ui/card';
+import { Badge } from '../ui/badge';
 import { X, Sparkles, Heart, Moon, Users, Sun, Cloud, Brain, Activity } from 'lucide-react';
 import { generateAIInsights, type CheckInData } from '../../utils/checkInUtils';
 import { BottomNav } from '../navigation/BottomNav';

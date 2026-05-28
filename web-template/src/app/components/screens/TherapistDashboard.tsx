@@ -5,6 +5,8 @@ import { Users, FileText, Star, Calendar, Clock, MessageCircle, Phone, Video, Ma
 import type { Appointment, AppointmentStatus } from '../../types/appointments';
 import { getAuth } from 'firebase/auth';
 import { cancelAppointment, getAppointmentsForTherapist, updateAppointmentStatus } from '../../services/appointments';
+import { getPublishedContentCountForTherapist } from '../../services/content';
+import { getTherapistClientFiles } from '../../services/clientFiles';
 
 interface TherapistDashboardProps {
   therapistName?: string;
@@ -16,6 +18,9 @@ export function TherapistDashboard({ therapistName = 'Dr. Sarah', onViewNotifica
   const [selectedTab, setSelectedTab] = useState<'upcoming' | 'requests' | 'past'>('upcoming');
   const [appointments, setAppointments] = useState<Appointment[]>([]);
   const [isLoadingAppointments, setIsLoadingAppointments] = useState(true);
+  const [publishedContentCount, setPublishedContentCount] = useState<number | null>(null);
+  const [activeClientsCount, setActiveClientsCount] = useState<number | null>(null);
+  const [appointmentToCancel, setAppointmentToCancel] = useState<string | null>(null);
 
   const loadAppointments = async () => {
     const currentUser = getAuth().currentUser;
@@ -24,6 +29,10 @@ export function TherapistDashboard({ therapistName = 'Dr. Sarah', onViewNotifica
       setIsLoadingAppointments(true);
       const data = await getAppointmentsForTherapist(currentUser.uid);
       setAppointments(data);
+      const clientFiles = await getTherapistClientFiles(currentUser.uid);
+      setActiveClientsCount(clientFiles.length);
+      const contentCount = await getPublishedContentCountForTherapist(currentUser.uid);
+      setPublishedContentCount(contentCount);
     } catch (error) {
       console.error('Error loading appointments:', error);
       setAppointments([]);
@@ -45,7 +54,11 @@ export function TherapistDashboard({ therapistName = 'Dr. Sarah', onViewNotifica
   // PENDING_PAYMENT NE sodi sem — terapevt je že sprejel, čaka na plačilo
   const appointmentRequests = appointments.filter(apt => apt.status === 'REQUESTED' && !isPast(apt));
 
-  const pastAppointments = appointments.filter(apt => apt.status === 'COMPLETED');
+  const pastAppointments = appointments.filter((apt) =>
+  apt.status === 'COMPLETED' ||
+  apt.status === 'CANCELLED' ||
+  apt.status === 'CANCELLED_BY_THERAPIST'
+);
 
   const handleAcceptRequest = async (id: string) => {
     await updateAppointmentStatus(id, 'PENDING_PAYMENT');
@@ -57,10 +70,13 @@ export function TherapistDashboard({ therapistName = 'Dr. Sarah', onViewNotifica
     await loadAppointments();
   };
 
-  const handleCancelAppointment = async (id: string) => {
-    await cancelAppointment(id, true);
-    await loadAppointments();
-  };
+  const handleCancelAppointment = async () => {
+  if (!appointmentToCancel) return;
+
+  await cancelAppointment(appointmentToCancel, true);
+  setAppointmentToCancel(null);
+  await loadAppointments();
+};
 
   const getStatusColor = (status: AppointmentStatus) => {
     switch (status) {
@@ -98,12 +114,20 @@ export function TherapistDashboard({ therapistName = 'Dr. Sarah', onViewNotifica
   const formatDate = (dateStr: string) =>
     new Date(dateStr).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
 
-  const stats = [
-    { label: 'Total Sessions', value: '1,250', icon: Calendar, color: 'var(--lavender)' },
-    { label: 'Active Clients', value: '48', icon: Users, color: 'var(--soft-mint)' },
-    { label: 'Content Published', value: '24', icon: FileText, color: 'var(--muted-blue)' },
-    { label: 'Rating', value: '4.9', icon: Star, color: 'var(--soft-pink)' },
-  ];
+  const completedAppointments = appointments.filter((apt) => apt.status === 'COMPLETED');
+
+const activeClientIds = new Set(
+  appointments
+    .filter((apt) => apt.status === 'CONFIRMED' || apt.status === 'IN_SESSION')
+    .map((apt) => apt.userId)
+);
+
+const stats = [
+  { label: 'Total Sessions', value: completedAppointments.length.toString(), icon: Calendar, color: 'var(--lavender)' },
+  { label: 'Active Clients', value: activeClientsCount === null ? '—' : activeClientsCount.toString(), icon: Users, color: 'var(--soft-mint)' },
+  { label: 'Content Published', value: publishedContentCount === null ? '—' : publishedContentCount.toString(), icon: FileText, color: 'var(--muted-blue)' },
+  { label: 'Rating', value: '4.9', icon: Star, color: 'var(--soft-pink)' },
+];
 
   return (
     <div className="min-h-screen bg-background pb-24">
@@ -215,7 +239,7 @@ export function TherapistDashboard({ therapistName = 'Dr. Sarah', onViewNotifica
                     ) : (
                       <>
                         <motion.button whileTap={{ scale: 0.95 }} onClick={() => onStartSession?.(apt)} className="flex-1 px-4 py-2.5 rounded-2xl bg-gradient-to-r from-[var(--lavender)] to-[var(--soft-purple)] text-white text-sm font-medium shadow-sm">Start Session</motion.button>
-                        <motion.button whileTap={{ scale: 0.95 }} onClick={() => handleCancelAppointment(apt.id)} className="px-4 py-2.5 rounded-2xl border-2 border-[var(--lavender)] text-[var(--lavender)] bg-card text-sm font-medium">Cancel</motion.button>
+                        <motion.button whileTap={{ scale: 0.95 }} onClick={() => setAppointmentToCancel(apt.id)} className="px-4 py-2.5 rounded-2xl border-2 border-[var(--lavender)] text-[var(--lavender)] bg-card text-sm font-medium">Cancel</motion.button>
                       </>
                     )}
                   </div>
@@ -300,6 +324,36 @@ export function TherapistDashboard({ therapistName = 'Dr. Sarah', onViewNotifica
           </motion.div>
         )}
       </div>
+      {appointmentToCancel && (
+  <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center px-6">
+    <motion.div
+      initial={{ opacity: 0, scale: 0.95 }}
+      animate={{ opacity: 1, scale: 1 }}
+      className="bg-card rounded-3xl p-6 max-w-sm w-full shadow-xl"
+    >
+      <h3 className="text-xl text-foreground mb-3">Cancel appointment?</h3>
+      <p className="text-sm text-muted-foreground mb-6">
+        The client will receive a full refund if you cancel this appointment.
+      </p>
+
+      <div className="flex gap-3">
+        <button
+          onClick={() => setAppointmentToCancel(null)}
+          className="flex-1 py-3 rounded-xl bg-[var(--muted)] text-foreground"
+        >
+          Keep
+        </button>
+
+        <button
+          onClick={handleCancelAppointment}
+          className="flex-1 py-3 rounded-xl bg-red-500 text-white"
+        >
+          Cancel
+        </button>
+      </div>
+    </motion.div>
+  </div>
+)}
     </div>
   );
 }

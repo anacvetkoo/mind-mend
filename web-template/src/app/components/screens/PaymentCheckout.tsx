@@ -9,8 +9,8 @@ const stripePromise = loadStripe(import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY);
 
 interface PaymentCheckoutProps {
   appointmentData: {
-    id?: string;
-    therapistId?: string;
+    id: string;
+    therapistId: string;
     therapistName: string;
     appointmentType: string;
     date: string;
@@ -230,7 +230,7 @@ export function PaymentCheckout(props: PaymentCheckoutProps) {
         const secret = await createPaymentIntent({
           amount: price,
           appointmentId: appointmentData.id,
-          therapistId: appointmentData.therapistId || '',
+          therapistId: appointmentData.therapistId,
           therapistName: appointmentData.therapistName,
           appointmentType: appointmentData.appointmentType,
           date: appointmentData.date,

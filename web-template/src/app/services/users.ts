@@ -31,6 +31,10 @@ export interface TherapistDocument {
   role: 'therapist';
   createdAt: any;
   hasCompletedOnboarding: boolean;
+  stripeAccountId?: string;
+  stripeAccountStatus?: 'notConnected' | 'pending' | 'verified' | 'restricted';
+  stripeChargesEnabled?: boolean;
+  stripePayoutsEnabled?: boolean;
 }
 
 // ─── Create ───────────────────────────────────────────────────────────────────
@@ -48,6 +52,7 @@ export const createUserDocument = async (
     createdAt: serverTimestamp(),
     hasCompletedOnboarding: false,
     hasCompletedQuestionnaire: false,
+    
   });
 };
 
@@ -65,6 +70,9 @@ export const createTherapistDocument = async (
     hasCompletedOnboarding: false,
     isApproved: false,
     profileComplete: false,
+    stripeAccountStatus: 'notConnected',
+    stripeChargesEnabled: false,
+    stripePayoutsEnabled: false,
   });
 };
 
@@ -207,6 +215,10 @@ export interface TherapistPublicProfile {
   sessionsCompleted: number;
   content: TherapistContentPreview[];
   isAvailable: boolean;
+  stripeAccountId?: string;
+  stripeAccountStatus?: 'notConnected' | 'pending' | 'verified' | 'restricted';
+  stripeChargesEnabled?: boolean;
+  stripePayoutsEnabled?: boolean;
 }
 
 const getStringValue = (...values: unknown[]): string => {
@@ -255,8 +267,12 @@ const mapTherapistData = (id: string, data: any): TherapistPublicProfile => {
     tags: data.specializations || data.tags || [],
     yearsExperience: Number(data.yearsOfExperience || data.yearsExperience || 0),
     sessionsCompleted: Number(data.sessionsCompleted || 0),
-    isAvailable: !!(data.availability?.isSetupComplete),
-    content: []
+isAvailable: !!(data.availability?.isSetupComplete),
+stripeAccountId: getStringValue(data.stripeAccountId),
+stripeAccountStatus: data.stripeAccountStatus || 'notConnected',
+stripeChargesEnabled: !!data.stripeChargesEnabled,
+stripePayoutsEnabled: !!data.stripePayoutsEnabled,
+content: []
   };
 };
 
