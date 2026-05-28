@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { motion } from 'motion/react';
-import { Card } from '../ui/Card';
+import { Card } from '../ui/card';
 import { Button } from '../ui/Button';
 import { Brain, ChevronLeft, Sparkles, ShieldAlert, FileDown, Lock } from 'lucide-react';
 import { getFirebaseCheckIns, isTodayCompleted } from '../../utils/checkInUtils';

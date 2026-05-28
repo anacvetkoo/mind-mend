@@ -1,9 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { motion } from 'motion/react';
 import { OtterMascot } from '../mascot/OtterMascot';
-import { Card } from '../ui/Card';
+import { Card } from '../ui/card';
 import { Button } from '../ui/Button';
-import { Badge } from '../ui/Badge';
+import { Badge } from '../ui/badge';
 import { Sparkles, TrendingUp, AlertCircle, Heart, Wind, Music } from 'lucide-react';
 
 interface AIAnalysisProps {

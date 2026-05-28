@@ -1,9 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { motion } from 'motion/react';
-import { Card } from '../ui/Card';
+import { Card } from '../ui/card';
 import { Button } from '../ui/Button';
 import { StatCard } from '../ui/StatCard';
-import { Badge } from '../ui/Badge';
+import { Badge } from '../ui/badge';
 import { ShieldCheck, ClipboardList } from 'lucide-react';
 import { Flame, Calendar, Target, TrendingUp, Sparkles, Brain, Heart, UserRound, ChevronRight, Bell, Check, Activity, Moon } from 'lucide-react';
 import { isTodayCompleted, getStreakData, getWeeklyTrend, getFirebaseCheckIns } from '../../utils/checkInUtils';

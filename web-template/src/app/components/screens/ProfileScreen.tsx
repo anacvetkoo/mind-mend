@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { motion } from 'motion/react';
-import { Card } from '../ui/Card';
+import { Card } from '../ui/card';
 import { StatCard } from '../ui/StatCard';
 import { Button } from '../ui/Button';
 import {
