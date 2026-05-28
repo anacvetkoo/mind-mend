@@ -14,7 +14,7 @@ const getAuthorizedHeaders = async (): Promise<HeadersInit> => {
   const currentUser = getAuth().currentUser;
 
   if (!currentUser) {
-    throw new Error('User must be authenticated.');
+    throw new Error('User must be authenticated before payment.');
   }
 
   const idToken = await currentUser.getIdToken();
