@@ -14,6 +14,7 @@ export function UserAppointmentsScreen({ onCompletePayment, onJoinSession }: Use
   const [selectedTab, setSelectedTab] = useState<'upcoming' | 'pending' | 'past'>('upcoming');
   const [appointments, setAppointments] = useState<Appointment[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [appointmentToCancel, setAppointmentToCancel] = useState<string | null>(null);
 
   const loadAppointments = async () => {
     const userId = getAuth().currentUser?.uid;
@@ -32,14 +33,11 @@ export function UserAppointmentsScreen({ onCompletePayment, onJoinSession }: Use
 
   useEffect(() => { loadAppointments(); }, []);
 
-  const handleCancelAppointment = async (appointmentId: string) => {
-  const confirmed = window.confirm(
-    'Cancel this appointment? You receive a full refund only if you cancel at least 72 hours before the session.'
-  );
+  const handleCancelAppointment = async () => {
+  if (!appointmentToCancel) return;
 
-  if (!confirmed) return;
-
-  await cancelAppointment(appointmentId, false);
+  await cancelAppointment(appointmentToCancel, false);
+  setAppointmentToCancel(null);
   await loadAppointments();
 };
 
@@ -197,7 +195,7 @@ export function UserAppointmentsScreen({ onCompletePayment, onJoinSession }: Use
             </motion.button>
             <motion.button
               whileTap={{ scale: 0.95 }}
-              onClick={() => handleCancelAppointment(apt.id)}
+              onClick={() => setAppointmentToCancel(apt.id)}
               className="px-4 py-2.5 rounded-2xl border-2 border-[var(--lavender)] text-[var(--lavender)] bg-card text-sm font-medium"
             >
               Cancel
@@ -311,6 +309,35 @@ export function UserAppointmentsScreen({ onCompletePayment, onJoinSession }: Use
           </motion.div>
         )}
       </div>
+      {appointmentToCancel && (
+  <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center px-6">
+    <motion.div
+      initial={{ opacity: 0, scale: 0.95 }}
+      animate={{ opacity: 1, scale: 1 }}
+      className="bg-card rounded-3xl p-6 max-w-sm w-full shadow-xl"
+    >
+      <h3 className="text-xl text-foreground mb-3">Cancel appointment?</h3>
+      <p className="text-sm text-muted-foreground mb-6">
+        You receive a full refund only if you cancel at least 72 hours before the session.
+      </p>
+
+      <div className="flex gap-3">
+        <button
+          onClick={() => setAppointmentToCancel(null)}
+          className="flex-1 py-3 rounded-xl bg-[var(--muted)] text-foreground"
+        >
+          Keep
+        </button>
+        <button
+          onClick={handleCancelAppointment}
+          className="flex-1 py-3 rounded-xl bg-red-500 text-white"
+        >
+          Cancel
+        </button>
+      </div>
+    </motion.div>
+  </div>
+)}
     </div>
   );
 }

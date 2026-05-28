@@ -29,7 +29,7 @@ import {
 import type { TherapistAvailability } from '../../types/appointments';
 import { TherapistAvailabilitySetup } from './TherapistAvailabilitySetup';
 import { BlockedTimeManagement } from './BlockedTimeManagement';
-import { createStripeConnectAccount, refreshStripeConnectStatus } from '../../services/payments';
+import { createStripeConnectAccount } from '../../services/payments';
 
 interface ProfileScreenProps {
   onLogout: () => void;
@@ -70,17 +70,6 @@ export function ProfileScreen({ onLogout, userName = 'Alex', userRole = 'User', 
     window.location.href = url;
   } catch (error) {
     console.error('Failed to connect Stripe:', error);
-    alert('Failed to connect Stripe account.');
-  }
-};
-
-const handleRefresStripeStatus = async () => {
-  try {
-    await refreshStripeConnectStatus();
-    alert('Stripe status refreshed. Please reopen your profile to see the updated status.');
-  } catch (error) {
-    console.error('Failed to refresh Stripe status:', error);
-    alert('Failed to refresh Stripe status.');
   }
 };
 
@@ -281,43 +270,7 @@ const handleRefresStripeStatus = async () => {
               Edit Profile
             </button>
           )}
-          {isTherapist && (
-  <motion.div
-    initial={{ opacity: 0, y: 20 }}
-    animate={{ opacity: 1, y: 0 }}
-    transition={{ delay: 0.15 }}
-    className="bg-card rounded-2xl p-5 shadow-md mb-6"
-  >
-    <h3 className="text-lg text-foreground mb-2">
-      Stripe payouts
-    </h3>
-
-    <p className="text-sm text-muted-foreground mb-4">
-      Connect your Stripe account to receive payouts after completed sessions.
-    </p>
-    <p className="text-xs text-muted-foreground mb-4">
-      Current status: {therapistProfile?.stripeAccountStatus || 'notConnected'}
-    </p>
-
-    <div className="space-y-3">
-      <motion.button
-        whileTap={{ scale: 0.98 }}
-        onClick={handleConnectStripe}
-        className="w-full py-3 rounded-xl bg-gradient-to-r from-[var(--lavender)] to-[var(--soft-purple)] text-white"
-      >
-        Connect Stripe account
-      </motion.button>
-
-      <motion.button
-        whileTap={{ scale: 0.98 }}
-        onClick={handleRefresStripeStatus}
-        className="w-full py-3 rounded-xl border border-[var(--border)] bg-background text-foreground"
-      >
-        Refresh Stripe status
-      </motion.button>
-    </div>
-  </motion.div>
-)}
+          
         </motion.div>
 
         {!isTherapist && (
@@ -436,6 +389,47 @@ const handleRefresStripeStatus = async () => {
             )}
           </motion.div>
         )}
+
+        {isTherapist && (
+  <motion.div
+    initial={{ opacity: 0, y: 20 }}
+    animate={{ opacity: 1, y: 0 }}
+    transition={{ delay: 0.2 }}
+    className="mb-6"
+  >
+    <div className="flex items-center justify-between mb-4">
+      <h3 className="text-xl text-foreground">Stripe Payouts</h3>
+    </div>
+
+    <Card className="p-5">
+      <div className="flex items-start gap-3 mb-4">
+        <ShieldCheck className="w-5 h-5 text-[var(--lavender)] mt-0.5" />
+        <div>
+          <p className="text-foreground mb-1">
+            {therapistProfile?.stripeAccountStatus === 'verified'
+              ? 'Stripe account connected'
+              : 'Connect your Stripe account'}
+          </p>
+          <p className="text-sm text-muted-foreground">
+            {therapistProfile?.stripeAccountStatus === 'verified'
+              ? 'You can receive payouts after completed sessions.'
+              : 'Connect Stripe to receive payouts after completed sessions.'}
+          </p>
+        </div>
+      </div>
+
+      {therapistProfile?.stripeAccountStatus !== 'verified' && (
+        <Button
+          variant="primary"
+          onClick={handleConnectStripe}
+          className="w-full"
+        >
+          Connect Stripe account
+        </Button>
+      )}
+    </Card>
+  </motion.div>
+)}
 
         <motion.div
           initial={{ opacity: 0, y: 20 }}
