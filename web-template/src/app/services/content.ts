@@ -331,53 +331,69 @@ const mapTherapistData = (therapistId: string | undefined, therapistData: any, c
   };
 };
 
+const mapContentDataToLibraryItem = async (
+  contentId: string,
+  data: any
+): Promise<LibraryContentItem> => {
+  const categoryData = getCategoryData(data.category, data.contentType);
+  const therapistId = getFirstStringValue(data.therapistId, data.createdBy, data.authorId);
+
+  let therapistData: any = {};
+
+  if (therapistId) {
+    const therapistSnapshot = await getDoc(doc(db, 'users', therapistId));
+
+    if (therapistSnapshot.exists()) {
+      therapistData = therapistSnapshot.data();
+    }
+  }
+
+  const therapist = mapTherapistData(therapistId, therapistData, data);
+
+  return {
+    id: contentId,
+    title: data.title || '',
+    category: categoryData.category,
+    categoryLabel: categoryData.categoryLabel,
+    duration: data.duration,
+    description: data.description || '',
+    ...therapist,
+    thumbnailGradient: getCssGradient(data.gradient),
+    gradient: data.gradient,
+    thumbnailType: data.thumbnailType || 'color',
+    thumbnailImage: data.thumbnailUrl || data.thumbnailImage || null,
+    contentType: data.contentType || (categoryData.category === 'sound' ? 'audio' : 'steps'),
+    steps: data.steps || [],
+    difficulty: data.difficulty,
+    audioUrl: data.audioUrl,
+    videoUrl: data.videoUrl,
+    createdAt: data.createdAt,
+    likes: data.likes || data.likeCount || 0,
+    views: data.views || data.viewCount || 0,
+    isDraft: data.isDraft
+  };
+};
+
 export const getLibraryContent = async (): Promise<LibraryContentItem[]> => {
   const snapshot = await getDocs(collection(db, 'content'));
 
   const contentItems = await Promise.all(
-    snapshot.docs.map(async (contentDocument) => {
-      const data = contentDocument.data();
-      const categoryData = getCategoryData(data.category, data.contentType);
-      const therapistId = getFirstStringValue(data.therapistId, data.createdBy, data.authorId);
-
-      let therapistData: any = {};
-
-      if (therapistId) {
-        const therapistSnapshot = await getDoc(doc(db, 'users', therapistId));
-
-        if (therapistSnapshot.exists()) {
-          therapistData = therapistSnapshot.data();
-        }
-      }
-
-      const therapist = mapTherapistData(therapistId, therapistData, data);
-
-      return {
-        id: contentDocument.id,
-        title: data.title || '',
-        category: categoryData.category,
-        categoryLabel: categoryData.categoryLabel,
-        duration: data.duration,
-        description: data.description || '',
-        ...therapist,
-        thumbnailGradient: getCssGradient(data.gradient),
-        gradient: data.gradient,
-        thumbnailType: data.thumbnailType || 'color',
-        thumbnailImage: data.thumbnailUrl || data.thumbnailImage || null,
-        contentType: data.contentType || (categoryData.category === 'sound' ? 'audio' : 'steps'),
-        steps: data.steps || [],
-        difficulty: data.difficulty,
-        audioUrl: data.audioUrl,
-        videoUrl: data.videoUrl,
-        createdAt: data.createdAt,
-        likes: data.likes || data.likeCount || 0,
-        views: data.views || data.viewCount || 0,
-        isDraft: data.isDraft
-      };
-    })
+    snapshot.docs.map((contentDocument) =>
+      mapContentDataToLibraryItem(contentDocument.id, contentDocument.data())
+    )
   );
 
   return contentItems.filter((item) => item.isDraft !== true);
+};
+
+export const getContentDetailById = async (
+  contentId: string
+): Promise<LibraryContentItem | null> => {
+  const contentSnapshot = await getDoc(doc(db, 'content', contentId));
+
+  if (!contentSnapshot.exists()) return null;
+
+  return mapContentDataToLibraryItem(contentSnapshot.id, contentSnapshot.data());
 };
 
 export const incrementContentViews = async (contentId: string): Promise<void> => {
@@ -395,4 +411,18 @@ export const getMoreContentFromTherapist = async (
   return contentItems
     .filter((item) => item.therapistId === therapistId && item.id !== currentContentId)
     .slice(0, 4);
+};
+
+export const getPublishedContentCountForTherapist = async (therapistId: string): Promise<number> => {
+  const contentQuery = query(
+    collection(db, 'content'),
+    where('therapistId', '==', therapistId)
+  );
+
+  const snapshot = await getDocs(contentQuery);
+
+  return snapshot.docs.filter((contentDocument) => {
+    const data = contentDocument.data();
+    return data.isDraft !== true;
+  }).length;
 };

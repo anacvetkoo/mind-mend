@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { motion } from 'motion/react';
-import { Card } from '../ui/Card';
+import { Card } from '../ui/card';
 import { StatCard } from '../ui/StatCard';
 import { Button } from '../ui/Button';
 import {
@@ -29,6 +29,7 @@ import {
 import type { TherapistAvailability } from '../../types/appointments';
 import { TherapistAvailabilitySetup } from './TherapistAvailabilitySetup';
 import { BlockedTimeManagement } from './BlockedTimeManagement';
+import { createStripeConnectAccount } from '../../services/payments';
 
 interface ProfileScreenProps {
   onLogout: () => void;
@@ -62,6 +63,15 @@ export function ProfileScreen({ onLogout, userName = 'Alex', userRole = 'User', 
 
   const isTherapist = userRole === 'Therapist';
   const therapistProfile = therapistProfileProp ?? null;
+
+  const handleConnectStripe = async () => {
+  try {
+    const url = await createStripeConnectAccount();
+    window.location.href = url;
+  } catch (error) {
+    console.error('Failed to connect Stripe:', error);
+  }
+};
 
   const [notificationPermission, setNotificationPermission] = useState<NotificationPermission>(() => {
     if ('Notification' in window) return Notification.permission;
@@ -260,6 +270,7 @@ export function ProfileScreen({ onLogout, userName = 'Alex', userRole = 'User', 
               Edit Profile
             </button>
           )}
+          
         </motion.div>
 
         {!isTherapist && (
@@ -378,6 +389,47 @@ export function ProfileScreen({ onLogout, userName = 'Alex', userRole = 'User', 
             )}
           </motion.div>
         )}
+
+        {isTherapist && (
+  <motion.div
+    initial={{ opacity: 0, y: 20 }}
+    animate={{ opacity: 1, y: 0 }}
+    transition={{ delay: 0.2 }}
+    className="mb-6"
+  >
+    <div className="flex items-center justify-between mb-4">
+      <h3 className="text-xl text-foreground">Stripe Payouts</h3>
+    </div>
+
+    <Card className="p-5">
+      <div className="flex items-start gap-3 mb-4">
+        <ShieldCheck className="w-5 h-5 text-[var(--lavender)] mt-0.5" />
+        <div>
+          <p className="text-foreground mb-1">
+            {therapistProfile?.stripeAccountStatus === 'verified'
+              ? 'Stripe account connected'
+              : 'Connect your Stripe account'}
+          </p>
+          <p className="text-sm text-muted-foreground">
+            {therapistProfile?.stripeAccountStatus === 'verified'
+              ? 'You can receive payouts after completed sessions.'
+              : 'Connect Stripe to receive payouts after completed sessions.'}
+          </p>
+        </div>
+      </div>
+
+      {therapistProfile?.stripeAccountStatus !== 'verified' && (
+        <Button
+          variant="primary"
+          onClick={handleConnectStripe}
+          className="w-full"
+        >
+          Connect Stripe account
+        </Button>
+      )}
+    </Card>
+  </motion.div>
+)}
 
         <motion.div
           initial={{ opacity: 0, y: 20 }}

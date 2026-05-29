@@ -7,6 +7,7 @@ import { TherapistContentEditor } from './TherapistContentEditor';
 import {
   createContent,
   deleteContent,
+  getContentDetailById,
   getTherapistContent,
   updateContent,
   type ContentFiles,
@@ -19,7 +20,7 @@ export function TherapistMyContent() {
   const [selectedFilter, setSelectedFilter] = useState('all');
   const [showEditor, setShowEditor] = useState(false);
   const [editingContent, setEditingContent] = useState<ContentItem | undefined>(undefined);
-  const [previewContent, setPreviewContent] = useState<ContentItem | undefined>(undefined);
+  const [previewContent, setPreviewContent] = useState<LibraryContentItem | undefined>(undefined);
   const [contentItems, setContentItems] = useState<ContentItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
@@ -69,8 +70,18 @@ export function TherapistMyContent() {
     setShowEditor(true);
   };
 
-  const handlePreview = (content: ContentItem) => {
-  setPreviewContent(content);
+  const handlePreview = async (content: ContentItem) => {
+  if (!content.id) return;
+
+  try {
+    const contentDetail = await getContentDetailById(content.id);
+
+    if (contentDetail) {
+      setPreviewContent(contentDetail);
+    }
+  } catch (error) {
+    console.error('Error loading content preview:', error);
+  }
 };
 
   const handleSave = async (content: ContentItem, isDraft: boolean, files: ContentFiles) => {
@@ -111,44 +122,6 @@ export function TherapistMyContent() {
     setEditingContent(undefined);
   };
 
-const mapToContentDetailItem = (item: ContentItem): LibraryContentItem => {
-  const categoryData =
-    item.category === 'Sound Therapy'
-      ? { category: 'sound' as const, categoryLabel: 'Sound Therapy' }
-      : item.category === 'Breathing'
-        ? { category: 'breathing' as const, categoryLabel: 'Breathing Technique' }
-        : { category: 'relaxation' as const, categoryLabel: 'Relaxation Exercise' };
-
-  return {
-    id: item.id || '',
-    title: item.title,
-    category: categoryData.category,
-    categoryLabel: categoryData.categoryLabel,
-    duration: item.duration,
-    description: item.description || '',
-    difficulty: item.difficulty || 'Easy',
-    therapistId: item.therapistId,
-    therapistName: 'You',
-    therapistAvatar: '',
-    therapistTitle: 'Therapist',
-    therapistBio: '',
-    therapistRating: 0,
-    therapistReviews: 0,
-    thumbnailGradient: item.gradient,
-    gradient: item.gradient,
-    thumbnailType: item.thumbnailType || 'color',
-    thumbnailImage: item.thumbnailUrl || item.thumbnailImage || null,
-    contentType: item.contentType || 'steps',
-    steps: item.steps || [],
-    audioUrl: item.audioUrl,
-    videoUrl: item.videoUrl,
-    createdAt: item.createdAt,
-    likes: item.likes || 0,
-    views: item.views || 0,
-    isDraft: item.isDraft
-  };
-};
-
   if (showEditor) {
     return (
       <TherapistContentEditor
@@ -161,10 +134,11 @@ const mapToContentDetailItem = (item: ContentItem): LibraryContentItem => {
   if (previewContent) {
   return (
     <ContentDetail
-      content={mapToContentDetailItem(previewContent)}
-      onClose={() => setPreviewContent(undefined)}
-      shouldCountView={false}
-    />
+  content={previewContent}
+  onClose={() => setPreviewContent(undefined)}
+  shouldCountView={false}
+  showRelatedContent={false}
+/>
   );
 }
 

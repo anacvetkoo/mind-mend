@@ -16,6 +16,8 @@ import {
   type LibraryContentItem,
   incrementContentViews
 } from '../../services/content';
+import { BottomNav } from '../navigation/BottomNav';
+import type { UserRole } from './AuthScreen';
 
 type ContentItem = LibraryContentItem;
 
@@ -27,6 +29,11 @@ interface ContentDetailProps {
   moreFromTherapist?: ContentItem[];
   initialProgress?: ContentProgressItem | null;
   shouldCountView?: boolean;
+  showRelatedContent?: boolean;
+showBottomNav?: boolean;
+activeTab?: string;
+role?: UserRole;
+onTabChange?: (tab: string) => void;
 }
 
 const countedContentViewIds = new Set<string>();
@@ -38,7 +45,12 @@ export function ContentDetail({
   onViewTherapist,
   moreFromTherapist = [],
   initialProgress = null,
-  shouldCountView = true
+  shouldCountView = true,
+  showRelatedContent = true,
+showBottomNav = false,
+activeTab = 'home',
+role = 'user',
+onTabChange
 }: ContentDetailProps) {
   const [activeContent, setActiveContent] = useState<ContentItem>(content);
   const [, forceUpdate] = useState({});
@@ -938,6 +950,7 @@ saveContentProgress(activeContent.id, 'steps', {
           </motion.div>
 
           {/* More from this therapist */}
+          {showRelatedContent && therapistContent.length > 0 && (
 <motion.div
   initial={{ opacity: 0, y: 20 }}
   animate={{ opacity: 1, y: 0 }}
@@ -985,9 +998,10 @@ saveContentProgress(activeContent.id, 'steps', {
     })}
   </div>
 </motion.div>
+          )}
 
           {/* You might also like */}
-{youMightLikeContent.length > 0 && (
+{showRelatedContent && youMightLikeContent.length > 0 && (
   <motion.div
     initial={{ opacity: 0, y: 20 }}
     animate={{ opacity: 1, y: 0 }}
@@ -1051,7 +1065,15 @@ saveContentProgress(activeContent.id, 'steps', {
     </div>
   </motion.div>
 )}
-        </div>
+                </div>
+
+        {showBottomNav && onTabChange && (
+          <BottomNav
+            activeTab={activeTab}
+            role={role}
+            onTabChange={onTabChange}
+          />
+        )}
       </div>
     </div>
   );

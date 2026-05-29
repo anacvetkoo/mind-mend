@@ -2,7 +2,7 @@ import { getAuth } from 'firebase/auth';
 
 export interface CreatePaymentIntentData {
   amount: number;
-  appointmentId?: string;
+  appointmentId: string;
   therapistId: string;
   therapistName: string;
   appointmentType: string;
@@ -10,9 +10,7 @@ export interface CreatePaymentIntentData {
   startTime: string;
 }
 
-export const createPaymentIntent = async (
-  data: CreatePaymentIntentData
-): Promise<string> => {
+const getAuthorizedHeaders = async (): Promise<HeadersInit> => {
   const currentUser = getAuth().currentUser;
 
   if (!currentUser) {
@@ -20,14 +18,29 @@ export const createPaymentIntent = async (
   }
 
   const idToken = await currentUser.getIdToken();
+
+  return {
+    'Content-Type': 'application/json',
+    Authorization: `Bearer ${idToken}`,
+  };
+};
+
+const getFunctionsBaseUrl = (): string => {
   const baseUrl = import.meta.env.VITE_FUNCTIONS_BASE_URL;
 
-  const response = await fetch(`${baseUrl}/createPaymentIntent`, {
+  if (!baseUrl) {
+    throw new Error('Functions base URL is not configured.');
+  }
+
+  return baseUrl;
+};
+
+export const createPaymentIntent = async (
+  data: CreatePaymentIntentData
+): Promise<string> => {
+  const response = await fetch(`${getFunctionsBaseUrl()}/createPaymentIntent`, {
     method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      Authorization: `Bearer ${idToken}`,
-    },
+    headers: await getAuthorizedHeaders(),
     body: JSON.stringify(data),
   });
 
@@ -38,4 +51,65 @@ export const createPaymentIntent = async (
   }
 
   return result.clientSecret;
+};
+
+export const createStripeConnectAccount = async (): Promise<string> => {
+  const response = await fetch(`${getFunctionsBaseUrl()}/createStripeConnectAccount`, {
+    method: 'POST',
+    headers: await getAuthorizedHeaders(),
+  });
+
+  const result = await response.json();
+
+  if (!response.ok || !result.url) {
+    throw new Error(result.error || 'Failed to connect Stripe account.');
+  }
+
+  return result.url;
+};
+
+export const refreshStripeConnectStatus = async (): Promise<void> => {
+  const response = await fetch(`${getFunctionsBaseUrl()}/refreshStripeConnectStatus`, {
+    method: 'POST',
+    headers: await getAuthorizedHeaders(),
+  });
+
+  const result = await response.json();
+
+  if (!response.ok) {
+    throw new Error(result.error || 'Failed to refresh Stripe status.');
+  }
+};
+
+export const cancelAppointmentPayment = async (
+  appointmentId: string,
+  cancelledBy: 'user' | 'therapist'
+): Promise<{ isRefundEligible: boolean; refundId: string }> => {
+  const response = await fetch(`${getFunctionsBaseUrl()}/cancelAppointmentWithPayment`, {
+    method: 'POST',
+    headers: await getAuthorizedHeaders(),
+    body: JSON.stringify({ appointmentId, cancelledBy }),
+  });
+
+  const result = await response.json();
+
+  if (!response.ok) {
+    throw new Error(result.error || 'Failed to cancel appointment.');
+  }
+
+  return result;
+};
+
+export const releaseTherapistPayout = async (appointmentId: string): Promise<void> => {
+  const response = await fetch(`${getFunctionsBaseUrl()}/releaseTherapistPayout`, {
+    method: 'POST',
+    headers: await getAuthorizedHeaders(),
+    body: JSON.stringify({ appointmentId }),
+  });
+
+  const result = await response.json();
+
+  if (!response.ok) {
+    throw new Error(result.error || 'Failed to release therapist payout.');
+  }
 };

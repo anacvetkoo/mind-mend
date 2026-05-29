@@ -9,7 +9,9 @@ export type AppointmentStatus =
   | 'CANCELLED'
   | 'CANCELLED_BY_THERAPIST'
   | 'PAYMENT_FAILED'
-  | 'COMPLETED';
+  | 'COMPLETED'
+  | 'REFUNDED'
+  | 'REFUND_PENDING';
 
 export type DayOfWeek = 'Monday' | 'Tuesday' | 'Wednesday' | 'Thursday' | 'Friday' | 'Saturday' | 'Sunday';
 
@@ -66,6 +68,17 @@ export interface Appointment {
   inPersonAddress?: string;
   price: number;
   paymentId?: string;
+  paymentStatus?: 'unpaid' | 'pending' | 'paid' | 'refunded' | 'notRefundable';
+refundStatus?: 'none' | 'refundPending' | 'refunded' | 'notRefundable';
+cancelledBy?: 'user' | 'therapist';
+cancelledAt?: string;
+stripePaymentIntentId?: string;
+stripeRefundId?: string;
+stripeTransferId?: string;
+therapistPayoutStatus?: 'pending' | 'released' | 'cancelled';
+platformFeePercent?: number;
+platformFeeAmount?: number;
+therapistPayoutAmount?: number;
   createdAt: string;
   updatedAt: string;
 }
