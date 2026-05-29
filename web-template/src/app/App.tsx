@@ -743,49 +743,59 @@ const handleQuestionnaireComplete = async (data: any) => {
 
   if (selectedTherapistId) {
     return (
-      <TherapistProfile
-        therapistId={selectedTherapistId}
-        onClose={() => {
-          setSelectedTherapistId(null);
+      <>
+        <TherapistProfile
+          therapistId={selectedTherapistId}
+          onClose={() => {
+            setSelectedTherapistId(null);
 
-          if (contentBeforeTherapistProfile) {
-            setSelectedContent(contentBeforeTherapistProfile);
-            setContentBeforeTherapistProfile(null);
-          }
-        }}
-        onMessage={() => {
-          setChatTarget({
-            name: 'Dr. Sarah Mitchell',
-            avatar: 'https://images.unsplash.com/photo-1594744803145-a7bf00e71852?w=100&h=100&fit=crop',
-            isAI: false
-          });
-          setShowChatConversation(true);
-          setSelectedTherapistId(null);
-        }}
-        onVoiceCall={() => {
-          setShowCallScreen(true);
-          setSelectedTherapistId(null);
-        }}
-        onVideoCall={() => {
-          setShowVideoCallScreen(true);
-          setSelectedTherapistId(null);
-        }}
-        onBookAppointment={(tName, availability) => {
-          if (!availability || !availability.isSetupComplete) return;
-          // Shrani therapistId za vrnitev na profil
-          setBookingTherapistId(selectedTherapistId);
-          setBookingTherapistName(tName);
-          setBookingTherapistAvailability(availability);
-          setSelectedTherapistId(null);
-          setBookingStep(1);
-          setBookingData(null);
-          setShowBookingFlow(true);
-        }}
-        onSelectContent={(content) => {
-          setSelectedTherapistId(null);
-          setSelectedContent(content);
-        }}
-      />
+            if (contentBeforeTherapistProfile) {
+              setSelectedContent(contentBeforeTherapistProfile);
+              setContentBeforeTherapistProfile(null);
+            }
+          }}
+          onMessage={() => {
+            setChatTarget({
+              name: 'Dr. Sarah Mitchell',
+              avatar: 'https://images.unsplash.com/photo-1594744803145-a7bf00e71852?w=100&h=100&fit=crop',
+              isAI: false
+            });
+            setShowChatConversation(true);
+            setSelectedTherapistId(null);
+          }}
+          onVoiceCall={() => {
+            setShowCallScreen(true);
+            setSelectedTherapistId(null);
+          }}
+          onVideoCall={() => {
+            setShowVideoCallScreen(true);
+            setSelectedTherapistId(null);
+          }}
+          onBookAppointment={(tName, availability) => {
+            if (!availability || !availability.isSetupComplete) return;
+            // Shrani therapistId za vrnitev na profil
+            setBookingTherapistId(selectedTherapistId);
+            setBookingTherapistName(tName);
+            setBookingTherapistAvailability(availability);
+            setSelectedTherapistId(null);
+            setBookingStep(1);
+            setBookingData(null);
+            setShowBookingFlow(true);
+          }}
+          onSelectContent={(content) => {
+            setSelectedTherapistId(null);
+            setSelectedContent(content);
+          }}
+        />
+        <BottomNav
+          activeTab={currentScreen}
+          role={userRole}
+          onTabChange={(tab) => {
+            setSelectedTherapistId(null);
+            handleTabChange(tab);
+          }}
+        />
+      </>
     );
   }
 
