@@ -17,15 +17,30 @@ export function TherapistAvailabilityScreen() {
     import('../../services/firebaseConfig').then(({ auth }) => {
       if (auth.currentUser?.uid) {
         setCurrentTherapistId(auth.currentUser.uid);
+        // Naloži availability iz Firestorea ob mountu
+        import('../../services/users').then(({ getTherapistAvailability }) => {
+          getTherapistAvailability(auth.currentUser!.uid).then((avail) => {
+            if (avail) setAvailability(avail);
+          });
+        });
       }
     });
   }, []);
 
-  const handleSaveAvailability = (newAvailability: TherapistAvailability) => {
-    setAvailability(newAvailability);
+  const handleSaveAvailability = async (newAvailability: TherapistAvailability) => {
+    const { auth } = await import('../../services/firebaseConfig');
+    const { updateTherapistAvailability } = await import('../../services/users');
+    if (auth.currentUser?.uid) {
+      const availabilityToSave = {
+        ...newAvailability,
+        therapistId: auth.currentUser.uid,
+      };
+      await updateTherapistAvailability(auth.currentUser.uid, availabilityToSave);
+      setAvailability(availabilityToSave);
+    }
     setShowSetup(false);
   };
-
+  
   if (showSetup) {
     return (
       <TherapistAvailabilitySetup
