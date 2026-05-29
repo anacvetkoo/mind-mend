@@ -59,7 +59,8 @@ export function ProfileScreen({ onLogout, userName = 'Alex', userRole = 'User', 
   const [showNameEditor, setShowNameEditor] = useState(false);
   const [editedName, setEditedName] = useState(userName);
   const [userEmail, setUserEmail] = useState('');
-  const [userPhotoURL, setUserPhotoURL] = useState(''); // ← NOVO
+  const [userPhotoURL, setUserPhotoURL] = useState('');
+  const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
 
   const isTherapist = userRole === 'Therapist';
   const therapistProfile = therapistProfileProp ?? null;
@@ -519,15 +520,52 @@ export function ProfileScreen({ onLogout, userName = 'Alex', userRole = 'User', 
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.3 }}
         >
-          <Button
-            variant="outline"
-            className="w-full text-[var(--destructive)] border-[var(--destructive)]"
-            onClick={onLogout}
-          >
-            <LogOut className="w-5 h-5 mr-2" />
-            Log Out
-          </Button>
+
+          
+        <Button
+          variant="outline"
+          className="w-full text-[var(--destructive)] border-[var(--destructive)]"
+          onClick={() => setShowLogoutConfirm(true)}
+        >
+          <LogOut className="w-5 h-5 mr-2" />
+          Log Out
+        </Button>
+
+        {/* Logout confirmation popup */}
+        {showLogoutConfirm && (
+          <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-6">
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              className="bg-card rounded-3xl p-6 w-full max-w-sm shadow-2xl"
+            >
+              <h2 className="text-xl text-foreground mb-2 text-center">Log Out</h2>
+              <p className="text-muted-foreground text-center mb-6">
+                Are you sure you want to log out?
+              </p>
+              <div className="flex gap-3">
+              <button
+                onClick={() => setShowLogoutConfirm(false)}
+                className="flex-1 py-3 rounded-2xl border-2 border-[var(--lavender)] text-[var(--lavender)] hover:bg-[var(--lavender)]/10 transition-colors"
+              >
+                Cancel
+              </button>                
+              <button
+                onClick={() => {
+                  setShowLogoutConfirm(false);
+                  onLogout();
+                }}
+                className="flex-1 py-3 rounded-2xl bg-gradient-to-r from-[var(--lavender)] to-[var(--soft-purple)] text-white hover:opacity-90 transition-opacity"
+              >
+                Log Out
+              </button>
+              </div>
+            </motion.div>
+          </div>
+        )}          
         </motion.div>
+
+
       </div>
     </div>
   );
