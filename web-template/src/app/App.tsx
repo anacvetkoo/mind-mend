@@ -831,11 +831,12 @@ const handleQuestionnaireComplete = async (data: any) => {
         isTherapist={activeSession.isTherapist}
         onEndSession={() => {
           setActiveSession(null);
-          setCurrentScreen('appointments');
+          // Terapevta vrže na dashboard, userja na appointments
+          setCurrentScreen(activeSession.isTherapist ? 'dashboard' : 'appointments');
         }}
         onLeaveSession={() => {
           setActiveSession(null);
-          setCurrentScreen('appointments');
+          setCurrentScreen(activeSession.isTherapist ? 'dashboard' : 'appointments');
         }}
       />
     );

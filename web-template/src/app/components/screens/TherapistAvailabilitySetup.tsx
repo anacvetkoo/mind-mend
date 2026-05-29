@@ -64,8 +64,8 @@ export function TherapistAvailabilitySetup({ onClose, existingAvailability, onSa
       appointmentDuration,
       breakDuration,
       enabledTypes,
-      inPersonAddress: enabledTypes.includes('In Person') ? inPersonAddress : undefined,
-      zoomLink: enabledTypes.includes('Video Call') ? zoomLink : undefined,
+      inPersonAddress: enabledTypes.includes('In Person') ? inPersonAddress : '',
+      zoomLink: enabledTypes.includes('Video Call') ? zoomLink : '',
       isSetupComplete: true
     };
     onSave(availability);
@@ -234,60 +234,63 @@ export function TherapistAvailabilitySetup({ onClose, existingAvailability, onSa
 
               <div className="space-y-3 mb-6">
                 {appointmentTypes.map(({ type, icon: Icon, label }) => (
-                  <button
-                    key={type}
-                    onClick={() => toggleAppointmentType(type)}
-                    className={`w-full p-4 rounded-2xl flex items-center gap-3 transition-all ${
-                      enabledTypes.includes(type)
-                        ? 'bg-gradient-to-r from-[var(--lavender)]/10 to-[var(--soft-purple)]/10 border-2 border-[var(--lavender)]'
-                        : 'bg-card border-2 border-[var(--border)]'
-                    }`}
-                  >
-                    <Icon className={`w-5 h-5 ${enabledTypes.includes(type) ? 'text-[var(--lavender)]' : 'text-muted-foreground'}`} />
-                    <span className="flex-1 text-left text-foreground">{label}</span>
-                    <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center ${
-                      enabledTypes.includes(type)
-                        ? 'bg-[var(--lavender)] border-[var(--lavender)]'
-                        : 'border-[var(--border)]'
-                    }`}>
-                      {enabledTypes.includes(type) && (
-                        <div className="w-2 h-2 bg-white rounded-full" />
-                      )}
-                    </div>
-                  </button>
+                  <div key={type}>
+                    <button
+                      onClick={() => toggleAppointmentType(type)}
+                      className={`w-full p-4 rounded-2xl flex items-center gap-3 transition-all ${
+                        enabledTypes.includes(type)
+                          ? 'bg-gradient-to-r from-[var(--lavender)]/10 to-[var(--soft-purple)]/10 border-2 border-[var(--lavender)]'
+                          : 'bg-card border-2 border-[var(--border)]'
+                      }`}
+                    >
+                      <Icon className={`w-5 h-5 ${enabledTypes.includes(type) ? 'text-[var(--lavender)]' : 'text-muted-foreground'}`} />
+                      <span className="flex-1 text-left text-foreground">{label}</span>
+                      <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center ${
+                        enabledTypes.includes(type)
+                          ? 'bg-[var(--lavender)] border-[var(--lavender)]'
+                          : 'border-[var(--border)]'
+                      }`}>
+                        {enabledTypes.includes(type) && (
+                          <div className="w-2 h-2 bg-white rounded-full" />
+                        )}
+                      </div>
+                    </button>
+
+                    {/* Zoom Link takoj pod Video Call */}
+                    {type === 'Video Call' && enabledTypes.includes('Video Call') && (
+                      <div className="mt-2 px-1">
+                        <label className="block text-sm text-foreground mb-2">
+                          Zoom Meeting Link <span className="text-red-500">*</span>
+                        </label>
+                        <input
+                          type="url"
+                          value={zoomLink}
+                          onChange={(e) => setZoomLink(e.target.value)}
+                          placeholder="https://zoom.us/j/123456789"
+                          className="w-full px-4 py-3 rounded-xl bg-[var(--input-background)] border-2 border-[var(--border)] text-foreground placeholder:text-muted-foreground"
+                        />
+                        <p className="text-xs text-muted-foreground mt-1">Clients will use this to join video sessions</p>
+                      </div>
+                    )}
+
+                    {/* Office Address takoj pod In Person */}
+                    {type === 'In Person' && enabledTypes.includes('In Person') && (
+                      <div className="mt-2 px-1">
+                        <label className="block text-sm text-foreground mb-2">
+                          Office Address <span className="text-red-500">*</span>
+                        </label>
+                        <textarea
+                          value={inPersonAddress}
+                          onChange={(e) => setInPersonAddress(e.target.value)}
+                          placeholder="Enter your office address..."
+                          rows={3}
+                          className="w-full px-4 py-3 rounded-xl bg-[var(--input-background)] border-2 border-[var(--border)] text-foreground placeholder:text-muted-foreground resize-none"
+                        />
+                      </div>
+                    )}
+                  </div>
                 ))}
               </div>
-
-              {enabledTypes.includes('In Person') && (
-                <div className="mb-6">
-                  <label className="block text-sm text-foreground mb-2">
-                    Office Address <span className="text-red-500">*</span>
-                  </label>
-                  <textarea
-                    value={inPersonAddress}
-                    onChange={(e) => setInPersonAddress(e.target.value)}
-                    placeholder="Enter your office address..."
-                    rows={3}
-                    className="w-full px-4 py-3 rounded-xl bg-[var(--input-background)] border-2 border-[var(--border)] text-foreground placeholder:text-muted-foreground resize-none"
-                  />
-                </div>
-              )}
-
-              {enabledTypes.includes('Video Call') && (
-                <div className="mb-6">
-                  <label className="block text-sm text-foreground mb-2">
-                    Zoom Meeting Link <span className="text-red-500">*</span>
-                  </label>
-                  <input
-                    type="url"
-                    value={zoomLink}
-                    onChange={(e) => setZoomLink(e.target.value)}
-                    placeholder="https://zoom.us/j/123456789"
-                    className="w-full px-4 py-3 rounded-xl bg-[var(--input-background)] border-2 border-[var(--border)] text-foreground placeholder:text-muted-foreground"
-                  />
-                  <p className="text-xs text-muted-foreground mt-1">Clients will use this to join video sessions</p>
-                </div>
-              )}
 
               <div className="flex gap-3">
                 <motion.button
