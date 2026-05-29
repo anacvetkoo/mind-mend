@@ -260,7 +260,7 @@ export function HomeDashboard({ userId, userName, onCheckIn, onViewAiInsights, o
           className="mb-6"
         >
           <div className="flex items-center justify-between mb-4">
-            <h3 className="text-xl text-foreground">AI wellness tips just for you</h3>
+            <h3 className="text-xl text-foreground">Otto's wellness tips just for you</h3>
           </div>
           <div className="space-y-3">
             {isLoading || aiTips.length === 0 ? (

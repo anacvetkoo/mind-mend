@@ -25,13 +25,43 @@ export function ChatConversation({ therapistName = 'Otto AI', therapistAvatar, i
   const [displayedText, setDisplayedText] = useState<{ [key: number]: string }>({});
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
-  const [messages, setMessages] = useState<Message[]>([
-    { id: 1, text: 'Hi! How are you feeling today?', sender: isAI ? 'ai' : 'therapist', timestamp: '10:00 AM' }
-  ]);
+  const [messages, setMessages] = useState<Message[]>([]);
+
+  const STORAGE_KEY = 'chat_history_otto_ai';
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   };
+
+  useEffect(() => {
+    // Naložimo zgodovino samo, če gre za AI klepet
+    if (isAI) {
+      const savedMessages = localStorage.getItem(STORAGE_KEY);
+      
+      if (savedMessages) {
+        try {
+          setMessages(JSON.parse(savedMessages));
+        } catch (e) {
+          console.error("Napaka pri branju AI klepeta iz localStorage:", e);
+        }
+      } else {
+        // Začetni pozdrav za prvi obisk
+        const defaultMessage: Message = {
+          id: 1,
+          text: 'Hi! How are you feeling today?',
+          sender: 'ai',
+          timestamp: '10:00 AM'
+        };
+        setMessages([defaultMessage]);
+        localStorage.setItem(STORAGE_KEY, JSON.stringify([defaultMessage]));
+      }
+    } else {
+      // Za navadne terapevte pustimo klasično začetno stanje brez shranjevanja
+      setMessages([
+        { id: 1, text: 'Hi! How are you feeling today?', sender: 'therapist', timestamp: '10:00 AM' }
+      ]);
+    }
+  }, [STORAGE_KEY, isAI]);
 
   useEffect(() => {
     scrollToBottom();
@@ -67,6 +97,11 @@ export function ChatConversation({ therapistName = 'Otto AI', therapistAvatar, i
 
     const updatedMessages = [...messages, newUserMessage];
     setMessages(updatedMessages);
+
+    if (isAI) {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(updatedMessages));
+    }
+
     setMessage('');
 
     setIsTyping(true);
@@ -97,9 +132,12 @@ export function ChatConversation({ therapistName = 'Otto AI', therapistAvatar, i
         timestamp: new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })
       };
 
-      setMessages(prev => [...prev, aiReplyMessage]);
+      //setMessages(prev => [...prev, aiReplyMessage]);
+      const finalMessages = [...updatedMessages, aiReplyMessage];
+      setMessages(finalMessages);
 
       if (isAI) {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(finalMessages));
         setTypingMessageId(replyId);
         typewriterEffect(replyId, replyText);
       }
