@@ -1,49 +1,55 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { motion } from 'motion/react';
 import { Card } from '../ui/Card';
 import { Badge } from '../ui/Badge';
 import { Button } from '../ui/Button';
 import { Input } from '../ui/Input';
 import { Search, Star, MapPin, Calendar, MessageCircle, Video } from 'lucide-react';
+import { getTherapists } from '../../services/users';
 
 export function TherapistSection() {
+  const [therapists, setTherapists] = useState<any[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
 
-  const therapists = [
-    {
-      id: 1,
-      name: 'Dr. Sarah Mitchell',
-      specialization: 'Anxiety & Stress Management',
-      rating: 4.9,
-      reviews: 127,
-      location: 'Remote',
-      image: '👩‍⚕️',
-      available: true,
-      tags: ['CBT', 'Mindfulness', 'Trauma']
-    },
-    {
-      id: 2,
-      name: 'Dr. James Chen',
-      specialization: 'Depression & Mood Disorders',
-      rating: 4.8,
-      reviews: 98,
-      location: 'Remote',
-      image: '👨‍⚕️',
-      available: true,
-      tags: ['ACT', 'DBT', 'Family Therapy']
-    },
-    {
-      id: 3,
-      name: 'Dr. Emily Rodriguez',
-      specialization: 'Relationships & Self-Esteem',
-      rating: 5.0,
-      reviews: 156,
-      location: 'Remote',
-      image: '👩‍⚕️',
-      available: false,
-      tags: ['Couples', 'LGBTQ+', 'Grief']
-    }
-  ];
+  useEffect(() => {
+    const loadTherapists = async () => {
+      try {
+        const data = await getTherapists();
+        setTherapists(data);
+      } catch (error) {
+        console.error("Napaka pri nalaganju terapevtov:", error);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    loadTherapists();
+  }, []);
+
+  const renderStars = (rating: number) => {
+    // Če rating iz baze še ne obstaja, privzamemo 5 zvezdic
+    const validRating = typeof rating === 'number' ? rating : 5;
+    const roundedRating = Math.round(validRating);
+
+    return (
+      <div className="flex items-center gap-0.5" aria-label={`Rating: ${validRating} out of 5`}>
+        {[1, 2, 3, 4, 5].map((star) => {
+          const isFilled = star <= roundedRating;
+          return (
+            <Star
+              key={star}
+              className={`w-4 h-4 transition-colors ${
+                isFilled 
+                  ? 'text-yellow-400 fill-yellow-400' 
+                  : 'text-gray-300 dark:text-gray-600'
+              }`}
+            />
+          );
+        })}
+      </div>
+    );
+  };
 
   return (
     <div className="min-h-screen bg-background pb-24">
@@ -155,20 +161,17 @@ export function TherapistSection() {
                       )}
                     </div>
 
+                    {/* POSODOBLJEN RATING Z GRAFIČNIMI ZVEZDICAMI */}
                     <div className="flex items-center gap-4 mb-3 text-sm text-muted-foreground">
-                      <div className="flex items-center gap-1">
-                        <Star className="w-4 h-4 text-[var(--soft-mint)] fill-current" />
-                        <span>{therapist.rating}</span>
-                        <span>({therapist.reviews})</span>
-                      </div>
+                      {renderStars(therapist.rating)}
                       <div className="flex items-center gap-1">
                         <MapPin className="w-4 h-4" />
-                        <span>{therapist.location}</span>
+                        <span>Remote</span>
                       </div>
                     </div>
 
                     <div className="flex flex-wrap gap-2 mb-4">
-                      {therapist.tags.map((tag) => (
+                      {(therapist.tags || ['CBT', 'Mindfulness']).map((tag: string) => (
                         <span
                           key={tag}
                           className="text-xs px-3 py-1 bg-[var(--muted)] rounded-full text-muted-foreground"
@@ -177,7 +180,7 @@ export function TherapistSection() {
                         </span>
                       ))}
                     </div>
-
+{/* //<span>({therapist.reviews})</span> */}
                     <div className="flex gap-2">
                       <Button variant="outline" size="sm" className="flex-1">
                         <Calendar className="w-4 h-4 mr-1" />

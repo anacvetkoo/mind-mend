@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { motion } from 'motion/react';
 import { ArrowLeft, Star, Award, Users, Calendar, Clock, MessageCircle, Phone, Video, MapPin, BanIcon } from 'lucide-react';
-import { getTherapistById, getTherapistAvailability, getBlockedTimes, type TherapistProfileData, type TherapistContentPreview } from '../../services/users';
+import { getTherapistById, getTherapistAvailability, getBlockedTimes, submitTherapistRating, type TherapistProfileData, type TherapistContentPreview } from '../../services/users';
 import type { TherapistAvailability, BlockedTime } from '../../types/appointments';
 
 interface TherapistProfileProps {
@@ -60,6 +60,8 @@ export function TherapistProfile({
   const [blockedTimes, setBlockedTimes] = useState<BlockedTime[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [showNoAvailabilityModal, setShowNoAvailabilityModal] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isSubmitted, setIsSubmitted] = useState(false);
 
   useEffect(() => {
     let isMounted = true;
@@ -83,6 +85,26 @@ export function TherapistProfile({
     fetchTherapist();
     return () => { isMounted = false; };
   }, [therapistId]);
+
+  const handleSubmitRating = async () => {
+    if (userRating === 0 || isSubmitting) return;
+
+    setIsSubmitting(true);
+    try {
+      await submitTherapistRating(String(therapistId), userRating);
+      setIsSubmitted(true);
+      
+      setTherapist(prev => ({
+        ...prev,
+        reviews: prev.reviews + 1,
+        rating: userRating
+      }));
+    } catch (error) {
+      console.error("Napaka pri shranjevanju ocene terapevta:", error);
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
 
   // ─── Availability helpers ────────────────────────────────────────────────────
 
@@ -385,49 +407,62 @@ export function TherapistProfile({
             className="mt-2 mb-4"
           >
             <div className="bg-card rounded-2xl p-6 shadow-lg">
-              <h3 className="text-lg mb-3 text-foreground text-center">Rate this Therapist</h3>
-              <p className="text-sm text-muted-foreground text-center mb-4">
-                Share your experience to help others
-              </p>
-
-              <div className="flex justify-center gap-2 mb-4">
-                {[1, 2, 3, 4, 5].map((star) => (
-                  <motion.button
-                    key={star}
-                    whileHover={{ scale: 1.1 }}
-                    whileTap={{ scale: 0.9 }}
-                    onClick={() => { setUserRating(star); setHasRated(true); }}
-                    onMouseEnter={() => setHoveredRating(star)}
-                    onMouseLeave={() => setHoveredRating(0)}
-                    className="focus:outline-none"
-                  >
-                    <Star
-                      className={`w-10 h-10 transition-colors ${
-                        star <= (hoveredRating || userRating)
-                          ? 'text-yellow-400 fill-yellow-400'
-                          : 'text-gray-300 dark:text-gray-600'
-                      }`}
-                    />
-                  </motion.button>
-                ))}
-              </div>
-
-              {hasRated && (
-                <motion.div
-                  initial={{ opacity: 0, y: 10 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  className="text-center"
-                >
-                  <p className="text-sm text-[var(--lavender)] mb-3">
-                    Thank you for rating {userRating} star{userRating !== 1 ? 's' : ''}!
+              {isSubmitted ? (
+                <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="text-center py-4">
+                  <p className="text-sm text-[var(--lavender)] font-medium">
+                    Thank you! Your rating has been saved.
                   </p>
-                  <motion.button
-                    whileTap={{ scale: 0.98 }}
-                    className="w-full py-3 rounded-2xl bg-gradient-to-r from-[var(--lavender)] to-[var(--soft-purple)] text-white text-sm"
-                  >
-                    Submit Rating
-                  </motion.button>
                 </motion.div>
+              ) : (
+                <>
+                  <h3 className="text-lg mb-3 text-foreground text-center">Rate this Therapist</h3>
+                  <p className="text-sm text-muted-foreground text-center mb-4">
+                    Share your experience to help others
+                  </p>
+
+                  <div className="flex justify-center gap-2 mb-4">
+                    {[1, 2, 3, 4, 5].map((star) => (
+                      <motion.button
+                        key={star}
+                        whileHover={{ scale: 1.1 }}
+                        whileTap={{ scale: 0.9 }}
+                        onClick={() => { if (!isSubmitting) { setUserRating(star); setHasRated(true); } }}
+                        onMouseEnter={() => !isSubmitting && setHoveredRating(star)}
+                        onMouseLeave={() => !isSubmitting && setHoveredRating(0)}
+                        className="focus:outline-none"
+                        disabled={isSubmitting}
+                      >
+                        <Star
+                          className={`w-10 h-10 transition-colors ${
+                            star <= (hoveredRating || userRating)
+                              ? 'text-yellow-400 fill-yellow-400'
+                              : 'text-gray-300 dark:text-gray-600'
+                          }`}
+                        />
+                      </motion.button>
+                    ))}
+                  </div>
+
+                  {hasRated && (
+                    <motion.div
+                      initial={{ opacity: 0, y: 10 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      className="text-center"
+                    >
+                      <p className="text-sm text-[var(--lavender)] mb-3">
+                        Thank you for rating {userRating} star{userRating !== 1 ? 's' : ''}!
+                      </p>
+                      <motion.button
+                        whileTap={{ scale: 0.98 }}
+                        onClick={handleSubmitRating} // 🔥 VEZAVA NA TISTO PRAVO REFRESH FUNKCIJO
+                        disabled={isSubmitting}
+                        className="w-full py-3 rounded-2xl bg-gradient-to-r from-[var(--lavender)] to-[var(--soft-purple)] text-white text-sm font-medium disabled:opacity-50"
+                      >
+                        {isSubmitting ? 'Submitting...' : 'Submit Rating'}
+                      </motion.button>
+                    </motion.div>
+                  )}
+                </>
               )}
             </div>
           </motion.div>

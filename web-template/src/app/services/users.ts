@@ -6,6 +6,8 @@ import {
   collection, getDocs,
   query,
   where,
+  increment,
+  updateDoc,
 } from 'firebase/firestore';
 import { db } from './firebaseConfig';
 import type { UserRole } from './auth';
@@ -338,4 +340,36 @@ export const uploadTherapistProfileImage = async (
   await setDoc(therapistRef, { profileImage: downloadURL }, { merge: true });
 
   return downloadURL;
+};
+
+// ----rating terapevtov------------------------------------
+
+export const submitTherapistRating = async (
+  therapistId: string,
+  incomingRating: number
+): Promise<number> => {
+  const therapistRef = doc(db, 'users', therapistId);
+  const snapshot = await getDoc(therapistRef);
+
+  if (!snapshot.exists()) {
+    throw new Error('Therapist profile not found.');
+  }
+
+  const data = snapshot.data();
+  
+  const currentReviews = data.reviews || 0;
+  const currentTotalPoints = data.totalRatingPoints || (currentReviews * (data.rating || 5));
+
+  const newReviewsCount = currentReviews + 1;
+  const newTotalPoints = currentTotalPoints + incomingRating;
+  
+  const calculatedAverage = Math.round((newTotalPoints / newReviewsCount) * 10) / 10; //v bazo se vedno shrani povprečje ocen
+
+  await updateDoc(therapistRef, {
+    reviews: increment(1),
+    totalRatingPoints: increment(incomingRating),
+    rating: calculatedAverage
+  });
+
+  return calculatedAverage;
 };
