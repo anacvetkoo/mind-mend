@@ -211,6 +211,8 @@ const stats = [
               </div>
             ) : upcomingAppointments.map((apt, idx) => {
               const TypeIcon = getTypeIcon(apt.appointmentType);
+              // Preverimo ali je čas termina že nastopil
+              const canStart = new Date() >= new Date(`${apt.date}T${apt.startTime}`);
               return (
                 <motion.div key={apt.id} initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.05 * idx }} className="bg-card rounded-2xl p-5 shadow-md">
                   <div className="flex items-start justify-between mb-4">
@@ -238,7 +240,17 @@ const stats = [
                       </>
                     ) : (
                       <>
-                        <motion.button whileTap={{ scale: 0.95 }} onClick={() => onStartSession?.(apt)} className="flex-1 px-4 py-2.5 rounded-2xl bg-gradient-to-r from-[var(--lavender)] to-[var(--soft-purple)] text-white text-sm font-medium shadow-sm">Start Session</motion.button>
+                        <motion.button
+                          whileTap={{ scale: canStart ? 0.95 : 1 }}
+                          onClick={() => canStart && onStartSession?.(apt)}
+                          className={`flex-1 px-4 py-2.5 rounded-2xl text-sm font-medium shadow-sm transition-all ${
+                            canStart
+                              ? 'bg-gradient-to-r from-[var(--lavender)] to-[var(--soft-purple)] text-white'
+                              : 'bg-[var(--muted)] text-muted-foreground cursor-not-allowed'
+                          }`}
+                        >
+                          Start Session
+                        </motion.button>
                         <motion.button whileTap={{ scale: 0.95 }} onClick={() => setAppointmentToCancel(apt.id)} className="px-4 py-2.5 rounded-2xl border-2 border-[var(--lavender)] text-[var(--lavender)] bg-card text-sm font-medium">Cancel</motion.button>
                       </>
                     )}

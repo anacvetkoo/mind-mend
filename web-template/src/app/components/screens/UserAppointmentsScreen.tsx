@@ -34,12 +34,11 @@ export function UserAppointmentsScreen({ onCompletePayment, onJoinSession }: Use
   useEffect(() => { loadAppointments(); }, []);
 
   const handleCancelAppointment = async () => {
-  if (!appointmentToCancel) return;
-
-  await cancelAppointment(appointmentToCancel, false);
-  setAppointmentToCancel(null);
-  await loadAppointments();
-};
+    if (!appointmentToCancel) return;
+    await cancelAppointment(appointmentToCancel, false);
+    setAppointmentToCancel(null);
+    await loadAppointments();
+  };
 
   const now = new Date();
 
@@ -58,10 +57,10 @@ export function UserAppointmentsScreen({ onCompletePayment, onJoinSession }: Use
 
   const pastAppointments = useMemo(
     () => appointments.filter((apt) =>
-  apt.status === 'COMPLETED' ||
-  apt.status === 'CANCELLED' ||
-  apt.status === 'CANCELLED_BY_THERAPIST'
-),
+      apt.status === 'COMPLETED' ||
+      apt.status === 'CANCELLED' ||
+      apt.status === 'CANCELLED_BY_THERAPIST'
+    ),
     [appointments]
   );
 
@@ -182,17 +181,33 @@ export function UserAppointmentsScreen({ onCompletePayment, onJoinSession }: Use
 
         {mode === 'upcoming' && (
           <div className="flex gap-2">
-            <motion.button
-              whileTap={{ scale: apt.status === 'IN_SESSION' ? 0.95 : 1 }}
-              onClick={() => apt.status === 'IN_SESSION' && onJoinSession?.(apt)}
-              className={`flex-1 px-4 py-2.5 rounded-2xl text-sm font-medium shadow-sm transition-all ${
-                apt.status === 'IN_SESSION'
-                  ? 'bg-gradient-to-r from-[var(--lavender)] to-[var(--soft-purple)] text-white'
-                  : 'bg-[var(--muted)] text-muted-foreground cursor-not-allowed'
-              }`}
-            >
-              {apt.status === 'IN_SESSION' ? 'Join Session' : 'Waiting for therapist...'}
-            </motion.button>
+            {(() => {
+              const now = new Date();
+              const aptStart = new Date(`${apt.date}T${apt.startTime}`);
+              const isTimeReached = now >= aptStart;
+              const isInSession = apt.status === 'IN_SESSION';
+
+              const canJoin = isInSession;
+              const buttonText = isInSession
+                ? 'Join Session'
+                : isTimeReached
+                  ? 'Waiting for therapist...'
+                  : 'Join Session';
+
+              return (
+                <motion.button
+                  whileTap={{ scale: canJoin ? 0.95 : 1 }}
+                  onClick={() => canJoin && onJoinSession?.(apt)}
+                  className={`flex-1 px-4 py-2.5 rounded-2xl text-sm font-medium shadow-sm transition-all ${
+                    canJoin
+                      ? 'bg-gradient-to-r from-[var(--lavender)] to-[var(--soft-purple)] text-white'
+                      : 'bg-[var(--muted)] text-muted-foreground cursor-not-allowed'
+                  }`}
+                >
+                  {buttonText}
+                </motion.button>
+              );
+            })()}
             <motion.button
               whileTap={{ scale: 0.95 }}
               onClick={() => setAppointmentToCancel(apt.id)}
@@ -309,35 +324,35 @@ export function UserAppointmentsScreen({ onCompletePayment, onJoinSession }: Use
           </motion.div>
         )}
       </div>
-      {appointmentToCancel && (
-  <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center px-6">
-    <motion.div
-      initial={{ opacity: 0, scale: 0.95 }}
-      animate={{ opacity: 1, scale: 1 }}
-      className="bg-card rounded-3xl p-6 max-w-sm w-full shadow-xl"
-    >
-      <h3 className="text-xl text-foreground mb-3">Cancel appointment?</h3>
-      <p className="text-sm text-muted-foreground mb-6">
-        You receive a full refund only if you cancel at least 72 hours before the session.
-      </p>
 
-      <div className="flex gap-3">
-        <button
-          onClick={() => setAppointmentToCancel(null)}
-          className="flex-1 py-3 rounded-xl bg-[var(--muted)] text-foreground"
-        >
-          Keep
-        </button>
-        <button
-          onClick={handleCancelAppointment}
-          className="flex-1 py-3 rounded-xl bg-red-500 text-white"
-        >
-          Cancel
-        </button>
-      </div>
-    </motion.div>
-  </div>
-)}
+      {appointmentToCancel && (
+        <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center px-6">
+          <motion.div
+            initial={{ opacity: 0, scale: 0.95 }}
+            animate={{ opacity: 1, scale: 1 }}
+            className="bg-card rounded-3xl p-6 max-w-sm w-full shadow-xl"
+          >
+            <h3 className="text-xl text-foreground mb-3">Cancel appointment?</h3>
+            <p className="text-sm text-muted-foreground mb-6">
+              You receive a full refund only if you cancel at least 72 hours before the session.
+            </p>
+            <div className="flex gap-3">
+              <button
+                onClick={() => setAppointmentToCancel(null)}
+                className="flex-1 py-3 rounded-xl bg-[var(--muted)] text-foreground"
+              >
+                Keep
+              </button>
+              <button
+                onClick={handleCancelAppointment}
+                className="flex-1 py-3 rounded-xl bg-red-500 text-white"
+              >
+                Cancel
+              </button>
+            </div>
+          </motion.div>
+        </div>
+      )}
     </div>
   );
 }
