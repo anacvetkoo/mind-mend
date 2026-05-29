@@ -1,12 +1,14 @@
 import React, { useState, useEffect } from 'react';
 import { motion } from 'motion/react';
-import { Search, Star, User, Calendar } from 'lucide-react';
+import { Search, Star, User, Calendar, ChevronDown } from 'lucide-react';
 import { getTherapists, type TherapistProfileData } from '../../services/users';
 
 interface TherapistListProps {
   onSelectTherapist: (therapistId: string) => void;
   onBookTherapist: (therapistId: string, therapistName: string) => void;
 }
+
+type SortOption = 'default' | 'rating' | 'sessions' | 'reviews';
 
 export function TherapistList({ onSelectTherapist, onBookTherapist }: TherapistListProps) {
   const [selectedFilter, setSelectedFilter] = useState('all');
@@ -15,6 +17,8 @@ export function TherapistList({ onSelectTherapist, onBookTherapist }: TherapistL
   const [isLoading, setIsLoading] = useState(true);
   const [showNoAvailabilityModal, setShowNoAvailabilityModal] = useState(false);
   const [selectedUnavailableTherapist, setSelectedUnavailableTherapist] = useState<TherapistProfileData | null>(null);
+  const [sortBy, setSortBy] = useState<SortOption>('default');
+  const [showSortDropdown, setShowSortDropdown] = useState(false);
 
   const filters = [
     { id: 'all', label: 'All' },
@@ -30,6 +34,13 @@ export function TherapistList({ onSelectTherapist, onBookTherapist }: TherapistL
     { id: 'eating', label: 'Eating Disorders' },
     { id: 'anger', label: 'Anger Management' },
     { id: 'family', label: 'Family Conflict' },
+  ];
+
+  const sortOptions: { id: SortOption; label: string }[] = [
+    { id: 'default', label: 'Default' },
+    { id: 'rating', label: 'Highest Rating' },
+    { id: 'sessions', label: 'Most Sessions' },
+    { id: 'reviews', label: 'Most Reviews' },
   ];
 
   // 🔥 POPRAVLJENO: Čist useEffect, ki ob vsakem odpiranju strani potegne sveže podatke
@@ -82,28 +93,41 @@ export function TherapistList({ onSelectTherapist, onBookTherapist }: TherapistL
       normalize(therapist.specialization).includes(normalizedFilter) ||
       therapist.tags.some(t => normalize(t).includes(normalizedFilter));
 
+    let results: TherapistProfileData[];
+
     if (q === '') {
-      return therapists.filter(matchesFilter);
+      results = therapists.filter(matchesFilter);
+    } else {
+      const scored = therapists
+        .filter(matchesFilter)
+        .map(therapist => {
+          let score = 99;
+          if (therapist.name.toLowerCase().includes(q)) score = 0;
+          else if (therapist.title.toLowerCase().includes(q)) score = 1;
+          else if (therapist.specialization.toLowerCase().includes(q)) score = 2;
+          else if (therapist.tags.some(t => t.toLowerCase().includes(q))) score = 3;
+          else if (therapist.bio.toLowerCase().includes(q)) score = 4;
+          else return null;
+          return { therapist, score };
+        })
+        .filter(Boolean) as { therapist: TherapistProfileData; score: number }[];
+
+      results = scored
+        .sort((a, b) => a.score - b.score)
+        .map(s => s.therapist);
     }
 
-    const scored = therapists
-      .filter(matchesFilter)
-      .map(therapist => {
-        let score = 99;
-        if (therapist.name.toLowerCase().includes(q)) score = 0;
-        else if (therapist.title.toLowerCase().includes(q)) score = 1;
-        else if (therapist.specialization.toLowerCase().includes(q)) score = 2;
-        else if (therapist.tags.some(t => t.toLowerCase().includes(q))) score = 3;
-        else if (therapist.bio.toLowerCase().includes(q)) score = 4;
-        else return null;
-        return { therapist, score };
-      })
-      .filter(Boolean) as { therapist: TherapistProfileData; score: number }[];
+    // Sorting po izbrani opciji
+    if (sortBy === 'rating') {
+      results = [...results].sort((a, b) => (b.rating || 0) - (a.rating || 0));
+    } else if (sortBy === 'sessions') {
+      results = [...results].sort((a, b) => (b.sessionsCompleted || 0) - (a.sessionsCompleted || 0));
+    } else if (sortBy === 'reviews') {
+      results = [...results].sort((a, b) => (b.reviews || 0) - (a.reviews || 0));
+    }
 
-    return scored
-      .sort((a, b) => a.score - b.score)
-      .map(s => s.therapist);
-  }, [therapists, searchQuery, selectedFilter]);
+    return results;
+  }, [therapists, searchQuery, selectedFilter, sortBy]);
 
   return (
     <div className="min-h-screen bg-background pb-24">
@@ -115,17 +139,57 @@ export function TherapistList({ onSelectTherapist, onBookTherapist }: TherapistL
           <p className="text-muted-foreground mt-1">Connect with licensed professionals</p>
         </motion.div>
 
-        {/* Search Bar */}
+        {/* Search Bar + Sort */}
         <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }} className="mb-6">
-          <div className="relative">
-            <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
-            <input
-              type="text"
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="Search by name or specialization..."
-              className="w-full pl-12 pr-4 py-3 rounded-2xl bg-card border-2 border-transparent focus:border-[var(--lavender)] focus:outline-none transition-all shadow-md"
-            />
+          <div className="flex gap-2">
+            <div className="relative flex-1">
+              <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
+              <input
+                type="text"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                placeholder="Search by name or specialization..."
+                className="w-full pl-12 pr-4 py-3 rounded-2xl bg-card border-2 border-transparent focus:border-[var(--lavender)] focus:outline-none transition-all shadow-md"
+              />
+            </div>
+
+            {/* Sort Dropdown */}
+            <div className="relative">
+              <button
+                onClick={() => setShowSortDropdown(!showSortDropdown)}
+                className={`h-full px-4 py-3 rounded-2xl bg-card shadow-md border-2 flex items-center gap-2 text-sm whitespace-nowrap transition-all ${
+                  sortBy !== 'default' ? 'border-[var(--lavender)] text-[var(--lavender)]' : 'border-transparent text-foreground'
+                }`}
+              >
+                Sort
+                <ChevronDown className={`w-4 h-4 transition-transform ${showSortDropdown ? 'rotate-180' : ''}`} />
+              </button>
+
+              {showSortDropdown && (
+                <motion.div
+                  initial={{ opacity: 0, y: -8 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  className="absolute right-0 top-full mt-2 bg-card rounded-2xl shadow-xl border border-[var(--border)] z-20 min-w-[160px] overflow-hidden"
+                >
+                  {sortOptions.map((option) => (
+                    <button
+                      key={option.id}
+                      onClick={() => {
+                        setSortBy(option.id);
+                        setShowSortDropdown(false);
+                      }}
+                      className={`w-full px-4 py-3 text-left text-sm transition-colors ${
+                        sortBy === option.id
+                          ? 'bg-[var(--lavender)]/10 text-[var(--lavender)]'
+                          : 'text-foreground hover:bg-[var(--muted)]'
+                      }`}
+                    >
+                      {option.label}
+                    </button>
+                  ))}
+                </motion.div>
+              )}
+            </div>
           </div>
         </motion.div>
 
@@ -280,6 +344,11 @@ export function TherapistList({ onSelectTherapist, onBookTherapist }: TherapistL
             </motion.button>
           </motion.div>
         </motion.div>
+      )}
+
+      {/* Zapri sort dropdown ob kliku zunaj */}
+      {showSortDropdown && (
+        <div className="fixed inset-0 z-10" onClick={() => setShowSortDropdown(false)} />
       )}
     </div>
   );
