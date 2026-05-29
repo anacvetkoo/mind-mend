@@ -32,6 +32,54 @@ interface SessionScreenProps {
   onLeaveSession: () => void;
 }
 
+// ─── Enkripcija z Web Crypto API (vgrajen v browser, brez zunanjih knjižnic) ──
+// Ključ je unikaten za vsako sejo — kombinacija appointmentId + fiksen string
+const getKeyMaterial = (appointmentId: string) =>
+  crypto.subtle.importKey(
+    'raw',
+    new TextEncoder().encode(`mm_session_${appointmentId}_k9x2p`.padEnd(32, '0').slice(0, 32)),
+    { name: 'AES-GCM' },
+    false,
+    ['encrypt', 'decrypt']
+  );
+
+const encryptMessage = async (text: string, appointmentId: string): Promise<string> => {
+  try {
+    const key = await getKeyMaterial(appointmentId);
+    const iv = crypto.getRandomValues(new Uint8Array(12));
+    const encrypted = await crypto.subtle.encrypt(
+      { name: 'AES-GCM', iv },
+      key,
+      new TextEncoder().encode(text)
+    );
+    // Združimo iv + encrypted v base64 string
+    const combined = new Uint8Array(iv.byteLength + encrypted.byteLength);
+    combined.set(iv, 0);
+    combined.set(new Uint8Array(encrypted), iv.byteLength);
+    return btoa(String.fromCharCode(...combined));
+  } catch {
+    return text;
+  }
+};
+
+const decryptMessage = async (cipherText: string, appointmentId: string): Promise<string> => {
+  try {
+    const key = await getKeyMaterial(appointmentId);
+    const combined = Uint8Array.from(atob(cipherText), c => c.charCodeAt(0));
+    const iv = combined.slice(0, 12);
+    const encrypted = combined.slice(12);
+    const decrypted = await crypto.subtle.decrypt(
+      { name: 'AES-GCM', iv },
+      key,
+      encrypted
+    );
+    return new TextDecoder().decode(decrypted);
+  } catch {
+    // Če dešifriranje ne uspe (npr. stara sporočila), vrni original
+    return cipherText;
+  }
+};
+
 function EndConfirmModal({ onCancel, onConfirm }: { onCancel: () => void; onConfirm: () => void }) {
   return (
     <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
@@ -280,8 +328,21 @@ export function SessionScreen({ appointment, isTherapist, onEndSession, onLeaveS
 
   useEffect(() => {
     const q = query(collection(db, 'sessions', sessionId, 'messages'), orderBy('timestamp', 'asc'));
-    return onSnapshot(q, (snapshot) => {
-      setMessages(snapshot.docs.map(d => ({ id: d.id, ...d.data() } as SessionMessage)));
+    return onSnapshot(q, async (snapshot) => {
+      // Dešifriramo vsa sporočila ob branju iz Firestorea
+      const decrypted = await Promise.all(
+        snapshot.docs.map(async (d) => {
+          const data = d.data();
+          return {
+            id: d.id,
+            text: await decryptMessage(data.text, sessionId),
+            senderId: data.senderId,
+            senderName: data.senderName,
+            timestamp: data.timestamp,
+          } as SessionMessage;
+        })
+      );
+      setMessages(decrypted);
     });
   }, [sessionId]);
 
@@ -308,8 +369,14 @@ export function SessionScreen({ appointment, isTherapist, onEndSession, onLeaveS
     setIsSending(true);
     inputRef.current?.focus();
     try {
+      // Šifriramo sporočilo preden ga shranimo v Firestore
+      const encryptedText = await encryptMessage(text, sessionId);
+
+      console.log('Original:', text);
+      console.log('Encrypted:', encryptedText);
+
       await addDoc(collection(db, 'sessions', sessionId, 'messages'), {
-        text,
+        text: encryptedText,
         senderId: currentUser.uid,
         senderName: isTherapist ? appointment.therapistName : appointment.userName,
         timestamp: serverTimestamp(),
