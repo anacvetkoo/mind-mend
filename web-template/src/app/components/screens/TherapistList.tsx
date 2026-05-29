@@ -192,11 +192,11 @@ export function TherapistList({ onSelectTherapist, onBookTherapist }: TherapistL
                         <h3 className="text-foreground truncate">{therapist.name}</h3>
                         <p className="text-sm text-muted-foreground truncate">{therapist.specialization || therapist.title || 'Licensed Therapist'}</p>
                       </div>
-                      <span className={`px-2 py-1 rounded-full text-xs whitespace-nowrap flex-shrink-0 ${
+                      {/* <span className={`px-2 py-1 rounded-full text-xs whitespace-nowrap flex-shrink-0 ${
                         therapist.isAvailable ? 'bg-[var(--soft-mint)]/20 text-[var(--soft-mint)]' : 'bg-red-100 dark:bg-red-900/20 text-red-400'
                       }`}>
                         {therapist.isAvailable ? 'Available' : 'Not available'}
-                      </span>
+                      </span> */}
                     </div>
 
                     <div className="flex items-center gap-3 mb-2 text-sm text-muted-foreground">
