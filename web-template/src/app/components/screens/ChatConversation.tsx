@@ -29,6 +29,9 @@ export function ChatConversation({ therapistName = 'Otto AI', therapistAvatar, i
 
   const STORAGE_KEY = 'chat_history_otto_ai';
 
+  const getCurrentTimestamp = () =>
+    new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
+
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   };
@@ -50,7 +53,7 @@ export function ChatConversation({ therapistName = 'Otto AI', therapistAvatar, i
           id: 1,
           text: 'Hi! How are you feeling today?',
           sender: 'ai',
-          timestamp: '10:00 AM'
+          timestamp: getCurrentTimestamp()
         };
         setMessages([defaultMessage]);
         localStorage.setItem(STORAGE_KEY, JSON.stringify([defaultMessage]));
@@ -58,7 +61,7 @@ export function ChatConversation({ therapistName = 'Otto AI', therapistAvatar, i
     } else {
       // Za navadne terapevte pustimo klasično začetno stanje brez shranjevanja
       setMessages([
-        { id: 1, text: 'Hi! How are you feeling today?', sender: 'therapist', timestamp: '10:00 AM' }
+        { id: 1, text: 'Hi! How are you feeling today?', sender: 'therapist', timestamp: getCurrentTimestamp() }
       ]);
     }
   }, [STORAGE_KEY, isAI]);
