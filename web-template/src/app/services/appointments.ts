@@ -103,8 +103,14 @@ export const startSession = async (appointmentId: string): Promise<void> => {
 
 // Terapevt konča sejo → status COMPLETED
 export const endSession = async (appointmentId: string): Promise<void> => {
+  // Najprej posodobimo status — to je kritično in mora uspeti
   await updateAppointmentStatus(appointmentId, 'COMPLETED');
-  await releaseTherapistPayout(appointmentId);
+  // Payout poskusimo, ampak če ne uspe (npr. emulator ne teče), nadaljujemo
+  try {
+    await releaseTherapistPayout(appointmentId);
+  } catch (error) {
+    console.error('releaseTherapistPayout failed (non-critical):', error);
+  }
 };
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
