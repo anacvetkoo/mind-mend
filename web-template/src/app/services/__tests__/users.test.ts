@@ -107,7 +107,7 @@ describe('Users Service', () => {
       // Testirava tvojo kompleksno "getStringValue" logiko spajanja imena:
       expect(therapist?.name).toBe('Maja Kralj');
       expect(therapist?.title).toBe('Psihoterapevtka');
-      expect(therapist?.rating).toBe(5); // Privzeta vrednost v kodi
+      expect(therapist?.rating).toBe(0); // Default je 0 — terapevti brez ocen
     });
   });
 
