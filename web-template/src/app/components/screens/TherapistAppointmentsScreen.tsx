@@ -45,9 +45,7 @@ export function TherapistAppointmentsScreen({ onStartSession }: { onStartSession
   ), [appointments]);
 
   const pastAppointments = useMemo(() => appointments.filter((apt) =>
-    apt.status === 'COMPLETED' ||
-    apt.status === 'CANCELLED' ||
-    apt.status === 'CANCELLED_BY_THERAPIST'
+    apt.status === 'COMPLETED'
   ), [appointments]);
 
   const handleAcceptRequest = async (id: string) => {

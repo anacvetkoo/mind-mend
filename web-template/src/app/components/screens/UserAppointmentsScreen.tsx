@@ -56,11 +56,7 @@ export function UserAppointmentsScreen({ onCompletePayment, onJoinSession }: Use
   );
 
   const pastAppointments = useMemo(
-    () => appointments.filter((apt) =>
-      apt.status === 'COMPLETED' ||
-      apt.status === 'CANCELLED' ||
-      apt.status === 'CANCELLED_BY_THERAPIST'
-    ),
+    () => appointments.filter((apt) => apt.status === 'COMPLETED'),
     [appointments]
   );
 

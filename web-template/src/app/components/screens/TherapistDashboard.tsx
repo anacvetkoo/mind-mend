@@ -55,9 +55,7 @@ export function TherapistDashboard({ therapistName = 'Dr. Sarah', onViewNotifica
   const appointmentRequests = appointments.filter(apt => apt.status === 'REQUESTED' && !isPast(apt));
 
   const pastAppointments = appointments.filter((apt) =>
-  apt.status === 'COMPLETED' ||
-  apt.status === 'CANCELLED' ||
-  apt.status === 'CANCELLED_BY_THERAPIST'
+  apt.status === 'COMPLETED'
 );
 
   const handleAcceptRequest = async (id: string) => {
