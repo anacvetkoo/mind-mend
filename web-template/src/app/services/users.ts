@@ -258,7 +258,7 @@ const mapTherapistData = (id: string, data: any): TherapistPublicProfile => {
         data.fieldOfWork,
         data.specialization
       ),
-    rating: data.rating || 5,
+    rating: data.rating ?? 0,                             // ?? namesto || —> tako terapevti brez ratinga dobijo 0 namesto 5, in sorting bo delal pravilno
     reviews: data.reviews || data.reviewCount || 0,
     bio:
       getStringValue(
