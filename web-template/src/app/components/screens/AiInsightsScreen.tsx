@@ -220,7 +220,7 @@ export function AiInsightsScreen({ userId, onBack, onCheckIn }: AiInsightsScreen
             <Card variant="glass" className="py-16 text-center flex flex-col items-center justify-center gap-4">
               <div className="w-12 h-12 rounded-full border-4 border-[var(--lavender)] border-t-transparent animate-spin" />
               <div className="text-sm text-muted-foreground px-6 animate-pulse">
-                ✨ Gemini is deeply scanning your last 10 journal entries, evaluating stress patterns, and mapping emotional triggers...
+                ✨ Otto is looking thrugh your last 10 journal entries, evaluating stress patterns, and mapping emotional triggers...
               </div>
             </Card>
           ) : !allowedToday ? (

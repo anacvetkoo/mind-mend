@@ -1054,6 +1054,7 @@ const handleQuestionnaireComplete = async (data: any) => {
               onFindTherapist={() => setCurrentScreen('therapists')}
               onViewAppointments={() => setCurrentScreen('appointments')}
               onViewNotifications={() => setCurrentScreen('notifications')}
+              onTabChange={handleTabChange}
             />
           )}
           {currentScreen === 'journal' && (

@@ -21,9 +21,10 @@ interface HomeDashboardProps {
   onFindTherapist?: () => void;
   onViewAppointments?: () => void;
   onViewNotifications?: () => void;
+  onTabChange: (tab: string) => void;
 }
 
-export function HomeDashboard({ userId, userName, onCheckIn, onViewAiInsights, onFindTherapist, onViewAppointments, onViewNotifications }: HomeDashboardProps) {
+export function HomeDashboard({ userId, userName, onCheckIn, onViewAiInsights, onFindTherapist, onViewAppointments, onViewNotifications, onTabChange }: HomeDashboardProps) {
   const currentHour = new Date().getHours();
   const greeting =
     currentHour < 12 ? 'Good morning' : currentHour < 18 ? 'Good afternoon' : 'Good evening';
@@ -300,7 +301,7 @@ export function HomeDashboard({ userId, userName, onCheckIn, onViewAiInsights, o
                     </div>
                     <div>
                       <h4 className="text-sm font-medium text-foreground group-hover:text-[var(--lavender)] transition-colors">
-                        Deep Cognitive Report
+                        Deep Cognitive Analysis
                       </h4>
                       <p className="text-xs text-muted-foreground">
                         Explore core triggers, trends and full analysis across 10 logs
@@ -321,7 +322,8 @@ export function HomeDashboard({ userId, userName, onCheckIn, onViewAiInsights, o
         >
           <div className="flex items-center justify-between mb-4">
             <h3 className="text-xl text-foreground">Recommended Content</h3>
-            <button className="text-sm text-[var(--lavender)]">See all</button>
+            <button className="text-sm text-[var(--lavender)]"
+            onClick={() => onTabChange('explore')}>See all</button>
           </div>
 
           <div className="mb-2">

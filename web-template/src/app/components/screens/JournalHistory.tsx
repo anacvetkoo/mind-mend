@@ -289,18 +289,15 @@ export function JournalHistory({ onSelectCheckIn }: JournalHistoryProps = {}) {
                         {/* Emoji & Date */}
                         <div className="text-center">
                           <div className="text-4xl mb-1">{getEmotionEmoji(checkIn.emotionalState)}</div>
-                          <div className="text-xs text-muted-foreground">{formatDate(checkIn.date)}</div>
+                          
                         </div>
 
                         {/* Content */}
                         <div className="flex-1 min-w-0">
                         {checkIn.dominantEmotion && (
                             <div className="mb-2 flex flex-wrap gap-1">
-                              <span className="inline-block px-2.5 py-0.5 rounded-full bg-[var(--soft-purple)]/20 text-[var(--lavender)] text-xs font-medium">
-                                {Array.isArray(checkIn.dominantEmotion)
-                                  ? checkIn.dominantEmotion.join(', ')
-                                  : checkIn.dominantEmotion}
-                              </span>
+                              <div className="text-s font-medium px-2.5 py-0.5 rounded-full bg-[var(--soft-purple)]/20 text-[var(--lavender)]">{formatDate(checkIn.date)}</div>
+                              
                             </div>
                           )}
 
@@ -318,6 +315,12 @@ export function JournalHistory({ onSelectCheckIn }: JournalHistoryProps = {}) {
                               </div>
                             </div>
                           )}
+
+                              <span className="inline-block text-muted-foreground text-xs font-medium">
+                                {Array.isArray(checkIn.dominantEmotion)
+                                  ? checkIn.dominantEmotion.join(', ')
+                                  : checkIn.dominantEmotion}
+                              </span>
 
                           <div className="flex items-start gap-2 mt-3 pt-3 border-t border-[var(--border)]">
                             <Sparkles className="w-4 h-4 text-[var(--lavender)] flex-shrink-0 mt-0.5" />
