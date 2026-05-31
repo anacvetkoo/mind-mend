@@ -129,6 +129,13 @@ export function ProfileScreen({ onLogout, userName = 'Alex', userRole = 'User', 
   const handleBiometricToggle = () => {
     const newValue = !biometricAuthEnabled;
     onToggleBiometricAuth?.(newValue);
+
+    // Obvesti Expo native del (App.js) da shrani nastavitev v AsyncStorage
+    if ((window as any).ReactNativeWebView) {
+      (window as any).ReactNativeWebView.postMessage(
+        JSON.stringify({ type: 'biometricAuthChanged', enabled: newValue })
+      );
+    }
   };
 
   const handleSaveAvailability = async (newAvailability: TherapistAvailability) => {
