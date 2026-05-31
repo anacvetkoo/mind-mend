@@ -19,3 +19,20 @@ body,
 body {
   touch-action: manipulation;
 }
+
+/* Fix date/time inputs overflowing on mobile WebView */
+input[type="time"],
+input[type="date"] {
+  min-width: 0;
+  width: 100%;
+  max-width: 100%;
+  box-sizing: border-box;
+  -webkit-appearance: none;
+  appearance: none;
+}
+
+/* Prevent any element from breaking out of the viewport */
+.fixed,
+.sticky {
+  max-width: 100vw;
+}

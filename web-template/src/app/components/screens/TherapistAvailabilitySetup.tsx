@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { motion } from 'motion/react';
-import { ArrowLeft, Clock, Calendar, MessageCircle, Phone, Video, MapPin, Edit2, PlusCircle } from 'lucide-react';
+import { ArrowLeft, MessageCircle, Phone, Video, MapPin } from 'lucide-react';
 import type { TherapistAvailability, AppointmentType, DayOfWeek, WorkingHours } from '../../types/appointments';
 
 interface TherapistAvailabilitySetupProps {
@@ -72,25 +72,25 @@ export function TherapistAvailabilitySetup({ onClose, existingAvailability, onSa
   };
 
   return (
-    <div className="fixed inset-0 bg-background z-50 overflow-auto">
-      <div className="max-w-md mx-auto min-h-screen pb-24">
+    <div className="fixed inset-0 bg-background z-50 overflow-y-auto overflow-x-hidden">
+      <div className="w-full max-w-md mx-auto min-h-screen pb-24">
         {/* Header */}
-        <div className="sticky top-0 bg-background/95 backdrop-blur-xl border-b border-[var(--border)] px-6 py-4 flex items-center z-10">
+        <div className="sticky top-0 bg-background/95 backdrop-blur-xl border-b border-[var(--border)] px-4 py-4 flex items-center z-10">
           <button
             onClick={onClose}
-            className="w-10 h-10 rounded-full bg-card flex items-center justify-center mr-4"
+            className="w-10 h-10 rounded-full bg-card flex items-center justify-center mr-3 shrink-0"
           >
             <ArrowLeft className="w-5 h-5 text-foreground" />
           </button>
-          <div className="flex-1">
-            <h1 className="text-xl text-foreground">
+          <div className="flex-1 min-w-0">
+            <h1 className="text-xl text-foreground truncate">
               {existingAvailability ? 'Edit Availability' : 'Set Up Availability'}
             </h1>
             <p className="text-xs text-muted-foreground">Step {step} of 3</p>
           </div>
         </div>
 
-        <div className="px-6 pt-6">
+        <div className="px-4 pt-6">
           {step === 1 && (
             <motion.div
               initial={{ opacity: 0, x: 20 }}
@@ -107,7 +107,7 @@ export function TherapistAvailabilitySetup({ onClose, existingAvailability, onSa
                       <span className="text-foreground">{day}</span>
                       <button
                         onClick={() => toggleDay(day)}
-                        className={`w-12 h-6 rounded-full relative transition-colors ${
+                        className={`w-12 h-6 rounded-full relative transition-colors shrink-0 ${
                           enabled ? 'bg-gradient-to-r from-[var(--lavender)] to-[var(--soft-purple)]' : 'bg-[var(--muted)]'
                         }`}
                       >
@@ -118,23 +118,25 @@ export function TherapistAvailabilitySetup({ onClose, existingAvailability, onSa
                     </div>
 
                     {enabled && (
-                      <div className="grid grid-cols-2 gap-3">
-                        <div>
+                      <div className="grid grid-cols-2 gap-2">
+                        <div className="min-w-0">
                           <label className="text-xs text-muted-foreground mb-1 block">Start</label>
                           <input
                             type="time"
                             value={startTime}
                             onChange={(e) => updateDayTime(day, 'startTime', e.target.value)}
-                            className="w-full px-3 py-2 rounded-xl bg-[var(--input-background)] border-2 border-[var(--border)] text-foreground text-sm"
+                            className="w-full px-3 py-2 rounded-xl bg-[var(--input-background)] border-2 border-[var(--border)] text-foreground text-sm appearance-none"
+                            style={{ WebkitAppearance: 'none' }}
                           />
                         </div>
-                        <div>
+                        <div className="min-w-0">
                           <label className="text-xs text-muted-foreground mb-1 block">End</label>
                           <input
                             type="time"
                             value={endTime}
                             onChange={(e) => updateDayTime(day, 'endTime', e.target.value)}
-                            className="w-full px-3 py-2 rounded-xl bg-[var(--input-background)] border-2 border-[var(--border)] text-foreground text-sm"
+                            className="w-full px-3 py-2 rounded-xl bg-[var(--input-background)] border-2 border-[var(--border)] text-foreground text-sm appearance-none"
+                            style={{ WebkitAppearance: 'none' }}
                           />
                         </div>
                       </div>
@@ -166,7 +168,7 @@ export function TherapistAvailabilitySetup({ onClose, existingAvailability, onSa
                 <label className="block text-sm text-foreground mb-3">
                   Appointment Duration
                 </label>
-                <div className="grid grid-cols-3 gap-3">
+                <div className="grid grid-cols-3 gap-2">
                   {DURATIONS.map(duration => (
                     <button
                       key={duration}
@@ -187,7 +189,7 @@ export function TherapistAvailabilitySetup({ onClose, existingAvailability, onSa
                 <label className="block text-sm text-foreground mb-3">
                   Break Between Appointments
                 </label>
-                <div className="grid grid-cols-4 gap-3">
+                <div className="grid grid-cols-4 gap-2">
                   {[0, 5, 10, 15].map(duration => (
                     <button
                       key={duration}
@@ -243,9 +245,9 @@ export function TherapistAvailabilitySetup({ onClose, existingAvailability, onSa
                           : 'bg-card border-2 border-[var(--border)]'
                       }`}
                     >
-                      <Icon className={`w-5 h-5 ${enabledTypes.includes(type) ? 'text-[var(--lavender)]' : 'text-muted-foreground'}`} />
+                      <Icon className={`w-5 h-5 shrink-0 ${enabledTypes.includes(type) ? 'text-[var(--lavender)]' : 'text-muted-foreground'}`} />
                       <span className="flex-1 text-left text-foreground">{label}</span>
-                      <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center ${
+                      <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center shrink-0 ${
                         enabledTypes.includes(type)
                           ? 'bg-[var(--lavender)] border-[var(--lavender)]'
                           : 'border-[var(--border)]'
