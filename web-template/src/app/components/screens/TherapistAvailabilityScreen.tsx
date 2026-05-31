@@ -6,8 +6,14 @@ import { TherapistAvailabilitySetup } from './TherapistAvailabilitySetup';
 import { TherapistAvailabilityOverview } from './TherapistAvailabilityOverview';
 import type { TherapistAvailability } from '../../types/appointments';
 
+const AVAILABILITY_CACHE_KEY = 'therapistAvailability';
+
 export function TherapistAvailabilityScreen() {
-  const [availability, setAvailability] = useState<TherapistAvailability | null>(null);
+  // Takoj naloži iz localStorage da ni bliskanja "ni setup-ano"
+  const [availability, setAvailability] = useState<TherapistAvailability | null>(() => {
+    const cached = localStorage.getItem(AVAILABILITY_CACHE_KEY);
+    return cached ? JSON.parse(cached) : null;
+  });
   const [showSetup, setShowSetup] = useState(false);
   const [showBlockedTime, setShowBlockedTime] = useState(false);
 
@@ -20,7 +26,10 @@ export function TherapistAvailabilityScreen() {
         // Naloži availability iz Firestorea ob mountu
         import('../../services/users').then(({ getTherapistAvailability }) => {
           getTherapistAvailability(auth.currentUser!.uid).then((avail) => {
-            if (avail) setAvailability(avail);
+            if (avail) {
+              setAvailability(avail);
+              localStorage.setItem(AVAILABILITY_CACHE_KEY, JSON.stringify(avail));
+            }
           });
         });
       }
@@ -37,8 +46,9 @@ export function TherapistAvailabilityScreen() {
       };
       await updateTherapistAvailability(auth.currentUser.uid, availabilityToSave);
       setAvailability(availabilityToSave);
+      localStorage.setItem(AVAILABILITY_CACHE_KEY, JSON.stringify(availabilityToSave));
+      setShowSetup(false);
     }
-    setShowSetup(false);
   };
   
   if (showSetup) {

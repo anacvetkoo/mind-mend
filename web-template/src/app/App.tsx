@@ -205,6 +205,8 @@ export default function App() {
             const firestoreAvailability = await getTherapistAvailability(firebaseUser.uid);
             if (firestoreAvailability) {
               localStorage.setItem('therapistAvailability', JSON.stringify(firestoreAvailability));
+            } else {
+              localStorage.removeItem('therapistAvailability');
             }
 
           } else {
@@ -379,6 +381,8 @@ const handleQuestionnaireComplete = async (data: any) => {
           const firestoreAvailability = await getTherapistAvailability(currentUser.uid);
           if (firestoreAvailability) {
             localStorage.setItem('therapistAvailability', JSON.stringify(firestoreAvailability));
+          } else {
+            localStorage.removeItem('therapistAvailability');
           }
 
         } else {

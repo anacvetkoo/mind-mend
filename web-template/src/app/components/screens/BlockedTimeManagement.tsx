@@ -8,8 +8,14 @@ interface BlockedTimeManagementProps {
   onClose: () => void;
 }
 
+const BLOCKED_TIMES_CACHE_KEY = 'therapistBlockedTimes';
+
 export function BlockedTimeManagement({ therapistId, onClose }: BlockedTimeManagementProps) {
-  const [blockedTimes, setBlockedTimes] = useState<BlockedTime[]>([]);
+  // Takoj naloži iz localStorage da ni bliskanja prazne liste
+  const [blockedTimes, setBlockedTimes] = useState<BlockedTime[]>(() => {
+    const cached = localStorage.getItem(BLOCKED_TIMES_CACHE_KEY);
+    return cached ? JSON.parse(cached) : [];
+  });
   const [showAddForm, setShowAddForm] = useState(false);
   const [formData, setFormData] = useState({
     startDate: '',
@@ -28,6 +34,7 @@ export function BlockedTimeManagement({ therapistId, onClose }: BlockedTimeManag
         const { getBlockedTimes } = await import('../../services/users');
         const times = await getBlockedTimes(currentUser.uid);
         setBlockedTimes(times);
+        localStorage.setItem(BLOCKED_TIMES_CACHE_KEY, JSON.stringify(times));
       }
     };
     loadBlockedTimes();
@@ -39,6 +46,7 @@ export function BlockedTimeManagement({ therapistId, onClose }: BlockedTimeManag
     if (currentUser) {
       const { updateBlockedTimes } = await import('../../services/users');
       await updateBlockedTimes(currentUser.uid, times);
+      localStorage.setItem(BLOCKED_TIMES_CACHE_KEY, JSON.stringify(times));
     }
   };
 
