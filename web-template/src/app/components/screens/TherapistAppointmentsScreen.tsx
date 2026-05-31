@@ -2,10 +2,11 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { motion } from 'motion/react';
 import { Calendar, Clock, MessageCircle, Phone, Video, MapPin, X, Check, AlertCircle, RefreshCw } from 'lucide-react';
 import { getAuth } from 'firebase/auth';
+import { collection, query, where, orderBy, onSnapshot } from 'firebase/firestore';
+import { db } from '../../services/firebaseConfig';
 import type { Appointment, AppointmentStatus } from '../../types/appointments';
 import {
   cancelAppointment,
-  getAppointmentsForTherapist,
   updateAppointmentStatus,
   endSession,
 } from '../../services/appointments';
@@ -15,34 +16,45 @@ export function TherapistAppointmentsScreen({ onStartSession }: { onStartSession
   const [appointments, setAppointments] = useState<Appointment[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [appointmentToCancel, setAppointmentToCancel] = useState<string | null>(null);
+  const [now, setNow] = useState(() => new Date());
+  const [isRefreshing, setIsRefreshing] = useState(false);
 
-  const loadAppointments = async () => {
-    const currentUser = getAuth().currentUser;
-    if (!currentUser) { setAppointments([]); setIsLoading(false); return; }
-    try {
-      setIsLoading(true);
-      const data = await getAppointmentsForTherapist(currentUser.uid);
-      setAppointments(data);
-    } catch (error) {
-      console.error('Failed to load therapist appointments:', error);
-      setAppointments([]);
-    } finally {
-      setIsLoading(false);
-    }
+  const refreshNow = () => {
+    setNow(new Date());
+    setIsRefreshing(true);
+    setTimeout(() => setIsRefreshing(false), 600);
   };
 
-  useEffect(() => { loadAppointments(); }, []);
+  useEffect(() => {
+    const currentUser = getAuth().currentUser;
+    if (!currentUser) { setIsLoading(false); return; }
 
-  const now = new Date();
+    const q = query(
+      collection(db, 'appointments'),
+      where('therapistId', '==', currentUser.uid),
+      orderBy('date', 'asc')
+    );
+
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      const data = snapshot.docs.map((d) => ({ id: d.id, ...d.data() } as Appointment));
+      setAppointments(data);
+      setIsLoading(false);
+    }, (error) => {
+      console.error('Failed to listen to therapist appointments:', error);
+      setIsLoading(false);
+    });
+
+    return () => unsubscribe();
+  }, []);
 
   const upcomingAppointments = useMemo(() => appointments.filter((apt) => {
     const endDate = new Date(`${apt.date}T${apt.endTime}`);
     return (apt.status === 'CONFIRMED' || apt.status === 'IN_SESSION') && endDate >= now;
-  }), [appointments]);
+  }), [appointments, now]);
 
-  const appointmentRequests = useMemo(() => appointments.filter((apt) =>
-    apt.status === 'REQUESTED'
-  ), [appointments]);
+  const appointmentRequests = useMemo(() => appointments.filter((apt) => {
+    return apt.status === 'REQUESTED' && new Date(`${apt.date}T${apt.startTime}`) >= now;
+  }), [appointments, now]);
 
   const pastAppointments = useMemo(() => appointments.filter((apt) =>
     apt.status === 'COMPLETED'
@@ -50,19 +62,16 @@ export function TherapistAppointmentsScreen({ onStartSession }: { onStartSession
 
   const handleAcceptRequest = async (id: string) => {
     await updateAppointmentStatus(id, 'PENDING_PAYMENT');
-    await loadAppointments();
   };
 
   const handleDeclineRequest = async (id: string) => {
     await cancelAppointment(id, true);
-    await loadAppointments();
   };
 
   const handleCancelAppointment = async () => {
     if (!appointmentToCancel) return;
     await cancelAppointment(appointmentToCancel, true);
     setAppointmentToCancel(null);
-    await loadAppointments();
   };
 
   const getStatusColor = (status: AppointmentStatus) => {
@@ -153,7 +162,7 @@ export function TherapistAppointmentsScreen({ onStartSession }: { onStartSession
             </motion.button>
             <motion.button
               whileTap={{ scale: 0.95 }}
-              onClick={async () => { await endSession(apt.id); await loadAppointments(); }}
+              onClick={async () => { await endSession(apt.id); }}
               className="px-4 py-2.5 rounded-2xl bg-red-500 text-white text-sm font-medium"
             >
               End
@@ -161,7 +170,6 @@ export function TherapistAppointmentsScreen({ onStartSession }: { onStartSession
           </div>
         )}
         {mode === 'upcoming' && apt.status !== 'IN_SESSION' && (() => {
-          const now = new Date();
           const aptStart = new Date(`${apt.date}T${apt.startTime}`);
           const canStart = now >= aptStart;
 
@@ -223,9 +231,8 @@ export function TherapistAppointmentsScreen({ onStartSession }: { onStartSession
               <h1 className="text-3xl text-foreground">Appointments</h1>
               <p className="text-muted-foreground mt-1">Manage your schedule</p>
             </div>
-            <button onClick={loadAppointments} className="w-10 h-10 rounded-full bg-card border border-[var(--border)] flex items-center justify-center">
-              <RefreshCw className="w-4 h-4 text-muted-foreground" />
-            </button>
+            <button onClick={refreshNow} className="w-10 h-10 rounded-full bg-card border border-[var(--border)] flex items-center justify-center">
+              <RefreshCw className={`w-4 h-4 text-muted-foreground transition-transform ${isRefreshing ? 'animate-spin' : ''}`} />            </button>
           </div>
         </motion.div>
 

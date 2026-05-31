@@ -2,57 +2,78 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { motion } from 'motion/react';
 import { Calendar, Clock, MessageCircle, Phone, Video, MapPin, DollarSign, AlertCircle, Loader2, RefreshCw } from 'lucide-react';
 import { getAuth } from 'firebase/auth';
+import { collection, query, where, orderBy, onSnapshot } from 'firebase/firestore';
+import { db } from '../../services/firebaseConfig';
 import type { Appointment, AppointmentStatus } from '../../types/appointments';
-import { cancelAppointment, getAppointmentsForUser } from '../../services/appointments';
+import { cancelAppointment } from '../../services/appointments';
 
 interface UserAppointmentsScreenProps {
   onCompletePayment?: (appointment: Appointment) => void;
   onJoinSession?: (appointment: Appointment) => void;
+  isJoiningSession?: boolean;
 }
 
-export function UserAppointmentsScreen({ onCompletePayment, onJoinSession }: UserAppointmentsScreenProps = {}) {
+export function UserAppointmentsScreen({ onCompletePayment, onJoinSession, isJoiningSession = false }: UserAppointmentsScreenProps = {}) {
   const [selectedTab, setSelectedTab] = useState<'upcoming' | 'pending' | 'past'>('upcoming');
   const [appointments, setAppointments] = useState<Appointment[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [appointmentToCancel, setAppointmentToCancel] = useState<string | null>(null);
+  const [now, setNow] = useState(() => new Date());
+  const [isRefreshing, setIsRefreshing] = useState(false);
 
-  const loadAppointments = async () => {
-    const userId = getAuth().currentUser?.uid;
-    if (!userId) { setIsLoading(false); return; }
-    try {
-      setIsLoading(true);
-      const data = await getAppointmentsForUser(userId);
-      setAppointments(data);
-    } catch (error) {
-      console.error('Error loading user appointments:', error);
-      setAppointments([]);
-    } finally {
-      setIsLoading(false);
-    }
+  const refreshNow = () => {
+    setNow(new Date());
+    setIsRefreshing(true);
+    setTimeout(() => setIsRefreshing(false), 600);
   };
 
-  useEffect(() => { loadAppointments(); }, []);
+  useEffect(() => {
+    const userId = getAuth().currentUser?.uid;
+    if (!userId) { setIsLoading(false); return; }
+
+    const q = query(
+      collection(db, 'appointments'),
+      where('userId', '==', userId),
+      orderBy('date', 'asc')
+    );
+
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      const data = snapshot.docs.map((d) => ({ id: d.id, ...d.data() } as Appointment));
+      setAppointments(data);
+      setIsLoading(false);
+    }, (error) => {
+      console.error('Error listening to user appointments:', error);
+      setIsLoading(false);
+    });
+
+    return () => unsubscribe();
+  }, []);
+
+  const loadAppointments = () => {}; // no-op, kept for RefreshCw button compatibility
 
   const handleCancelAppointment = async () => {
     if (!appointmentToCancel) return;
     await cancelAppointment(appointmentToCancel, false);
     setAppointmentToCancel(null);
-    await loadAppointments();
+    // Listener onSnapshot samodejno posodobi appointments
   };
-
-  const now = new Date();
 
   const upcomingAppointments = useMemo(
     () => appointments.filter((apt) => {
       const endDate = new Date(`${apt.date}T${apt.endTime}`);
       return (apt.status === 'CONFIRMED' || apt.status === 'IN_SESSION') && endDate >= now;
     }),
-    [appointments]
+    [appointments, now]
   );
 
   const pendingAppointments = useMemo(
-    () => appointments.filter((apt) => apt.status === 'PENDING_PAYMENT' || apt.status === 'REQUESTED'),
-    [appointments]
+    () => appointments.filter((apt) => {
+      if (apt.status === 'REQUESTED' || apt.status === 'PENDING_PAYMENT') {
+        return new Date(`${apt.date}T${apt.startTime}`) >= now;
+      }
+      return false;
+    }),
+    [appointments, now]
   );
 
   const pastAppointments = useMemo(
@@ -178,27 +199,28 @@ export function UserAppointmentsScreen({ onCompletePayment, onJoinSession }: Use
         {mode === 'upcoming' && (
           <div className="flex gap-2">
             {(() => {
-              const now = new Date();
               const aptStart = new Date(`${apt.date}T${apt.startTime}`);
               const isTimeReached = now >= aptStart;
               const isInSession = apt.status === 'IN_SESSION';
 
-              const canJoin = isInSession;
-              const buttonText = isInSession
-                ? 'Join Session'
-                : isTimeReached
-                  ? 'Waiting for therapist...'
-                  : 'Join Session';
+              const canJoin = isInSession && !isJoiningSession;
+              const buttonText = isJoiningSession
+                ? 'Joining...'
+                : isInSession
+                  ? 'Join Session'
+                  : isTimeReached
+                    ? 'Waiting for therapist...'
+                    : 'Join Session';
+
+              const buttonClass = canJoin
+                ? 'bg-gradient-to-r from-[var(--lavender)] to-[var(--soft-purple)] text-white'
+                : 'bg-[var(--muted)] text-muted-foreground cursor-not-allowed';
 
               return (
                 <motion.button
                   whileTap={{ scale: canJoin ? 0.95 : 1 }}
                   onClick={() => canJoin && onJoinSession?.(apt)}
-                  className={`flex-1 px-4 py-2.5 rounded-2xl text-sm font-medium shadow-sm transition-all ${
-                    canJoin
-                      ? 'bg-gradient-to-r from-[var(--lavender)] to-[var(--soft-purple)] text-white'
-                      : 'bg-[var(--muted)] text-muted-foreground cursor-not-allowed'
-                  }`}
+                  className={`flex-1 px-4 py-2.5 rounded-2xl text-sm font-medium shadow-sm transition-all ${buttonClass}`}
                 >
                   {buttonText}
                 </motion.button>
@@ -238,10 +260,10 @@ export function UserAppointmentsScreen({ onCompletePayment, onJoinSession }: Use
               <p className="text-muted-foreground mt-1">View and manage your sessions</p>
             </div>
             <button
-              onClick={loadAppointments}
+              onClick={refreshNow}
               className="w-10 h-10 rounded-full bg-card border border-[var(--border)] flex items-center justify-center"
             >
-              <RefreshCw className="w-4 h-4 text-muted-foreground" />
+              <RefreshCw className={`w-4 h-4 text-muted-foreground transition-transform ${isRefreshing ? 'animate-spin' : ''}`} />
             </button>
           </div>
         </motion.div>

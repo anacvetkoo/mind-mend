@@ -1,10 +1,12 @@
 import React, { useEffect, useState } from 'react';
 import { motion } from 'motion/react';
 import { OtterMascot } from '../mascot/OtterMascot';
-import { Users, FileText, Star, Calendar, Clock, MessageCircle, Phone, Video, MapPin, AlertCircle, X, Bell } from 'lucide-react';
+import { Users, FileText, Star, Calendar, Clock, MessageCircle, Phone, Video, MapPin, AlertCircle, X, Bell, RefreshCw } from 'lucide-react';
 import type { Appointment, AppointmentStatus } from '../../types/appointments';
 import { getAuth } from 'firebase/auth';
-import { cancelAppointment, getAppointmentsForTherapist, updateAppointmentStatus } from '../../services/appointments';
+import { collection, query, where, orderBy, onSnapshot } from 'firebase/firestore';
+import { db } from '../../services/firebaseConfig';
+import { cancelAppointment, updateAppointmentStatus } from '../../services/appointments';
 import { getPublishedContentCountForTherapist } from '../../services/content';
 import { getTherapistClientFiles } from '../../services/clientFiles';
 
@@ -21,29 +23,51 @@ export function TherapistDashboard({ therapistName = 'Dr. Sarah', onViewNotifica
   const [publishedContentCount, setPublishedContentCount] = useState<number | null>(null);
   const [activeClientsCount, setActiveClientsCount] = useState<number | null>(null);
   const [appointmentToCancel, setAppointmentToCancel] = useState<string | null>(null);
+  const [now, setNow] = useState(() => new Date());
+  const [isRefreshing, setIsRefreshing] = useState(false);
 
-  const loadAppointments = async () => {
-    const currentUser = getAuth().currentUser;
-    if (!currentUser) { setIsLoadingAppointments(false); return; }
+  const refreshNow = () => {
+    setNow(new Date());
+    setIsRefreshing(true);
+    setTimeout(() => setIsRefreshing(false), 600);
+  };
+
+  const loadStats = async (uid: string) => {
     try {
-      setIsLoadingAppointments(true);
-      const data = await getAppointmentsForTherapist(currentUser.uid);
-      setAppointments(data);
-      const clientFiles = await getTherapistClientFiles(currentUser.uid);
+      const clientFiles = await getTherapistClientFiles(uid);
       setActiveClientsCount(clientFiles.length);
-      const contentCount = await getPublishedContentCountForTherapist(currentUser.uid);
+      const contentCount = await getPublishedContentCountForTherapist(uid);
       setPublishedContentCount(contentCount);
     } catch (error) {
-      console.error('Error loading appointments:', error);
-      setAppointments([]);
-    } finally {
-      setIsLoadingAppointments(false);
+      console.error('Error loading dashboard stats:', error);
     }
   };
 
-  useEffect(() => { loadAppointments(); }, []);
+  useEffect(() => {
+    const currentUser = getAuth().currentUser;
+    if (!currentUser) { setIsLoadingAppointments(false); return; }
 
-  const isPast = (apt: Appointment) => new Date(`${apt.date}T${apt.endTime}`) < new Date();
+    const q = query(
+      collection(db, 'appointments'),
+      where('therapistId', '==', currentUser.uid),
+      orderBy('date', 'asc')
+    );
+
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      const data = snapshot.docs.map((d) => ({ id: d.id, ...d.data() } as Appointment));
+      setAppointments(data);
+      setIsLoadingAppointments(false);
+    }, (error) => {
+      console.error('Error listening to therapist appointments:', error);
+      setIsLoadingAppointments(false);
+    });
+
+    loadStats(currentUser.uid);
+
+    return () => unsubscribe();
+  }, []);
+
+  const isPast = (apt: Appointment) => new Date(`${apt.date}T${apt.endTime}`) < now;
 
   // Upcoming: samo CONFIRMED ki niso pretekli
   const upcomingAppointments = appointments.filter(apt =>
@@ -52,7 +76,7 @@ export function TherapistDashboard({ therapistName = 'Dr. Sarah', onViewNotifica
 
   // Requests: samo REQUESTED (čaka na terapevtov odgovor)
   // PENDING_PAYMENT NE sodi sem — terapevt je že sprejel, čaka na plačilo
-  const appointmentRequests = appointments.filter(apt => apt.status === 'REQUESTED' && !isPast(apt));
+  const appointmentRequests = appointments.filter(apt => apt.status === 'REQUESTED' && new Date(`${apt.date}T${apt.startTime}`) >= now);
 
   const pastAppointments = appointments.filter((apt) =>
   apt.status === 'COMPLETED'
@@ -60,21 +84,17 @@ export function TherapistDashboard({ therapistName = 'Dr. Sarah', onViewNotifica
 
   const handleAcceptRequest = async (id: string) => {
     await updateAppointmentStatus(id, 'PENDING_PAYMENT');
-    await loadAppointments();
   };
 
   const handleDeclineRequest = async (id: string) => {
     await cancelAppointment(id, true);
-    await loadAppointments();
   };
 
   const handleCancelAppointment = async () => {
-  if (!appointmentToCancel) return;
-
-  await cancelAppointment(appointmentToCancel, true);
-  setAppointmentToCancel(null);
-  await loadAppointments();
-};
+    if (!appointmentToCancel) return;
+    await cancelAppointment(appointmentToCancel, true);
+    setAppointmentToCancel(null);
+  };
 
   const getStatusColor = (status: AppointmentStatus) => {
     switch (status) {
@@ -165,7 +185,12 @@ const stats = [
 
         {/* My Appointments */}
         <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }} className="mb-4">
-          <h3 className="text-xl text-foreground">My Appointments</h3>
+          <div className="flex items-center justify-between">
+            <h3 className="text-xl text-foreground">My Appointments</h3>
+            <button onClick={refreshNow} className="w-10 h-10 rounded-full bg-card border border-[var(--border)] flex items-center justify-center">
+              <RefreshCw className={`w-4 h-4 text-muted-foreground transition-transform ${isRefreshing ? 'animate-spin' : ''}`} />
+            </button>
+          </div>
         </motion.div>
 
         {/* Tabs */}
@@ -210,7 +235,7 @@ const stats = [
             ) : upcomingAppointments.map((apt, idx) => {
               const TypeIcon = getTypeIcon(apt.appointmentType);
               // Preverimo ali je čas termina že nastopil
-              const canStart = new Date() >= new Date(`${apt.date}T${apt.startTime}`);
+              const canStart = now >= new Date(`${apt.date}T${apt.startTime}`);
               return (
                 <motion.div key={apt.id} initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.05 * idx }} className="bg-card rounded-2xl p-5 shadow-md">
                   <div className="flex items-start justify-between mb-4">
@@ -234,7 +259,7 @@ const stats = [
                     {apt.status === 'IN_SESSION' ? (
                       <>
                         <motion.button whileTap={{ scale: 0.95 }} onClick={() => onStartSession?.(apt)} className="flex-1 px-4 py-2.5 rounded-2xl bg-gradient-to-r from-[var(--lavender)] to-[var(--soft-purple)] text-white text-sm font-medium shadow-sm">Rejoin Session</motion.button>
-                        <motion.button whileTap={{ scale: 0.95 }} onClick={async () => { const { endSession } = await import('../../services/appointments'); await endSession(apt.id); await loadAppointments(); }} className="px-4 py-2.5 rounded-2xl bg-red-500 text-white text-sm font-medium">End</motion.button>
+                        <motion.button whileTap={{ scale: 0.95 }} onClick={async () => { const { endSession } = await import('../../services/appointments'); await endSession(apt.id); }} className="px-4 py-2.5 rounded-2xl bg-red-500 text-white text-sm font-medium">End</motion.button>
                       </>
                     ) : (
                       <>
