@@ -1,7 +1,7 @@
 import React, { useState, useMemo } from 'react';
 import { motion } from 'motion/react';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Area, AreaChart } from 'recharts';
-import { Card } from './Card';
+import { Card } from './card';
 
 type TimePeriod = '7days' | '30days' | '6months' | '1year';
 
