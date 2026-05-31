@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { motion } from 'motion/react';
-import { Card } from '../ui/Card';
+import { Card } from '../ui/card';
 import { ProgressGraph } from '../ui/ProgressGraph';
 import { Calendar, Flame, Trophy, ChevronLeft, ChevronRight, Sparkles, Smile, AlertTriangle } from 'lucide-react';
 import { countRecentCheckIns, getAllCheckIns, getStreakData, getCompletedDays, generateAIInsights, getRecentCheckIns, getWeeklyTrend, type CheckInData } from '../../utils/checkInUtils';

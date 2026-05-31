@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { motion } from 'motion/react';
-import { Card } from '../ui/Card';
-import { Badge } from '../ui/Badge';
+import { Card } from '../ui/card';
+import { Badge } from '../ui/badge';
 import { Button } from '../ui/Button';
 import { Input } from '../ui/Input';
 import { Search, Star, MapPin, Calendar, MessageCircle, Video } from 'lucide-react';
