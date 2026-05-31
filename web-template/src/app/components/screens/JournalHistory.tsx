@@ -296,7 +296,7 @@ export function JournalHistory({ onSelectCheckIn }: JournalHistoryProps = {}) {
                   {detectedTriggers.map((item, index) => (
                     <div key={index} className="p-3.5 flex flex-col gap-1 hover:bg-card/40 transition-colors">
                       <div className="flex items-center justify-between gap-2">
-                        <span className="font-medium text-sm text-foreground truncate">{item.trigger}</span>
+                        <span className="font-medium text-sm text-foreground ">{item.trigger}</span>
                         <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ${getImpactColor(item.stressImpact)}`}>
                             {item.stressImpact} Impact
                           </span>
