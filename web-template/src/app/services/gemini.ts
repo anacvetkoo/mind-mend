@@ -212,3 +212,56 @@ export async function generateAIRecommendations(checkIns: any[], userId: string,
     return fallbackRecommendations;
   }
 }
+
+//prepoznavanje prožilcev
+export async function generateAITriggers(pastLogs: any[]): Promise<{ trigger: string; frequency: number; stressImpact: 'High' | 'Medium' | 'Low'; context: string }[]> {
+  const fallbackTriggers = [
+    { trigger: "Sestanki & Roki", frequency: 1, stressImpact: 'Medium' as const, context: "Vzorci kažejo rahel dvig nemira pred večjimi obveznostmi." }
+  ];
+  //zadnjih 10 dnevnikov - mby daj pol manj če bo predolgo trajalo
+  const formattedLogs = (pastLogs || []).slice(0, 10).map((log, index) => `
+--- ENTRY #${index + 1} ---
+Overall Mood: ${log.emotionalState || 'neutral'}
+Dominant Emotions: ${Array.isArray(log.dominantEmotion) ? log.dominantEmotion.join(', ') : log.dominantEmotion || 'none'}
+Stress Level (1-10): ${log.stressLevel ?? 'unknown'}
+Reported Difficulties: ${log.difficulties || 'none reported'}
+Thoughts Logged: "${log.thoughtsToday || 'none reported'}"
+`).join('\n');
+
+  const prompt = `
+    You are MindMend AI, an expert psychological data analyst.
+    Analyze the following last 10 journal entries of a user. Look for clear or hidden correlations between specific words, recurring themes, situations, people, or days of the week and elevated stress levels.
+    Identify the top 3 specific emotional triggers.
+
+    User's journal data:
+    ${formattedLogs}
+
+    Strictly return ONLY a valid JSON array matching this format exactly, with NO markdown formatting (do NOT use \`\`\`json wrappers), no intro text, and no extra characters:
+    [
+      {
+        "trigger": "Name of trigger (e.g., Sestanki z ekipo)",
+        "frequency": 3, // estimate how many times this theme correlates with stress in the logs
+        "stressImpact": "High" or "Medium" or "Low", // select one based on stress levels
+        "context": "Short explanatory sentence describing the hidden pattern found."
+      }
+    ]
+  `;
+
+  try {
+    const result = await model.generateContent(prompt);
+    const response = result.response;
+    const text = response.text().trim();
+
+    console.log("Odgovor od AI (Triggers):", text);
+
+    let cleanJson = text;
+    if (cleanJson.includes("```")) {
+      cleanJson = cleanJson.replace(/```json/g, '').replace(/```/g, '').trim();
+    }
+
+    return JSON.parse(cleanJson);
+  } catch (error) {
+    console.error("Napaka znotraj Firebase AI servisa (Triggers):", error);
+    return fallbackTriggers;
+  }
+}

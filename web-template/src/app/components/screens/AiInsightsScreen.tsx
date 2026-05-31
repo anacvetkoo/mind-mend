@@ -23,13 +23,13 @@ export function AiInsightsScreen({ userId, onBack, onCheckIn }: AiInsightsScreen
       setIsLoading(true);
       try {
         const completedToday = await isTodayCompleted(); //preverimo če je uporabnik že danes opravil check-in
-        
+
         if (!completedToday) {
           setAllowedToday(false);
           setIsLoading(false);
           return;
         }
-        
+
         setAllowedToday(true);
 
         const allCheckIns = await getFirebaseCheckIns();
@@ -40,7 +40,7 @@ export function AiInsightsScreen({ userId, onBack, onCheckIn }: AiInsightsScreen
           setIsLoading(false);
           return;
         }
-
+        
         //zadnjih 10 dnevnikov
         const last10Logs = userLogs.slice(0, 10).map(c => ({
           date: c.date,
@@ -79,7 +79,7 @@ export function AiInsightsScreen({ userId, onBack, onCheckIn }: AiInsightsScreen
     }
   }, [userId]);
 
-  // Funkcija za preprost in čist izvoz poročila v PDF preko tiskalnika brskalnika
+    // Funkcija za preprost in čist izvoz poročila v PDF preko tiskalnika brskalnika
   const handleExportPDF = () => {
     try {
       const htmlContent = `
@@ -107,7 +107,7 @@ export function AiInsightsScreen({ userId, onBack, onCheckIn }: AiInsightsScreen
               align-items: center;
             }
             h1 {
-              color: #4C51BF; /* Lepa sivkino-vijolična barva (MindMend stil) */
+              color: #4C51BF;
               margin: 0;
               font-size: 26px;
               font-weight: 700;
@@ -118,7 +118,7 @@ export function AiInsightsScreen({ userId, onBack, onCheckIn }: AiInsightsScreen
             }
             .content {
               font-size: 15px;
-              white-space: pre-wrap; /* Ključno, da ohranimo odstavke in alineje iz Gemini-ja */
+              white-space: pre-wrap;
               color: #1A202C;
             }
             .footer {
@@ -129,7 +129,7 @@ export function AiInsightsScreen({ userId, onBack, onCheckIn }: AiInsightsScreen
               color: #A0AEC0;
               text-align: center;
             }
-            /* Avtomatsko sprožimo tiskalniški dialog takoj, ko se stran naloži */
+              /* Avtomatsko sprožimo tiskalniški dialog takoj, ko se stran naloži */
             @media print {
               body { padding: 0; }
             }
@@ -140,14 +140,14 @@ export function AiInsightsScreen({ userId, onBack, onCheckIn }: AiInsightsScreen
             <h1>MindMend Cognitive Report</h1>
             <div class="date">Date: ${new Date().toLocaleDateString()}</div>
           </div>
-          
+
           <div class="content">${deepAnalysis}</div>
-          
+
           <div class="footer">
             Disclaimer: This is an automated AI mental wellness evaluation and does not replace professional medical or psychological advice.
           </div>
 
-          <script>
+           <script>
             // Trik: Takoj ko se ta začasni dokument odpre, sprožimo print/PDF meni
             window.onload = function() {
               window.print();
@@ -173,7 +173,7 @@ export function AiInsightsScreen({ userId, onBack, onCheckIn }: AiInsightsScreen
       alert("Could not generate the PDF report.");
     }
   };
-
+  
   return (
     <div className="min-h-screen bg-background pb-24 pt-12 px-6">
       <style>{`
@@ -220,11 +220,10 @@ export function AiInsightsScreen({ userId, onBack, onCheckIn }: AiInsightsScreen
             <Card variant="glass" className="py-16 text-center flex flex-col items-center justify-center gap-4">
               <div className="w-12 h-12 rounded-full border-4 border-[var(--lavender)] border-t-transparent animate-spin" />
               <div className="text-sm text-muted-foreground px-6 animate-pulse">
-                ✨ Otto is looking thrugh your last 10 journal entries, evaluating stress patterns, and mapping emotional triggers...
+                ✨ Otto is looking through your last 10 journal entries, evaluating stress patterns, and mapping emotional triggers...
               </div>
             </Card>
           ) : !allowedToday ? (
-            // ČELI UPORABNIK ŠE NI OPRAVIL DAILY CHECK-INA DANES
             <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }}>
               <Card className="p-6 text-center border-2 border-dashed border-[var(--lavender)]/40 bg-[var(--lavender)]/5">
                 <Lock className="w-12 h-12 text-[var(--lavender)] mx-auto mb-3" />
@@ -243,32 +242,31 @@ export function AiInsightsScreen({ userId, onBack, onCheckIn }: AiInsightsScreen
               <p className="text-sm">No journal history found. Please complete some daily check-ins first so the AI can find emotional patterns!</p>
             </Card>
           ) : (
-            // USPEŠEN PRIKAZ GENERIRANE ANALIZE
-            <motion.div initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} className="space-y-4">
-              {/* ID "printable-report" pove našemu CSS-u kaj točno naj izvozi v PDF */}
-              <Card id="printable-report" variant="glass" className="p-6 border-t-4 border-[var(--lavender)] shadow-xl bg-card">
-                <div className="flex items-center justify-between mb-4 border-b border-border pb-3 no-print-header">
-                  <div className="flex items-center gap-2 text-[var(--lavender)] font-semibold">
-                    <Sparkles className="w-5 h-5" />
-                    <h3>Gemini Cognitive Report</h3>
-                  </div>
-                  <span className="text-xs text-muted-foreground bg-muted px-2 py-1 rounded">
-                    {new Date().toLocaleDateString()}
-                  </span>
-                </div>
-                
-                <div className="text-sm text-foreground/90 leading-relaxed whitespace-pre-wrap space-y-3">
-                  {deepAnalysis}
-                </div>
-              </Card>
+             // USPEŠEN PRIKAZ GENERIRANE ANALIZE
+             <motion.div initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} className="space-y-4">
+             {/* ID "printable-report" pove našemu CSS-u kaj točno naj izvozi v PDF */}
+             <Card id="printable-report" variant="glass" className="p-6 border-t-4 border-[var(--lavender)] shadow-xl bg-card">
+               <div className="flex items-center justify-between mb-4 border-b border-border pb-3 no-print-header">
+                 <div className="flex items-center gap-2 text-[var(--lavender)] font-semibold">
+                   <Sparkles className="w-5 h-5" />
+                   <h3>Cognitive Report</h3>
+                 </div>
+                 <span className="text-xs text-muted-foreground bg-muted px-2 py-1 rounded">
+                   {new Date().toLocaleDateString()}
+                 </span>
+               </div>
+               
+               <div className="text-sm text-foreground/90 leading-relaxed whitespace-pre-wrap space-y-3">
+                 {deepAnalysis}
+               </div>
+             </Card>
 
-              {/* Gumb za izvoz v PDF - obogaten z lucide ikono */}
-              <Button 
-                variant="secondary" 
-                onClick={handleExportPDF} 
+              <Button
+                variant="secondary"
+                onClick={handleExportPDF}
                 className="w-full flex items-center justify-center gap-2 py-2.5 border border-[var(--lavender)]/30 text-[var(--lavender)] hover:bg-[var(--lavender)]/10"
               >
-                <FileDown className="w-4 h-4" /> Save Report and Print as PDF
+                <FileDown className="w-4 h-4" /> Save Report as PDF
               </Button>
 
               <p className="text-[10px] text-muted-foreground/50 text-center px-4 mt-2">

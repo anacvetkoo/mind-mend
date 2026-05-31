@@ -96,7 +96,7 @@ export function HomeDashboard({ userId, userName, onCheckIn, onViewAiInsights, o
           if (userData.latestAIRecommendations && userData.latestAIRecommendations.length > 0) {
             setRecommendedContent(userData.latestAIRecommendations as any);
           } else {
-            setRecommendedContent([
+            setRecommendedContent([ //TODO fallback bodo realni contenti iz baze - tudi na gemini.ts
               { id: "default-1", category: 'breathing', difficulty: 'easy', duration: '5 min', title: 'Box Breathing Technique', description: 'Calm your nervous system instantly.' },
               { id: "default-2", category: 'relaxation', difficulty: 'medium', duration: '10 min', title: 'Progressive Muscle Relaxation', description: 'Release physical tension from head to toe.' },
               { id: "default-3", category: 'sound therapy', difficulty: 'easy', duration: '15 min', title: 'Tibetan Singing Bowls', description: 'Deep alpha waves for mental clarity.' }
