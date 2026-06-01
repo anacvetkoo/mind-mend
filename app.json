@@ -7,6 +7,7 @@
     "icon": "./assets/mindmend_app_icon.png",
     "userInterfaceStyle": "light",
     "newArchEnabled": true,
+    "scheme": "mindmend",
     "splash": {
       "image": "./assets/splash-icon.png",
       "resizeMode": "contain",

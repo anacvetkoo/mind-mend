@@ -2,6 +2,7 @@ import {
   signInWithEmailAndPassword,
   createUserWithEmailAndPassword,
   signInWithPopup,
+  signInWithCredential,
   GoogleAuthProvider,
   signOut,
   sendPasswordResetEmail,
@@ -20,6 +21,12 @@ export interface AuthResult {
 }
 
 const googleProvider = new GoogleAuthProvider();
+
+// ─── Detect WebView environment ───────────────────────────────────────────────
+
+const isRunningInWebView = (): boolean => {
+  return !!(window as any).ReactNativeWebView;
+};
 
 // ─── Login ────────────────────────────────────────────────────────────────────
 
@@ -41,37 +48,73 @@ export const loginWithEmail = async (
   }
 };
 
-export const loginWithGoogle = async (role: 'user' | 'therapist' = 'user'): Promise<AuthResult> => {
+// Called from App.tsx when Expo sends back a Google ID token via postMessage
+export const loginWithGoogleCredential = async (
+  idToken: string,
+  role: UserRole = 'user'
+): Promise<AuthResult> => {
   try {
-    const isMobile = /Android|iPhone|iPad/i.test(navigator.userAgent);
+    const credential = GoogleAuthProvider.credential(idToken);
+    const result = await signInWithCredential(auth, credential);
 
-    if (isMobile) {
-      const { signInWithRedirect } = await import('firebase/auth');
-      await signInWithRedirect(auth, googleProvider);
-      return { success: true, role };
-    } else {
-      const credential = await signInWithPopup(auth, googleProvider);
-      const userDoc = await getUserDocument(credential.user.uid);
+    const userDoc = await getUserDocument(result.user.uid);
 
-      if (!userDoc) {
-        if (role === 'therapist') {
-          await createTherapistDocument(credential.user.uid, {
-            email: credential.user.email ?? '',
-            firstName: credential.user.displayName?.split(' ')[0] ?? '',
-            lastName: credential.user.displayName?.split(' ').slice(1).join(' ') ?? '',
-          });
-        } else {
-          await createUserDocument(credential.user.uid, {
-            email: credential.user.email ?? '',
-            displayName: credential.user.displayName ?? '',
-            photoURL: credential.user.photoURL ?? '',
-          });
-        }
-        return { success: true, role };
+    if (!userDoc) {
+      if (role === 'therapist') {
+        await createTherapistDocument(result.user.uid, {
+          email: result.user.email ?? '',
+          firstName: result.user.displayName?.split(' ')[0] ?? '',
+          lastName: result.user.displayName?.split(' ').slice(1).join(' ') ?? '',
+        });
+      } else {
+        await createUserDocument(result.user.uid, {
+          email: result.user.email ?? '',
+          displayName: result.user.displayName ?? '',
+          photoURL: result.user.photoURL ?? '',
+        });
       }
-
-      return { success: true, role: userDoc.role };
+      return { success: true, role };
     }
+
+    return { success: true, role: userDoc.role };
+  } catch (err: any) {
+    return { success: false, error: mapAuthError(err.code) };
+  }
+};
+
+export const loginWithGoogle = async (role: UserRole = 'user'): Promise<AuthResult> => {
+  try {
+    // In WebView (Expo), delegate Google login to the native layer
+    if (isRunningInWebView()) {
+      (window as any).ReactNativeWebView.postMessage(
+        JSON.stringify({ type: 'GOOGLE_SIGN_IN_REQUEST', role })
+      );
+      // Result will come back via window.handleGoogleSignInResult (set up in App.tsx)
+      return { success: true, role };
+    }
+
+    // Standard browser: use popup
+    const credential = await signInWithPopup(auth, googleProvider);
+    const userDoc = await getUserDocument(credential.user.uid);
+
+    if (!userDoc) {
+      if (role === 'therapist') {
+        await createTherapistDocument(credential.user.uid, {
+          email: credential.user.email ?? '',
+          firstName: credential.user.displayName?.split(' ')[0] ?? '',
+          lastName: credential.user.displayName?.split(' ').slice(1).join(' ') ?? '',
+        });
+      } else {
+        await createUserDocument(credential.user.uid, {
+          email: credential.user.email ?? '',
+          displayName: credential.user.displayName ?? '',
+          photoURL: credential.user.photoURL ?? '',
+        });
+      }
+      return { success: true, role };
+    }
+
+    return { success: true, role: userDoc.role };
   } catch (err: any) {
     return { success: false, error: mapAuthError(err.code) };
   }
