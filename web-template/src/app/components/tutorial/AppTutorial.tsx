@@ -172,89 +172,80 @@ export function AppTutorial({ onComplete, onSkip }: AppTutorialProps) {
   return (
     <div className="fixed inset-0 z-[100] pointer-events-none">
       {/* Spotlight overlay - dims everything except target */}
-      <AnimatePresence mode="wait">
-        <motion.div
-          key={`overlay-${step.id}`}
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          exit={{ opacity: 0 }}
-          transition={{ duration: 0.15 }}
-          className="absolute inset-0"
-          style={{
-            background: targetRect && step.position !== 'center'
-              ? 'transparent'
-              : 'rgba(0, 0, 0, 0.6)',
-            backdropFilter: step.position === 'center' ? 'blur(4px)' : 'none'
-          }}
-        />
-      </AnimatePresence>
+<motion.div
+  initial={{ opacity: 0 }}
+  animate={{ opacity: 1 }}
+  transition={{ duration: 0.15 }}
+  className="absolute inset-0"
+  style={{
+    background: targetRect && step.position !== 'center'
+      ? 'transparent'
+      : 'rgba(0, 0, 0, 0.6)',
+    backdropFilter: step.position === 'center' ? 'blur(4px)' : 'none'
+  }}
+/>
 
-      {/* Spotlight effect with cutout */}
-      {targetRect && step.position !== 'center' && (
-        <motion.div
-          key={`spotlight-${step.id}`}
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          exit={{ opacity: 0 }}
-          transition={{ duration: 0.15 }}
-          className="absolute inset-0"
-          style={{
-            boxShadow: `0 0 0 9999px rgba(0, 0, 0, 0.7)`,
-            left: `${targetRect.left - 8}px`,
-            top: `${targetRect.top - 8}px`,
-            width: `${targetRect.width + 16}px`,
-            height: `${targetRect.height + 16}px`,
-            borderRadius: '1rem',
-            transition: 'all 0.25s cubic-bezier(0.4, 0, 0.2, 1)'
-          }}
-        />
-      )}
+{/* Spotlight effect with cutout */}
+{targetRect && step.position !== 'center' && (
+  <motion.div
+    className="absolute inset-0"
+    animate={{
+      left: targetRect.left - 8,
+      top: targetRect.top - 8,
+      width: targetRect.width + 16,
+      height: targetRect.height + 16
+    }}
+    transition={{ duration: 0.25, ease: [0.4, 0, 0.2, 1] }}
+    style={{
+      boxShadow: '0 0 0 9999px rgba(0, 0, 0, 0.7)',
+      borderRadius: '1rem'
+    }}
+  />
+)}
 
-      {/* Highlight ring around target */}
-      {targetRect && step.position !== 'center' && (
-        <>
-          <motion.div
-            key={`highlight-${step.id}`}
-            initial={{ opacity: 0, scale: 0.95 }}
-            animate={{ opacity: 1, scale: 1 }}
-            exit={{ opacity: 0 }}
-            transition={{ duration: 0.15 }}
-            className="absolute border-4 border-[var(--lavender)] rounded-2xl"
-            style={{
-              left: `${targetRect.left - 8}px`,
-              top: `${targetRect.top - 8}px`,
-              width: `${targetRect.width + 16}px`,
-              height: `${targetRect.height + 16}px`,
-              boxShadow: '0 0 0 4px rgba(184, 164, 217, 0.2)',
-              transition: 'all 0.25s cubic-bezier(0.4, 0, 0.2, 1)'
-            }}
-          />
-          {/* Extra pulsing glow for AI chat button */}
-          {step.id === 'ai-chat' && (
-            <motion.div
-              key={`glow-${step.id}`}
-              animate={{
-                opacity: [0.3, 0.6, 0.3],
-                scale: [1, 1.1, 1]
-              }}
-              transition={{
-                duration: 2,
-                repeat: Infinity,
-                ease: 'easeInOut'
-              }}
-              className="absolute rounded-full"
-              style={{
-                left: `${targetRect.left - 16}px`,
-                top: `${targetRect.top - 16}px`,
-                width: `${targetRect.width + 32}px`,
-                height: `${targetRect.height + 32}px`,
-                boxShadow: '0 0 30px 8px rgba(184, 164, 217, 0.6)',
-                pointerEvents: 'none'
-              }}
-            />
-          )}
-        </>
-      )}
+{/* Highlight ring around target */}
+{targetRect && step.position !== 'center' && (
+  <>
+    <motion.div
+      className="absolute border-4 border-[var(--lavender)] rounded-2xl"
+      animate={{
+        left: targetRect.left - 8,
+        top: targetRect.top - 8,
+        width: targetRect.width + 16,
+        height: targetRect.height + 16,
+        opacity: 1,
+        scale: 1
+      }}
+      transition={{ duration: 0.25, ease: [0.4, 0, 0.2, 1] }}
+      style={{
+        boxShadow: '0 0 0 4px rgba(184, 164, 217, 0.2)'
+      }}
+    />
+
+    {step.id === 'ai-chat' && (
+      <motion.div
+        animate={{
+          left: targetRect.left - 16,
+          top: targetRect.top - 16,
+          width: targetRect.width + 32,
+          height: targetRect.height + 32,
+          opacity: [0.3, 0.6, 0.3],
+          scale: [1, 1.1, 1]
+        }}
+        transition={{
+          duration: 2,
+          repeat: Infinity,
+          ease: 'easeInOut'
+        }}
+        className="absolute rounded-full"
+        style={{
+          boxShadow: '0 0 30px 8px rgba(184, 164, 217, 0.6)',
+          pointerEvents: 'none'
+        }}
+      />
+    )}
+  </>
+)}
 
       {/* Tutorial tooltip card */}
       <div

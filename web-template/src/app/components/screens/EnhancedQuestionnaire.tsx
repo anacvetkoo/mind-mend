@@ -447,28 +447,34 @@ export function EnhancedQuestionnaire({ onComplete }: EnhancedQuestionnaireProps
                 transition={{ delay: 0.2 }}
               >
                 {/* Single select cards (health goals) */}
-                {currentQuestion.type === 'single-select-cards' && (
-                  <div className="grid grid-cols-2 gap-3 mb-8">
-                    {currentQuestion.options?.map((option) => {
-                      const isSelected = answers[currentQuestion.id] === option.id;
-                      return (
-                        <motion.button
-                          key={option.id}
-                          whileTap={{ scale: 0.95 }}
-                          onClick={() => handleAnswer(option.id)}
-                          className={`p-5 rounded-3xl border-2 transition-all ${
-                            isSelected
-                              ? 'bg-gradient-to-br from-[var(--lavender)]/20 to-[var(--soft-purple)]/20 border-[var(--lavender)] shadow-lg'
-                              : 'bg-card border-[var(--border)]'
-                          }`}
-                        >
-                          <div className="text-4xl mb-3">{option.emoji}</div>
-                          <div className="text-sm text-foreground text-center leading-snug">{option.label}</div>
-                        </motion.button>
-                      );
-                    })}
-                  </div>
-                )}
+{currentQuestion.type === 'single-select-cards' && (
+  <div className="grid grid-cols-1 gap-2 mb-6">
+    {currentQuestion.options?.map((option) => {
+      const isSelected = answers[currentQuestion.id] === option.id;
+
+      return (
+        <motion.button
+          key={option.id}
+          whileTap={{ scale: 0.98 }}
+          onClick={() => handleAnswer(option.id)}
+          className={`flex items-center gap-3 w-full p-3 rounded-2xl border-2 transition-all ${
+            isSelected
+              ? 'bg-gradient-to-r from-[var(--lavender)]/10 to-[var(--soft-purple)]/10 border-[var(--lavender)] shadow-lg'
+              : 'bg-card border-[var(--border)]'
+          }`}
+        >
+          <span className="text-2xl flex-shrink-0">
+            {option.emoji}
+          </span>
+
+          <span className="text-sm text-left text-foreground">
+            {option.label}
+          </span>
+        </motion.button>
+      );
+    })}
+  </div>
+)}
 
                 {/* Single select large (gender) */}
                 {currentQuestion.type === 'single-select-large' && (
