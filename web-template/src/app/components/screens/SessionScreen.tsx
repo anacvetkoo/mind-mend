@@ -391,7 +391,7 @@ export function SessionScreen({ appointment, isTherapist, onEndSession, onLeaveS
 
   const handleEndSession = async () => {
     try {
-      await endSession(sessionId);
+      await endSession(sessionId, appointment.therapistId);
       onEndSession();
     } catch (error) {
       console.error('Error ending session:', error);

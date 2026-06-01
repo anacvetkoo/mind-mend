@@ -92,7 +92,7 @@ export function TherapistAppointmentsScreen({ onStartSession }: { onStartSession
       case 'CANCELLED': return 'Canceled by client';
       case 'CANCELLED_BY_THERAPIST': return 'Canceled by you';
       case 'COMPLETED': return 'Completed';
-      default: return status.replaceAll('_', ' ');
+      default: return status.split('_').join(' ');
     }
   };
 
@@ -162,7 +162,7 @@ export function TherapistAppointmentsScreen({ onStartSession }: { onStartSession
             </motion.button>
             <motion.button
               whileTap={{ scale: 0.95 }}
-              onClick={async () => { await endSession(apt.id); }}
+              onClick={async () => { await endSession(apt.id, apt.therapistId); }}
               className="px-4 py-2.5 rounded-2xl bg-red-500 text-white text-sm font-medium"
             >
               End
