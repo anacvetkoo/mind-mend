@@ -140,11 +140,9 @@ export async function generateAITherapistReply(chatHistory: { sender: string; te
 }
 
 //generiranje recomended contenta
-export async function generateAIRecommendations(checkIns: any[], userId: string, availableContent: any[]): Promise<{ id?: string; category: 'relaxation' | 'breathing' | 'sound therapy'; difficulty: 'easy' | 'medium' | 'hard'; duration: string; title: string; description: string }[]> {
-  const fallbackRecommendations = [
-    { id: "rec-1", category: 'breathing' as const, difficulty: 'easy' as const, duration: '5 min', title: 'Box Breathing Technique', description: 'Calm your nervous system instantly.' },
-    { id: "rec-2", category: 'relaxation' as const, difficulty: 'medium' as const, duration: '10 min', title: 'Progressive Muscle Relaxation', description: 'Release physical tension from head to toe.' },
-    { id: "rec-3", category: 'sound therapy' as const, difficulty: 'easy' as const, duration: '15 min', title: 'Tibetan Singing Bowls', description: 'Deep alpha waves for mental clarity.' }
+export async function generateAIRecommendations(checkIns: any[], userId: string, availableContent: any[]): Promise<{ id?: string; category: 'Relaxation' | 'Breathing' | 'Sound Therapy'; difficulty: 'easy' | 'medium' | 'hard'; duration: string; title: string; description: string }[]> {
+  const fallbackRecommendations = [ //TODO kaj je tu id???
+    { id: "rec-1", category: 'Relaxation' as const, difficulty: 'easy' as const, duration: '10 min', title: 'Reset Your Nervous System in Minutes', description: 'When stress builds up, our minds get loud and our bodies tighten. This 7-step guided relaxation exercise—created by Sarah Jenkins, LCSW—is designed to help you hit the pause button, step out of "fight or flight" mode, and reconnect with the present moment. By combining evidence-based breathing techniques, somatic body awareness, and peaceful visualization, this exercise works quickly to lower your heart rate and ease mental fatigue. Whether you are dealing with midday work stress, struggling to wind down for sleep, or just need a quiet moment to yourself, this practice will help you anchor your mind and restore a sense of calm.' }
   ];
 
   const recentData = (checkIns || []).slice(0, 5).map(c => ({
@@ -183,7 +181,7 @@ export async function generateAIRecommendations(checkIns: any[], userId: string,
 
     Example output format:
     [
-      { "id": "obstoječi-id-1", "category": "breathing", "difficulty": "easy", "duration": "5 min", "title": "Realen Naslov Iz Baze", "description": "Realen opis iz baze." },
+      { "id": "obstoječi-id-1", "category": "Breathing", "difficulty": "easy", "duration": "5 min", "title": "Realen Naslov Iz Baze", "description": "Realen opis iz baze." },
       ...
     ]
   `;

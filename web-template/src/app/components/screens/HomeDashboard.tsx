@@ -44,7 +44,7 @@ export function HomeDashboard({ userId, userName, onCheckIn, onViewAiInsights, o
 
   const [recommendedContent, setRecommendedContent] = useState<{ 
     id?: string; 
-    category: 'relaxation' | 'breathing' | 'sound therapy'; 
+    category: 'Relaxation' | 'Breathing' | 'Sound Therapy'; 
     difficulty: 'easy' | 'medium' | 'hard'; 
     duration: string; 
     title: string; 
@@ -96,10 +96,8 @@ export function HomeDashboard({ userId, userName, onCheckIn, onViewAiInsights, o
           if (userData.latestAIRecommendations && userData.latestAIRecommendations.length > 0) {
             setRecommendedContent(userData.latestAIRecommendations as any);
           } else {
-            setRecommendedContent([ //TODO fallback bodo realni contenti iz baze - tudi na gemini.ts
-              { id: "default-1", category: 'breathing', difficulty: 'easy', duration: '5 min', title: 'Box Breathing Technique', description: 'Calm your nervous system instantly.' },
-              { id: "default-2", category: 'relaxation', difficulty: 'medium', duration: '10 min', title: 'Progressive Muscle Relaxation', description: 'Release physical tension from head to toe.' },
-              { id: "default-3", category: 'sound therapy', difficulty: 'easy', duration: '15 min', title: 'Tibetan Singing Bowls', description: 'Deep alpha waves for mental clarity.' }
+            setRecommendedContent([ //TODO kaj je tu id???
+              { id: "rec-1", category: 'Relaxation' as const, difficulty: 'easy' as const, duration: '10 min', title: 'Reset Your Nervous System in Minutes', description: 'When stress builds up, our minds get loud and our bodies tighten. This 7-step guided relaxation exercise—created by Sarah Jenkins, LCSW—is designed to help you hit the pause button, step out of "fight or flight" mode, and reconnect with the present moment. By combining evidence-based breathing techniques, somatic body awareness, and peaceful visualization, this exercise works quickly to lower your heart rate and ease mental fatigue. Whether you are dealing with midday work stress, struggling to wind down for sleep, or just need a quiet moment to yourself, this practice will help you anchor your mind and restore a sense of calm.' }
             ]);
           }
         }
@@ -342,10 +340,10 @@ export function HomeDashboard({ userId, userName, onCheckIn, onViewAiInsights, o
                 let IconComponent = Brain; 
                 let gradientClass = "from-[var(--muted-blue)] to-[var(--soft-mint)]";
 
-                if (item.category === 'breathing') {
+                if (item.category === 'Breathing') {
                   IconComponent = Heart;
                   gradientClass = "from-[var(--soft-purple)] to-[var(--soft-pink)]";
-                } else if (item.category === 'sound therapy' || item.category === 'relaxation') {
+                } else if (item.category === 'Sound Therapy' || item.category === 'Relaxation') {
                   IconComponent = Moon;
                   gradientClass = "from-[var(--lavender)] to-[var(--soft-purple)]";
                 }

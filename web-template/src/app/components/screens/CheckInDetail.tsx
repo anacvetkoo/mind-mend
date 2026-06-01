@@ -56,8 +56,7 @@ export function CheckInDetail({ checkIn, onClose, onTabChange, userRole = 'user'
             finalRecs = result;
           } else {
             finalRecs = [
-              { id: "s-1", category: 'breathing', difficulty: 'easy', duration: '5 min', title: 'Grounding Breath', description: 'Return to the present moment.' },
-              { id: "s-2", category: 'relaxation', difficulty: 'medium', duration: '10 min', title: 'Self-Compassion Practice', description: 'Be kind to your mind today.' }
+              { id: "rec-1", category: 'Relaxation' as const, difficulty: 'easy' as const, duration: '10 min', title: 'Reset Your Nervous System in Minutes', description: 'When stress builds up, our minds get loud and our bodies tighten. This 7-step guided relaxation exercise—created by Sarah Jenkins, LCSW—is designed to help you hit the pause button, step out of "fight or flight" mode, and reconnect with the present moment. By combining evidence-based breathing techniques, somatic body awareness, and peaceful visualization, this exercise works quickly to lower your heart rate and ease mental fatigue. Whether you are dealing with midday work stress, struggling to wind down for sleep, or just need a quiet moment to yourself, this practice will help you anchor your mind and restore a sense of calm.' }
             ];
           }
 
@@ -425,10 +424,10 @@ export function CheckInDetail({ checkIn, onClose, onTabChange, userRole = 'user'
                   let IconComponent = Brain;
                   let gradientClass = "from-[var(--muted-blue)] to-[var(--soft-mint)]";
 
-                  if (item.category === 'breathing') {
+                  if (item.category === 'Breathing') {
                     IconComponent = Heart;
                     gradientClass = "from-[var(--soft-purple)] to-[var(--soft-pink)]";
-                  } else if (item.category === 'sound therapy' || item.category === 'relaxation') {
+                  } else if (item.category === 'Sound Therapy' || item.category === 'Relaxation') {
                     IconComponent = Moon;
                     gradientClass = "from-[var(--lavender)] to-[var(--soft-purple)]";
                   }
