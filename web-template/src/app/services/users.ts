@@ -200,7 +200,13 @@ export interface TherapistContentPreview {
   id: string;
   title: string;
   category?: string;
+  categoryLabel?: string;
   duration?: string;
+  thumbnailType?: 'image' | 'gradient';
+  thumbnailImage?: string;
+  thumbnailGradient?: string;
+  gradient?: string;
+  contentType?: string;
 }
 
 export interface TherapistPublicProfile {
@@ -278,6 +284,21 @@ content: []
   };
 };
 
+const getContentThumbnailImage = (data: any): string => {
+  return getStringValue(
+    data.thumbnailImage,
+    data.thumbnailUrl,
+    data.thumbnailURL,
+    data.imageUrl,
+    data.imageURL,
+    data.coverImage,
+    data.coverImageUrl,
+    data.mediaThumbnail,
+    data.thumbnail?.url,
+    data.image?.url
+  );
+};
+
 const getTherapistContent = async (therapistId: string): Promise<TherapistContentPreview[]> => {
   const contentQuery = query(
     collection(db, 'content'),
@@ -289,12 +310,18 @@ const getTherapistContent = async (therapistId: string): Promise<TherapistConten
   return snapshot.docs.map((contentDocument) => {
     const data = contentDocument.data();
     return {
-      id: contentDocument.id,
-      title: getStringValue(data.title) || 'Untitled content',
-      category: getStringValue(data.category, data.contentType),
-      duration: getStringValue(data.duration),
-      ...data,
-    };
+  ...data,
+  id: contentDocument.id,
+  title: getStringValue(data.title) || 'Untitled content',
+  category: getStringValue(data.category, data.contentType),
+  categoryLabel: getStringValue(data.categoryLabel, data.category, data.contentType),
+  duration: getStringValue(data.duration),
+  thumbnailImage: getContentThumbnailImage(data),
+thumbnailType: getContentThumbnailImage(data) ? 'image' : 'gradient',
+thumbnailGradient: getStringValue(data.thumbnailGradient),
+gradient: getStringValue(data.gradient),
+  contentType: getStringValue(data.contentType),
+};
   });
 };
 

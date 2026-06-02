@@ -27,7 +27,7 @@ interface ContentDetailProps {
   content: ContentItem;
   onClose: () => void;
   onOpenContent?: (content: ContentItem) => void | Promise<void>;
-  onViewTherapist?: (therapistId: string) => void;
+  onViewTherapist?: (therapistId: string, previousContent?: ContentItem) => void;
   moreFromTherapist?: ContentItem[];
   initialProgress?: ContentProgressItem | null;
   shouldCountView?: boolean;
@@ -141,14 +141,19 @@ const therapistName = activeContent.therapistName || 'Therapist';
 const therapistTitle = activeContent.therapistTitle || 'Wellness Coach';
 const therapistBio = activeContent.therapistBio || 'A trusted guide for your wellness journey.';
 
-const headerBackground = activeContent.thumbnailImage && activeContent.thumbnailType === 'image'
+const hasImageThumbnail = Boolean(activeContent.thumbnailImage);
+
+const headerBackground = hasImageThumbnail
   ? {
       backgroundImage: `linear-gradient(rgba(0, 0, 0, 0.55), rgba(0, 0, 0, 0.75)), url(${activeContent.thumbnailImage})`,
       backgroundSize: 'cover',
       backgroundPosition: 'center'
     }
   : {
-      background: activeContent.thumbnailGradient || activeContent.gradient || 'linear-gradient(135deg, var(--lavender), var(--soft-purple))'
+      background:
+        activeContent.thumbnailGradient ||
+        activeContent.gradient ||
+        'linear-gradient(135deg, var(--lavender), var(--soft-purple))'
     };
 
 const getCategoryIcon = (category: ContentItem['category']) => {
@@ -788,7 +793,7 @@ saveContentProgress(activeContent.id, 'steps', {
         {/* Top Section - Fullscreen Gradient Header */}
         <div
           className="relative h-[320px] flex flex-col items-center justify-center px-6 pt-12"
-          style={headerBackground}
+style={headerBackground}
         >
           {/* Back button, Like, and Bookmark buttons */}
           <button
@@ -941,7 +946,7 @@ saveContentProgress(activeContent.id, 'steps', {
   whileTap={{ scale: 0.98 }}
   onClick={() => {
     if (activeContent.therapistId) {
-      onViewTherapist?.(activeContent.therapistId);
+      onViewTherapist?.(activeContent.therapistId, activeContent);
     }
   }}
   className="w-full py-3 rounded-2xl border-2 border-[var(--lavender)] text-[var(--lavender)] flex items-center justify-center gap-2 transition-all hover:bg-[var(--lavender)]/5"

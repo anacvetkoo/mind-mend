@@ -379,9 +379,21 @@ const mapContentDataToLibraryItem = async (
     description: data.description || '',
     ...therapist,
     thumbnailGradient: getCssGradient(data.gradient),
-    gradient: data.gradient,
-    thumbnailType: data.thumbnailType || 'color',
-    thumbnailImage: data.thumbnailUrl || data.thumbnailImage || null,
+gradient: data.gradient,
+thumbnailImage: getFirstStringValue(
+  data.thumbnailUrl,
+  data.thumbnailImage,
+  data.imageUrl,
+  data.coverImageUrl
+) || null,
+thumbnailType: getFirstStringValue(
+  data.thumbnailUrl,
+  data.thumbnailImage,
+  data.imageUrl,
+  data.coverImageUrl
+)
+  ? 'image'
+  : 'color',
     contentType: data.contentType || (categoryData.category === 'sound' ? 'audio' : 'steps'),
     steps: data.steps || [],
     difficulty: data.difficulty,

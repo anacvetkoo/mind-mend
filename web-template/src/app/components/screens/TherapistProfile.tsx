@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { motion } from 'motion/react';
-import { ArrowLeft, Star, Award, Users, Calendar, Clock, MessageCircle, Phone, Video, MapPin, BanIcon } from 'lucide-react';
+import { ArrowLeft, Star, Award, Users, Calendar, Clock, MessageCircle, Phone, Video, MapPin, BanIcon, Wind, Volume2, Brain } from 'lucide-react';
 import { getTherapistById, getTherapistAvailability, getBlockedTimes, submitTherapistRating, type TherapistProfileData, type TherapistContentPreview } from '../../services/users';
 import type { TherapistAvailability, BlockedTime } from '../../types/appointments';
 import { getAppointmentsForTherapist } from '../../services/appointments';
@@ -42,6 +42,15 @@ const SESSION_TYPE_LABELS: Record<string, string> = {
   'Voice Call': 'Voice',
   'Video Call': 'Video',
   'In Person': 'In Person',
+};
+
+const getCategoryIcon = (item: TherapistContentPreview) => {
+  const value = `${item.category || ''} ${item.categoryLabel || ''} ${item.contentType || ''}`.toLowerCase();
+
+  if (value.includes('breath')) return Wind;
+  if (value.includes('sound') || value.includes('audio')) return Volume2;
+
+  return Brain;
 };
 
 export function TherapistProfile({
@@ -389,20 +398,37 @@ setIsLoading(false);
             >
               <h3 className="text-lg mb-3 text-foreground">Their Content</h3>
               <div className="flex gap-3 overflow-x-auto scrollbar-hide -mx-4 px-4">
-                {therapist.content.map((item) => (
+                {therapist.content.map((item) => {
+  const Icon = getCategoryIcon(item);
+  const thumbnailGradient = item.thumbnailGradient || item.gradient || 'from-[var(--lavender)] to-[var(--soft-purple)]';
+
+  return (
                   <button
                     key={item.id}
                     type="button"
                     onClick={() => onSelectContent?.(item)}
                     className="flex-shrink-0 w-[160px] bg-card rounded-2xl p-4 shadow-md text-left"
                   >
-                    <div className="w-full h-20 bg-gradient-to-br from-[var(--soft-purple)]/20 to-[var(--soft-mint)]/20 rounded-xl mb-3 flex items-center justify-center">
-                      <Calendar className="w-8 h-8 text-[var(--lavender)]" />
-                    </div>
+                    <div className="w-full h-20 rounded-xl overflow-hidden mb-3">
+  {item.thumbnailType === 'image' && item.thumbnailImage ? (
+    <img
+      src={item.thumbnailImage}
+      alt={item.title}
+      className="w-full h-full object-cover"
+    />
+  ) : (
+    <div className={`w-full h-full bg-gradient-to-br ${thumbnailGradient} flex items-center justify-center`}>
+      <Icon className="w-8 h-8 text-white" />
+    </div>
+  )}
+</div>
                     <h4 className="text-sm mb-1 text-foreground line-clamp-1">{item.title}</h4>
-                    <p className="text-xs text-muted-foreground">{item.duration || item.category || 'Content'}</p>
+                    <p className="text-xs text-muted-foreground">
+  {item.categoryLabel || item.category || item.duration || 'Content'}
+</p>
                   </button>
-                ))}
+  );
+})}
               </div>
             </motion.div>
           )}

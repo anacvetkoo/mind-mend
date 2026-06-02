@@ -49,9 +49,24 @@ import { ClientFileDetails } from './components/screens/ClientFileDetails';
 import { auth } from './services/firebaseConfig';
 import { SessionScreen } from './components/screens/SessionScreen';
 import { startSession } from './services/appointments';
+import { getContentDetailById, type LibraryContentItem } from './services/content';
 
 type AppState = 'splash' | 'welcome' | 'auth' | 'questionnaire' | 'therapist-profile-setup' | 'app';
-type ContentReturnScreen = 'likedContent' | 'savedContent' | 'completedContent' | null;
+type ContentPreviousView =
+  | { type: 'screen'; screen: string }
+  | { type: 'liked' }
+  | { type: 'saved' }
+  | { type: 'completed' }
+  | { type: 'therapistProfile'; therapistId: string }
+  | null;
+type ContentReturnTarget =
+  | { type: 'screen'; screen: string }
+  | { type: 'liked' }
+  | { type: 'saved' }
+  | { type: 'completed' }
+  | { type: 'therapistProfile'; therapistId: string }
+  | { type: 'contentDetail'; content: LibraryContentItem }
+  | null;
 
 export default function App() {
   const [appState, setAppState] = useState<AppState>('splash');
@@ -62,15 +77,17 @@ export default function App() {
   const [therapistProfileData, setTherapistProfileData] = useState<any>(() => {
     const saved = localStorage.getItem('therapistProfile');
     return saved ? JSON.parse(saved) : null;
+
   });
+  const [isContentDetailLoading, setIsContentDetailLoading] = useState(false);
   const [darkMode, setDarkMode] = useState(false);
   const [notificationsEnabled, setNotificationsEnabled] = useState(false);
   const [biometricAuthEnabled, setBiometricAuthEnabled] = useState(false);
-
+  const [contentReturnTarget, setContentReturnTarget] = useState<ContentReturnTarget>(null);
   const [showDailyCheckIn, setShowDailyCheckIn] = useState(false);
   const [selectedCheckIn, setSelectedCheckIn] = useState<any>(null);
-  const [selectedContent, setSelectedContent] = useState<any>(null);
-  const [contentReturnScreen, setContentReturnScreen] = useState<'liked' | 'saved' | 'completed' | null>(null);
+  const [selectedContent, setSelectedContent] = useState<LibraryContentItem | null>(null);
+const [contentPreviousView, setContentPreviousView] = useState<ContentPreviousView>(null);
   const [selectedTherapistId, setSelectedTherapistId] = useState<string | null>(null);
   const [contentBeforeTherapistProfile, setContentBeforeTherapistProfile] = useState<any>(null);
   const [showChatConversation, setShowChatConversation] = useState(false);
@@ -115,6 +132,65 @@ export default function App() {
     date.setHours(hours, minutes + durationMinutes, 0, 0);
     return `${String(date.getHours()).padStart(2, '0')}:${String(date.getMinutes()).padStart(2, '0')}`;
   };
+
+  const openContentDetail = async (
+  content: { id: string },
+  returnTarget: ContentReturnTarget = { type: 'screen', screen: currentScreen }
+) => {
+  setIsContentDetailLoading(true);
+
+  try {
+    const contentDetail = await getContentDetailById(content.id);
+
+    if (!contentDetail) return;
+
+    setSelectedContent(contentDetail);
+    setContentReturnTarget(returnTarget);
+
+    setShowLikedContent(false);
+    setShowSavedContent(false);
+    setShowCompletedContent(false);
+    setSelectedTherapistId(null);
+  } finally {
+    setIsContentDetailLoading(false);
+  }
+};
+
+const closeContentDetail = () => {
+  const returnTarget = contentReturnTarget;
+
+  setSelectedContent(null);
+  setContentReturnTarget(null);
+
+  if (!returnTarget) return;
+
+  if (returnTarget.type === 'liked') {
+    setShowLikedContent(true);
+    return;
+  }
+
+  if (returnTarget.type === 'saved') {
+    setShowSavedContent(true);
+    return;
+  }
+
+  if (returnTarget.type === 'completed') {
+    setShowCompletedContent(true);
+    return;
+  }
+
+  if (returnTarget.type === 'contentDetail') {
+  setSelectedContent(returnTarget.content);
+  return;
+}
+
+  if (returnTarget.type === 'therapistProfile') {
+    setSelectedTherapistId(returnTarget.therapistId);
+    return;
+  }
+
+  setCurrentScreen(returnTarget.screen);
+};
 
 
   const sendNativeMessage = (data: any) => {
@@ -627,56 +703,50 @@ const handleQuestionnaireComplete = async (data: any) => {
     );
   }
 
+
+
   if (selectedContent) {
-    return (
+  return (
+    <div className="relative">
       <ContentDetail
-        content={selectedContent}
-        onClose={() => {
-          const returnScreen = contentReturnScreen;
-
-          setSelectedContent(null);
-          setContentReturnScreen(null);
-
-          if (returnScreen === 'liked') {
-            setShowLikedContent(true);
-            return;
-          }
-
-          if (returnScreen === 'saved') {
-            setShowSavedContent(true);
-            return;
-          }
-
-          if (returnScreen === 'completed') {
-            setShowCompletedContent(true);
-          }
-        }}
-        onViewTherapist={(therapistId) => {
-          setContentBeforeTherapistProfile(selectedContent);
-          setSelectedContent(null);
-          setSelectedTherapistId(therapistId);
-        }}
-        showBottomNav
-  activeTab={currentScreen}
-  role={userRole}
-  onTabChange={(tab) => {
-    setSelectedContent(null);
-    setContentReturnScreen(null);
-    handleTabChange(tab);
-  }}
-      />
-    );
-  }
+      content={selectedContent}
+      onClose={closeContentDetail}
+      onOpenContent={(content) => {
+  openContentDetail(content, {
+    type: 'contentDetail',
+    content: selectedContent
+  });
+}}
+      onViewTherapist={(therapistId, previousContent) => {
+        setContentBeforeTherapistProfile(previousContent || selectedContent);
+        setSelectedContent(null);
+        setSelectedTherapistId(therapistId);
+      }}
+      showBottomNav
+      activeTab={currentScreen}
+      role={userRole}
+      onTabChange={(tab) => {
+        setSelectedContent(null);
+        setContentReturnTarget(null);
+        handleTabChange(tab);
+      }}
+    />
+          {isContentDetailLoading && (
+        <div className="fixed inset-0 z-50 bg-background flex items-center justify-center">
+          <div className="w-10 h-10 border-4 border-[var(--lavender)]/30 border-t-[var(--lavender)] rounded-full animate-spin" />
+        </div>
+      )}
+    </div>
+  );
+}
 
   if (showLikedContent) {
     return (
       <LikedContentScreen
         onBack={() => setShowLikedContent(false)}
         onSelectContent={(content) => {
-          setContentReturnScreen('liked');
-          setShowLikedContent(false);
-          setSelectedContent(content);
-        }}
+  openContentDetail(content, { type: 'liked' });
+}}
       />
     );
   }
@@ -686,10 +756,8 @@ const handleQuestionnaireComplete = async (data: any) => {
       <SavedContentScreen
         onBack={() => setShowSavedContent(false)}
         onSelectContent={(content) => {
-          setContentReturnScreen('saved');
-          setShowSavedContent(false);
-          setSelectedContent(content);
-        }}
+  openContentDetail(content, { type: 'saved' });
+}}
       />
     );
   }
@@ -699,10 +767,8 @@ const handleQuestionnaireComplete = async (data: any) => {
       <CompletedContentScreen
         onBack={() => setShowCompletedContent(false)}
         onSelectContent={(content) => {
-          setContentReturnScreen('completed');
-          setShowCompletedContent(false);
-          setSelectedContent(content);
-        }}
+  openContentDetail(content, { type: 'completed' });
+}}
       />
     );
   }
@@ -789,9 +855,13 @@ const handleQuestionnaireComplete = async (data: any) => {
             setShowBookingFlow(true);
           }}
           onSelectContent={(content) => {
-            setSelectedTherapistId(null);
-            setSelectedContent(content);
-          }}
+  if (!selectedTherapistId) return;
+
+  openContentDetail(content, {
+    type: 'therapistProfile',
+    therapistId: selectedTherapistId
+  });
+}}
         />
         <BottomNav
           activeTab={currentScreen}
@@ -1073,7 +1143,7 @@ const handleQuestionnaireComplete = async (data: any) => {
           {currentScreen === 'explore' && (
             <ContentLibrary
               userId={auth.currentUser?.uid}
-              onSelectContent={(content) => setSelectedContent(content)}
+              onSelectContent={(content) => openContentDetail(content, { type: 'screen', screen: currentScreen })}
               onViewTherapist={(therapistId) => {
                 setSelectedTherapistId(therapistId);
                 setCurrentScreen('therapistProfile');
