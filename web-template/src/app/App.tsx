@@ -1053,15 +1053,19 @@ const handleQuestionnaireComplete = async (data: any) => {
         <>
           {currentScreen === 'home' && (
             <HomeDashboard
-              userId={getAuth().currentUser?.uid || ""}
-              userName={userData.name}
-              onCheckIn={() => setShowDailyCheckIn(true)}
-              onViewAiInsights={() => setCurrentScreen('ai-insights')}
-              onFindTherapist={() => setCurrentScreen('therapists')}
-              onViewAppointments={() => setCurrentScreen('appointments')}
-              onViewNotifications={() => setCurrentScreen('notifications')}
-              onTabChange={handleTabChange}
-            />
+  userId={getAuth().currentUser?.uid || ""}
+  userName={userData.name}
+  onCheckIn={() => setShowDailyCheckIn(true)}
+  onViewAiInsights={() => setCurrentScreen('ai-insights')}
+  onFindTherapist={() => setCurrentScreen('therapists')}
+  onViewAppointments={() => setCurrentScreen('appointments')}
+  onViewNotifications={() => setCurrentScreen('notifications')}
+  onTabChange={handleTabChange}
+  onViewTherapist={(therapistId, previousContent) => {
+  setContentBeforeTherapistProfile(previousContent);
+  setSelectedTherapistId(therapistId);
+}}
+/>
           )}
           {currentScreen === 'journal' && (
             <JournalHistory onSelectCheckIn={(checkIn) => setSelectedCheckIn(checkIn)} />

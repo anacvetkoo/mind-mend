@@ -22,10 +22,11 @@ interface HomeDashboardProps {
   onViewAppointments?: () => void;
   onViewNotifications?: () => void;
   onTabChange: (tab: string) => void;
+  onViewTherapist?: (therapistId: string, previousContent?: any) => void;
 }
 
-export function HomeDashboard({ userId, userName, onCheckIn, onViewAiInsights, onFindTherapist, onViewAppointments, onViewNotifications, onTabChange }: HomeDashboardProps) {
-  const currentHour = new Date().getHours();
+export function HomeDashboard({ userId, userName, onCheckIn, onViewAiInsights, onFindTherapist, onViewAppointments, onViewNotifications, onTabChange, onViewTherapist }: HomeDashboardProps) {
+const currentHour = new Date().getHours();
   const greeting =
     currentHour < 12 ? 'Good morning' : currentHour < 18 ? 'Good afternoon' : 'Good evening';
 
@@ -56,6 +57,7 @@ export function HomeDashboard({ userId, userName, onCheckIn, onViewAiInsights, o
 }[]>([]);
 
   const [dashboardSelectedContent, setDashboardSelectedContent] = useState<any | null>(null);
+  const [dashboardContentHistory, setDashboardContentHistory] = useState<any[]>([]);
   const getRecommendedContentIcon = (category?: string) => {
   const normalizedCategory = category?.toLowerCase().trim();
 
@@ -462,13 +464,30 @@ const formatRecommendedDifficulty = (difficulty?: string) => {
         </motion.div>
       </div>
       {dashboardSelectedContent && (
-        <ContentDetail
-          content={dashboardSelectedContent}
-          onClose={() => setDashboardSelectedContent(null)}
-          moreFromTherapist={[]} // Pustimo prazno ali naložimo naknadno
-          onOpenContent={(novaVsebina) => setDashboardSelectedContent(novaVsebina)}
-        />
-      )}
+  <ContentDetail
+    key={dashboardSelectedContent.id}
+    content={dashboardSelectedContent}
+    onClose={() => {
+      const previousContent = dashboardContentHistory[dashboardContentHistory.length - 1];
+
+      if (previousContent) {
+        setDashboardContentHistory((prevHistory) => prevHistory.slice(0, -1));
+        setDashboardSelectedContent(previousContent);
+        return;
+      }
+
+      setDashboardSelectedContent(null);
+    }}
+    moreFromTherapist={[]}
+    onOpenContent={(newContent) => {
+      setDashboardContentHistory((prevHistory) => [...prevHistory, dashboardSelectedContent]);
+      setDashboardSelectedContent(newContent);
+    }}
+    onViewTherapist={(therapistId) => {
+  onViewTherapist?.(therapistId, dashboardSelectedContent);
+}}
+  />
+)}
     </div>
   );
 }
