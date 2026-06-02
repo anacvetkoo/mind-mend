@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { motion } from 'motion/react';
 import { Search, Star, User, Calendar, ChevronDown } from 'lucide-react';
-import { getTherapists, type TherapistProfileData } from '../../services/users';
+import { getTherapists, type TherapistPublicProfile } from '../../services/users';
 
 interface TherapistListProps {
   onSelectTherapist: (therapistId: string) => void;
@@ -13,10 +13,10 @@ type SortOption = 'default' | 'rating' | 'sessions' | 'reviews';
 export function TherapistList({ onSelectTherapist, onBookTherapist }: TherapistListProps) {
   const [selectedFilter, setSelectedFilter] = useState('all');
   const [searchQuery, setSearchQuery] = useState('');
-  const [therapists, setTherapists] = useState<TherapistProfileData[]>([]);
+  const [therapists, setTherapists] = useState<TherapistPublicProfile[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [showNoAvailabilityModal, setShowNoAvailabilityModal] = useState(false);
-  const [selectedUnavailableTherapist, setSelectedUnavailableTherapist] = useState<TherapistProfileData | null>(null);
+  const [selectedUnavailableTherapist, setSelectedUnavailableTherapist] = useState<TherapistPublicProfile | null>(null);
   const [sortBy, setSortBy] = useState<SortOption>('default');
   const [showSortDropdown, setShowSortDropdown] = useState(false);
 
@@ -88,12 +88,12 @@ export function TherapistList({ onSelectTherapist, onBookTherapist }: TherapistL
     const normalize = (s: string) => s.toLowerCase().replace(/[-\s]/g, '');
     const normalizedFilter = normalize(selectedFilter);
 
-    const matchesFilter = (therapist: TherapistProfileData) =>
+    const matchesFilter = (therapist: TherapistPublicProfile) =>
       selectedFilter === 'all' ||
       normalize(therapist.specialization).includes(normalizedFilter) ||
       therapist.tags.some(t => normalize(t).includes(normalizedFilter));
 
-    let results: TherapistProfileData[];
+    let results: TherapistPublicProfile[];
 
     if (q === '') {
       results = therapists.filter(matchesFilter);
@@ -110,7 +110,7 @@ export function TherapistList({ onSelectTherapist, onBookTherapist }: TherapistL
           else return null;
           return { therapist, score };
         })
-        .filter(Boolean) as { therapist: TherapistProfileData; score: number }[];
+        .filter(Boolean) as { therapist: TherapistPublicProfile; score: number }[];
 
       results = scored
         .sort((a, b) => a.score - b.score)

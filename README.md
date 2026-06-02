@@ -68,7 +68,11 @@ npm install
 ```bash
 npm install react-native-webview
 ```
-## 3. Setup web-template projekta
+## 3. Namestitev Google Auth odvisnosti
+```bash
+npx expo install expo-auth-session expo-web-browser
+```
+## 4. Setup web-template projekta
 Premakni se v mapo:
 ```bash
 cd web-template
@@ -81,7 +85,7 @@ npm install
 ```bash
 npm install --legacy-peer-deps
 ```
-## 4. Ustvari .env datoteko
+## 5. Ustvari .env datoteko
 V root mapi (`mind-mend/`) ustvari datoteko `.env` — **vsak razvijalec mora ustvariti svojo lokalno kopijo!**
 Za pomoč si poglej `.env.example`:
 ```bash
@@ -92,7 +96,7 @@ Nato v `.env` nastavi svoj IP (glej korak Terminal 2 spodaj):
 EXPO_PUBLIC_WEB_APP_URL=http://192.168.x.x:5173
 ```
 > ⚠️ `.env` je dodan v `.gitignore` in se ne committa v repozitorij. Vsak razvijalec ima svoj lokalni IP!
-## 5. Setup Stripe plačil
+## 6. Setup Stripe plačil
 Projekt uporablja Stripe za plačilo appointmentov. Stripe secret key se ne sme uporabljati v frontend aplikaciji, zato je plačilna logika dodana v Firebase Functions.
 ### Namestitev Firebase CLI
 Če Firebase CLI še ni nameščen:
@@ -219,3 +223,8 @@ paymentId: pi_...
 - preveri `functions/.env`
 - preveri, da sta Stripe ključa oba v test mode: `pk_test_...` `sk_test_...`
 - po spremembi `.env` vedno ponovno zaženi `npm run dev`
+---
+# Opombe
+> ⚠️ Google prijava ne deluje v navadnem brskalniku na telefonu. Zahteva Expo build ali Expo Go.
+
+> ⚠️ Spremembe v `web-template/` se avtomatsko deployajo na Firebase Hosting ob vsakem pushu na `main`. Spremembe v `App.js` (Expo native) pa zahtevajo nov `eas build`.

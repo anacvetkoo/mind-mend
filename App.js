@@ -1,16 +1,98 @@
-import React, { useEffect, useState } from "react";
-import { ActivityIndicator, Linking, SafeAreaView, StatusBar, StyleSheet, Text, TouchableOpacity, View } from "react-native";
+import React, { useEffect, useRef, useState } from "react";
+import {
+  ActivityIndicator,
+  Linking,
+  SafeAreaView,
+  StatusBar,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
+} from "react-native";
 import { WebView } from "react-native-webview";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import * as LocalAuthentication from "expo-local-authentication";
+import * as Google from "expo-auth-session/providers/google";
+import * as WebBrowser from "expo-web-browser";
+
+// Potrebno za pravilno zapiranje browser popup-a po OAuth
+WebBrowser.maybeCompleteAuthSession();
 
 const WEB_APP_URL = process.env.EXPO_PUBLIC_WEB_APP_URL;
 const BIOMETRIC_AUTH_KEY = "mindmendBiometricAuthEnabled";
 
+// ─── Google OAuth Client ID-ji ────────────────────────────────────────────────
+// Najdeš jih v: Google Cloud Console → APIs & Services → Credentials
+// ANDROID_CLIENT_ID: tip "Android" (package name mora biti enak kot v app.json)
+// IOS_CLIENT_ID: tip "iOS" (bundle ID mora biti enak kot v app.json)
+// WEB_CLIENT_ID: obstoječi web client ID iz Firebase projekta
+const ANDROID_CLIENT_ID = "163326676496-r2uh0s7ooi6pmv3sdp3b6r04r7a8lbek.apps.googleusercontent.com";
+const IOS_CLIENT_ID = "163326676496-r2uh0s7ooi6pmv3sdp3b6r04r7a8lbek.apps.googleusercontent.com";
+const WEB_CLIENT_ID = "163326676496-r2uh0s7ooi6pmv3sdp3b6r04r7a8lbek.apps.googleusercontent.com";
+
 export default function App() {
+  const webViewRef = useRef(null);
+  const pendingRoleRef = useRef("user");
+
   const [isCheckingBiometricAuth, setIsCheckingBiometricAuth] = useState(true);
   const [isBiometricVerified, setIsBiometricVerified] = useState(false);
   const [biometricError, setBiometricError] = useState("");
+
+  const [, googleResponse, promptGoogleAsync] = Google.useAuthRequest({
+    androidClientId: ANDROID_CLIENT_ID,
+    iosClientId: IOS_CLIENT_ID,
+    webClientId: WEB_CLIENT_ID,
+    scopes: ["openid", "profile", "email"],
+  });
+
+  // ─── Obdelaj Google OAuth odgovor ──────────────────────────────────────────
+
+  useEffect(() => {
+    if (!googleResponse || !webViewRef.current) return;
+
+    if (googleResponse.type === "success") {
+      const idToken =
+        googleResponse.params?.id_token ??
+        googleResponse.authentication?.idToken;
+
+      if (idToken) {
+        webViewRef.current.postMessage(
+          JSON.stringify({
+            type: "GOOGLE_SIGN_IN_RESULT",
+            idToken,
+            role: pendingRoleRef.current,
+          })
+        );
+      } else {
+        webViewRef.current.postMessage(
+          JSON.stringify({
+            type: "GOOGLE_SIGN_IN_ERROR",
+            error: "No ID token received from Google.",
+          })
+        );
+      }
+    }
+
+    if (googleResponse.type === "error") {
+      webViewRef.current.postMessage(
+        JSON.stringify({
+          type: "GOOGLE_SIGN_IN_ERROR",
+          error: googleResponse.error?.message ?? "Google sign-in failed.",
+        })
+      );
+    }
+
+    if (googleResponse.type === "dismiss") {
+      webViewRef.current.postMessage(
+        JSON.stringify({
+          type: "GOOGLE_SIGN_IN_ERROR",
+          error: "cancelled",
+        })
+      );
+    }
+  }, [googleResponse]);
+
+  // ─── Biometric auth ─────────────────────────────────────────────────────────
 
   useEffect(() => {
     checkBiometricAuth();
@@ -52,22 +134,33 @@ export default function App() {
     }
   };
 
+  // ─── WebView message handler ─────────────────────────────────────────────────
+
   const handleMessage = async (event) => {
     try {
       const data = JSON.parse(event.nativeEvent.data);
 
+      if (data.type === "GOOGLE_SIGN_IN_REQUEST") {
+        pendingRoleRef.current = data.role ?? "user";
+        await promptGoogleAsync();
+        return;
+      }
+
       if (data.type === "biometricAuthChanged") {
         await AsyncStorage.setItem(BIOMETRIC_AUTH_KEY, String(data.enabled));
+        return;
       }
 
       if (data.type === "openURL") {
         await Linking.openURL(data.url);
+        return;
       }
-
     } catch (error) {
       console.log("Invalid WebView message:", error);
     }
   };
+
+  // ─── Render ──────────────────────────────────────────────────────────────────
 
   if (isCheckingBiometricAuth) {
     return (

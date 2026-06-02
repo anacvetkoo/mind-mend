@@ -18,7 +18,9 @@ import {
 import { ContentDetail } from './ContentDetail';
 import {
   getLibraryContent,
-  type LibraryContentItem
+  type LibraryContentItem,
+  formatContentDuration,
+formatContentDurationFromSeconds
 } from '../../services/content';
 import {
   getUserContentInteractions,
@@ -88,27 +90,9 @@ const getEngagementScore = (content: LibraryContentItem) => {
   return getContentLikes(content) + (content.views || 0);
 };
 
-const formatDurationFromSeconds = (durationInSeconds: number) => {
-  if (!Number.isFinite(durationInSeconds) || durationInSeconds <= 0) return '';
 
-  const minutes = Math.max(1, Math.ceil(durationInSeconds / 60));
 
-  return `${minutes} min`;
-};
 
-const formatStoredDuration = (duration?: string | number) => {
-  if (!duration) return '';
-
-  const durationText = String(duration).trim();
-
-  if (!durationText) return '';
-
-  if (durationText.toLowerCase().includes('min')) {
-    return durationText;
-  }
-
-  return `${durationText} min`;
-};
 
 const getMediaUrl = (content: LibraryContentItem) => {
   if (content.contentType === 'video') return content.videoUrl;
@@ -131,6 +115,7 @@ export function ContentLibrary({
   const [showTodayOnly, setShowTodayOnly] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
   const [isLoading, setIsLoading] = useState(true);
+  const [hasLoadedContentLibrary, setHasLoadedContentLibrary] = useState(false);
   const [mediaDurations, setMediaDurations] = useState<Record<string, string>>({});
   const [likedContentIds, setLikedContentIds] = useState<string[]>([]);
   const [savedContentIds, setSavedContentIds] = useState<string[]>([]);
@@ -149,6 +134,7 @@ export function ContentLibrary({
         console.error('Error loading content library:', error);
       } finally {
         setIsLoading(false);
+        setHasLoadedContentLibrary(true);
       }
     };
 
@@ -171,7 +157,7 @@ export function ContentLibrary({
     mediaElement.src = mediaUrl;
 
     mediaElement.onloadedmetadata = () => {
-      const durationLabel = formatDurationFromSeconds(mediaElement.duration);
+      const durationLabel = formatContentDurationFromSeconds(mediaElement.duration);
 
       if (!durationLabel || !isMounted) return;
 
@@ -431,10 +417,10 @@ const handleRemoveProgress = async (contentId: string) => {
 
   const getContentDuration = (content: LibraryContentItem) => {
   if (content.contentType === 'video' || content.contentType === 'audio') {
-    return mediaDurations[content.id] || '';
+    return mediaDurations[content.id] || formatContentDuration(content.duration);
   }
 
-  return formatStoredDuration(content.duration);
+  return formatContentDuration(content.duration);
 };
 
 const getRecommendedContentItem = (recommendation: any) => {
@@ -684,6 +670,19 @@ const renderContinueContentCard = ({
       }}
       initialProgress={selectedContentProgress}
     />
+  );
+}
+
+if (!hasLoadedContentLibrary) {
+  return (
+    <div className="min-h-screen bg-background flex items-center justify-center px-6">
+      <div className="text-center">
+        <div className="w-16 h-16 rounded-full bg-gradient-to-br from-[var(--lavender)] to-[var(--soft-purple)] mx-auto mb-4 animate-pulse" />
+        <p className="text-sm text-muted-foreground">
+          Loading your content...
+        </p>
+      </div>
+    </div>
   );
 }
 

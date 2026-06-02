@@ -8,6 +8,7 @@ import {
   where,
   orderBy,
   serverTimestamp,
+  increment,
 } from 'firebase/firestore';
 import { db } from './firebaseConfig';
 import type { Appointment, AppointmentStatus } from '../types/appointments';
@@ -102,9 +103,19 @@ export const startSession = async (appointmentId: string): Promise<void> => {
 };
 
 // Terapevt konča sejo → status COMPLETED
-export const endSession = async (appointmentId: string): Promise<void> => {
+export const endSession = async (appointmentId: string, therapistId: string): Promise<void> => {
   // Najprej posodobimo status — to je kritično in mora uspeti
   await updateAppointmentStatus(appointmentId, 'COMPLETED');
+
+  // Incrementamo sessionsCompleted na terapevtovem profilu — potrebno za "Most Sessions" sort
+  try {
+    await updateDoc(doc(db, 'users', therapistId), {
+      sessionsCompleted: increment(1),
+    });
+  } catch (error) {
+    console.error('sessionsCompleted increment failed (non-critical):', error);
+  }
+
   // Payout poskusimo, ampak če ne uspe (npr. emulator ne teče), nadaljujemo
   try {
     await releaseTherapistPayout(appointmentId);

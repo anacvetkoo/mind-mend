@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { motion } from 'motion/react';
 import { ArrowLeft, Save, Upload, Plus } from 'lucide-react';
-import type { ContentFiles, ContentItem, ContentStep } from '../../services/content';
+import { formatContentDuration, formatContentDurationFromSeconds, type ContentFiles, type ContentItem, type ContentStep } from '../../services/content';
 
 interface TherapistContentEditorProps {
   onClose: () => void;
@@ -10,10 +10,20 @@ interface TherapistContentEditorProps {
 }
 
 export function TherapistContentEditor({ onClose, onSave, existingContent }: TherapistContentEditorProps) {
+  const getDurationInputValue = (duration?: string | number): string => {
+  if (!duration) return '';
+
+  const durationText = String(duration);
+  const durationNumber = durationText.match(/\d+/)?.[0];
+
+  return durationNumber || '';
+};
+
   const [title, setTitle] = useState(existingContent?.title || '');
   const [category, setCategory] = useState(existingContent?.category || 'Relaxation');
   const [difficulty, setDifficulty] = useState<'Easy' | 'Medium' | 'Hard'>(existingContent?.difficulty || 'Easy');
   const [description, setDescription] = useState(existingContent?.description || '');
+  const [duration, setDuration] = useState(getDurationInputValue(existingContent?.duration));
   const [selectedGradient, setSelectedGradient] = useState(existingContent?.gradient || 'from-[var(--muted-blue)] to-[var(--soft-purple)]');
   const [thumbnailType, setThumbnailType] = useState<'color' | 'image'>(existingContent?.thumbnailType || 'color');
   const [thumbnailImage, setThumbnailImage] = useState<string | null>(existingContent?.thumbnailImage || null);
@@ -50,6 +60,26 @@ export function TherapistContentEditor({ onClose, onSave, existingContent }: The
     }
   };
 
+  const getMediaDuration = (file: File): Promise<string> => {
+  return new Promise((resolve) => {
+    const mediaElement = document.createElement(file.type.startsWith('video') ? 'video' : 'audio');
+    const mediaUrl = URL.createObjectURL(file);
+
+    mediaElement.preload = 'metadata';
+    mediaElement.src = mediaUrl;
+
+    mediaElement.onloadedmetadata = () => {
+      URL.revokeObjectURL(mediaUrl);
+      resolve(String(mediaElement.duration));
+    };
+
+    mediaElement.onerror = () => {
+      URL.revokeObjectURL(mediaUrl);
+      resolve('1 min');
+    };
+  });
+};
+
   const handleAudioUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
   const file = e.target.files?.[0];
 
@@ -71,6 +101,10 @@ export function TherapistContentEditor({ onClose, onSave, existingContent }: The
   }
 
   setAudioFile(file);
+
+  getMediaDuration(file).then((calculatedDuration) => {
+  setDuration(calculatedDuration);
+});
 };
 
   const handleVideoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -79,6 +113,10 @@ export function TherapistContentEditor({ onClose, onSave, existingContent }: The
     if (!file) return;
 
     setVideoFile(file);
+
+    getMediaDuration(file).then((calculatedDuration) => {
+  setDuration(calculatedDuration);
+});
   };
 
   const addStep = () => {
@@ -102,6 +140,11 @@ export function TherapistContentEditor({ onClose, onSave, existingContent }: The
       return;
     }
 
+    if (contentType === 'steps' && !duration.trim()) {
+  alert('Please enter duration.');
+  return;
+}
+
     try {
       setSavingAction(existingContent && !existingContent.isDraft ? 'changes' : isDraft ? 'draft' : 'publish');
 
@@ -111,6 +154,10 @@ export function TherapistContentEditor({ onClose, onSave, existingContent }: The
         category,
         gradient: selectedGradient,
         description: description.trim(),
+        duration:
+  contentType === 'video' || contentType === 'audio'
+    ? formatContentDurationFromSeconds(Number(duration))
+    : formatContentDuration(duration),
         difficulty,
         thumbnailType,
         thumbnailImage,
@@ -288,9 +335,24 @@ export function TherapistContentEditor({ onClose, onSave, existingContent }: The
                   </label>
                 </div>
               ) : (
-                <>
-                  {/* Steps Section */}
-                  <div className="mb-6">
+  <>
+    <div className="mb-6">
+      <label className="block text-sm text-foreground mb-2">
+        Duration in minutes <span className="text-red-400">*</span>
+      </label>
+
+      <input
+        type="number"
+        min="1"
+        value={duration}
+        onChange={(e) => setDuration(e.target.value)}
+        placeholder="Example: 10"
+        className="w-full px-4 py-3 rounded-xl bg-[var(--input-background)] border-2 border-[var(--border)] text-foreground placeholder:text-muted-foreground focus:border-[var(--lavender)] outline-none transition-colors"
+      />
+    </div>
+
+    {/* Steps Section */}
+    <div className="mb-6">
                     <div className="flex items-center justify-between mb-4">
                       <label className="block text-sm text-foreground">
                         Steps

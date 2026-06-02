@@ -65,6 +65,26 @@ const removeEmptyValues = <T extends Record<string, unknown>>(data: T): Partial<
   ) as Partial<T>;
 };
 
+export const formatContentDuration = (duration?: string | number): string => {
+  if (duration === undefined || duration === null) return '1 min';
+
+  const durationText = String(duration).trim();
+
+  if (!durationText) return '1 min';
+
+  const numericDuration = Number(durationText.replace(/[^0-9.]/g, ''));
+
+  if (!Number.isFinite(numericDuration) || numericDuration <= 0) return '1 min';
+
+  return `${Math.max(1, Math.ceil(numericDuration))} min`;
+};
+
+export const formatContentDurationFromSeconds = (durationInSeconds?: number): string => {
+  if (!durationInSeconds || !Number.isFinite(durationInSeconds)) return '1 min';
+
+  return `${Math.max(1, Math.ceil(durationInSeconds / 60))} min`;
+};
+
 const getCurrentTherapistId = (): string => {
   const currentUser = auth.currentUser;
 
@@ -355,7 +375,7 @@ const mapContentDataToLibraryItem = async (
     title: data.title || '',
     category: categoryData.category,
     categoryLabel: categoryData.categoryLabel,
-    duration: data.duration,
+    duration: formatContentDuration(data.duration),
     description: data.description || '',
     ...therapist,
     thumbnailGradient: getCssGradient(data.gradient),

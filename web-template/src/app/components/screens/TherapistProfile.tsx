@@ -3,6 +3,7 @@ import { motion } from 'motion/react';
 import { ArrowLeft, Star, Award, Users, Calendar, Clock, MessageCircle, Phone, Video, MapPin, BanIcon } from 'lucide-react';
 import { getTherapistById, getTherapistAvailability, getBlockedTimes, submitTherapistRating, type TherapistProfileData, type TherapistContentPreview } from '../../services/users';
 import type { TherapistAvailability, BlockedTime } from '../../types/appointments';
+import { getAppointmentsForTherapist } from '../../services/appointments';
 
 interface TherapistProfileProps {
   therapistId: string | number;
@@ -62,23 +63,30 @@ export function TherapistProfile({
   const [showNoAvailabilityModal, setShowNoAvailabilityModal] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isSubmitted, setIsSubmitted] = useState(false);
+  const [completedSessions, setCompletedSessions] = useState(0);
 
   useEffect(() => {
     let isMounted = true;
 
     const fetchTherapist = async () => {
       const uid = String(therapistId);
-      const [therapistData, avail, blocked] = await Promise.all([
-        getTherapistById(uid),
-        getTherapistAvailability(uid),
-        getBlockedTimes(uid),
-      ]);
+      const [therapistData, avail, blocked, appointments] = await Promise.all([
+  getTherapistById(uid),
+  getTherapistAvailability(uid),
+  getBlockedTimes(uid),
+  getAppointmentsForTherapist(uid),
+]);
 
       if (isMounted) {
         if (therapistData) setTherapist(therapistData);
-        if (avail) setAvailability({ ...avail, therapistId: uid });
-        setBlockedTimes(blocked);
-        setIsLoading(false);
+if (avail) setAvailability({ ...avail, therapistId: uid });
+
+setCompletedSessions(
+  appointments.filter((appointment) => appointment.status === 'COMPLETED').length
+);
+
+setBlockedTimes(blocked);
+setIsLoading(false);
       }
     };
 
@@ -241,7 +249,7 @@ export function TherapistProfile({
             <div className="bg-card rounded-2xl p-4 shadow-md text-center">
               <Users className="w-5 h-5 text-[var(--lavender)] mx-auto mb-2" />
               <p className="text-2xl text-foreground mb-1">
-                {therapist.sessionsCompleted > 0 ? therapist.sessionsCompleted : '—'}
+                {completedSessions}
               </p>
               <p className="text-xs text-muted-foreground">Sessions</p>
             </div>

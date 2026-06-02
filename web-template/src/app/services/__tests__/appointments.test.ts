@@ -31,6 +31,7 @@ vi.mock('firebase/firestore', async () => {
     where: vi.fn(),
     orderBy: vi.fn(),
     serverTimestamp: vi.fn(() => 'mocked-timestamp'),
+    increment: vi.fn((val: number) => ({ type: 'increment', value: val })),
   };
 });
 

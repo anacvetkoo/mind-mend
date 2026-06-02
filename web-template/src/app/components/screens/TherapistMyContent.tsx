@@ -235,9 +235,7 @@ export function TherapistMyContent() {
                       <span className="px-2 py-0.5 rounded-full bg-[var(--lavender)]/10 text-[var(--lavender)] text-xs">
                         {item.category}
                       </span>
-                      {item.duration && (
-                        <span className="text-xs text-muted-foreground">{item.duration} min</span>
-                      )}
+                    
                       {item.isDraft && (
                         <span className="px-2 py-0.5 rounded-full bg-yellow-100 dark:bg-yellow-900/30 text-yellow-700 dark:text-yellow-400 text-xs">
                           Draft

@@ -4,14 +4,14 @@ import { Card } from '../ui/card';
 import { Button } from '../ui/Button';
 import { StatCard } from '../ui/StatCard';
 import { Badge } from '../ui/badge';
-import { ShieldCheck, ClipboardList } from 'lucide-react';
-import { Flame, Calendar, Target, TrendingUp, Sparkles, Brain, Heart, UserRound, ChevronRight, Bell, Check, Activity, Moon } from 'lucide-react';
+import { ShieldCheck, ClipboardList, Flame, Calendar, Target, TrendingUp, Sparkles, Brain, Heart, UserRound, ChevronRight, Bell, Check, Activity, Moon, Volume2, Wind } from 'lucide-react';
 import { isTodayCompleted, getStreakData, getWeeklyTrend, getFirebaseCheckIns } from '../../utils/checkInUtils';
 import { getStreakDataFromFirestore } from '../../utils/StreakCalculator';
 import { generateAIWellnessTips } from '../../services/gemini';
 import { collection, doc, getDoc, getDocs } from 'firebase/firestore';
 import { db } from '../../services/firebaseConfig.js';
 import { ContentDetail } from './ContentDetail';
+import { getLibraryContent, type LibraryContentItem, formatContentDuration } from '../../services/content';
 
 interface HomeDashboardProps {
   userId: string;
@@ -22,10 +22,11 @@ interface HomeDashboardProps {
   onViewAppointments?: () => void;
   onViewNotifications?: () => void;
   onTabChange: (tab: string) => void;
+  onViewTherapist?: (therapistId: string, previousContent?: any) => void;
 }
 
-export function HomeDashboard({ userId, userName, onCheckIn, onViewAiInsights, onFindTherapist, onViewAppointments, onViewNotifications, onTabChange }: HomeDashboardProps) {
-  const currentHour = new Date().getHours();
+export function HomeDashboard({ userId, userName, onCheckIn, onViewAiInsights, onFindTherapist, onViewAppointments, onViewNotifications, onTabChange, onViewTherapist }: HomeDashboardProps) {
+const currentHour = new Date().getHours();
   const greeting =
     currentHour < 12 ? 'Good morning' : currentHour < 18 ? 'Good afternoon' : 'Good evening';
 
@@ -43,15 +44,38 @@ export function HomeDashboard({ userId, userName, onCheckIn, onViewAiInsights, o
   const [aiTips, setAiTips] = useState<string[]>([]);
 
   const [recommendedContent, setRecommendedContent] = useState<{ 
-    id?: string; 
-    category: 'Relaxation' | 'Breathing' | 'Sound Therapy'; 
-    difficulty: 'easy' | 'medium' | 'hard'; 
-    duration: string; 
-    title: string; 
-    description: string; 
-  }[]>([]);
+  id?: string; 
+  category: 'Relaxation' | 'Breathing' | 'Sound Therapy'; 
+  difficulty: 'easy' | 'medium' | 'hard'; 
+  duration: string; 
+  title: string; 
+  description: string;
+  thumbnailType?: 'color' | 'image';
+  thumbnailImage?: string;
+  thumbnailGradient?: string;
+  libraryContent?: LibraryContentItem;
+}[]>([]);
 
   const [dashboardSelectedContent, setDashboardSelectedContent] = useState<any | null>(null);
+  const [dashboardContentHistory, setDashboardContentHistory] = useState<any[]>([]);
+  const getRecommendedContentIcon = (category?: string) => {
+  const normalizedCategory = category?.toLowerCase().trim();
+
+  if (normalizedCategory === 'breathing') return Wind;
+  if (normalizedCategory === 'sound' || normalizedCategory === 'sound therapy') return Volume2;
+
+  return Brain;
+};
+
+const formatRecommendedDuration = (duration?: string | number) => {
+  return formatContentDuration(duration);
+};
+
+const formatRecommendedDifficulty = (difficulty?: string) => {
+  if (!difficulty) return 'EASY';
+
+  return difficulty.toUpperCase();
+};
 
   useEffect(() => {
     const loadDashboardData = async () => {
@@ -73,6 +97,7 @@ export function HomeDashboard({ userId, userName, onCheckIn, onViewAiInsights, o
       if (userId) {
         const userDocRef = doc(db, "users", userId);
         const userDocSnap = await getDoc(userDocRef);
+        const libraryContent = await getLibraryContent();
 
         if (userDocSnap.exists()) {
           const userData = userDocSnap.data();
@@ -94,8 +119,28 @@ export function HomeDashboard({ userId, userName, onCheckIn, onViewAiInsights, o
 
           //latestAIRecommendations
           if (userData.latestAIRecommendations && userData.latestAIRecommendations.length > 0) {
-            setRecommendedContent(userData.latestAIRecommendations as any);
-          } else {
+  const recommendationsWithThumbnails = userData.latestAIRecommendations.map((item: any) => {
+    const matchingContent = libraryContent.find((content) => {
+      return (
+        content.id === item.id ||
+        content.title.toLowerCase().trim() === item.title?.toLowerCase().trim()
+      );
+    });
+
+    return {
+      ...item,
+      category: matchingContent?.category || item.category,
+      difficulty: matchingContent?.difficulty || item.difficulty,
+      duration: matchingContent?.duration || item.duration,
+      thumbnailType: matchingContent?.thumbnailType,
+      thumbnailImage: matchingContent?.thumbnailImage,
+      thumbnailGradient: matchingContent?.thumbnailGradient,
+      libraryContent: matchingContent
+    };
+  });
+
+  setRecommendedContent(recommendationsWithThumbnails);
+} else {
             setRecommendedContent([ //TODO kaj je tu id???
               { id: "rec-1", category: 'Relaxation' as const, difficulty: 'easy' as const, duration: '10 min', title: 'Reset Your Nervous System in Minutes', description: 'When stress builds up, our minds get loud and our bodies tighten. This 7-step guided relaxation exercise—created by Sarah Jenkins, LCSW—is designed to help you hit the pause button, step out of "fight or flight" mode, and reconnect with the present moment. By combining evidence-based breathing techniques, somatic body awareness, and peaceful visualization, this exercise works quickly to lower your heart rate and ease mental fatigue. Whether you are dealing with midday work stress, struggling to wind down for sleep, or just need a quiet moment to yourself, this practice will help you anchor your mind and restore a sense of calm.' }
             ]);
@@ -337,16 +382,7 @@ export function HomeDashboard({ userId, userName, onCheckIn, onViewAiInsights, o
               </Card>
             ) : (
               recommendedContent.map((item, idx) => {
-                let IconComponent = Brain; 
-                let gradientClass = "from-[var(--muted-blue)] to-[var(--soft-mint)]";
-
-                if (item.category === 'Breathing') {
-                  IconComponent = Heart;
-                  gradientClass = "from-[var(--soft-purple)] to-[var(--soft-pink)]";
-                } else if (item.category === 'Sound Therapy' || item.category === 'Relaxation') {
-                  IconComponent = Moon;
-                  gradientClass = "from-[var(--lavender)] to-[var(--soft-purple)]";
-                }
+                const IconComponent = getRecommendedContentIcon(item.category);
 
                 const difficultyColor = 
                   item.difficulty === 'easy' ? 'bg-green-500/10 text-green-500 border-none' :
@@ -379,20 +415,40 @@ export function HomeDashboard({ userId, userName, onCheckIn, onViewAiInsights, o
                     }}
                   >
                     <div className="flex items-center gap-4">
-                      <div className={`w-16 h-16 rounded-2xl bg-gradient-to-br ${gradientClass} flex items-center justify-center flex-shrink-0`}>
-                        <IconComponent className="w-7 h-7 text-white" />
-                      </div>
-                      
-                      <div className="flex-1 min-w-0">
-                          <div className="mb-1">
-                            <span className="inline-block px-2.5 py-0.5 rounded-full bg-[var(--soft-purple)]/20 text-[var(--lavender)] text-xs font-medium">
-                              {item.duration || '5 min'}
-                            </span>
-                          </div>
-                        <h4 className="mt-1.5 text-sm font-medium text-foreground truncate">{item.title}</h4>
-                        <p className="text-xs text-muted-foreground line-clamp-1">{item.description}</p>
-                      </div>
-                    </div>
+  <div
+    className="w-20 h-20 rounded-2xl flex items-center justify-center flex-shrink-0 overflow-hidden"
+    style={{
+      background:
+        item.thumbnailType === 'image' && item.thumbnailImage
+          ? `url(${item.thumbnailImage}) center/cover`
+          : item.thumbnailGradient || 'linear-gradient(135deg, var(--lavender), var(--soft-purple))'
+    }}
+  >
+    {item.thumbnailType !== 'image' && (
+      <IconComponent className="w-8 h-8 text-white" />
+    )}
+  </div>
+
+  <div className="flex-1 min-w-0">
+    <div className="flex items-center gap-2 mb-2">
+      <Badge className="bg-[var(--soft-purple)]/20 text-[var(--lavender)] border-none">
+        {formatRecommendedDuration(item.duration)}
+      </Badge>
+
+      <Badge className="bg-rose-500/10 text-rose-500 border-none">
+        {formatRecommendedDifficulty(item.difficulty)}
+      </Badge>
+    </div>
+
+    <h4 className="text-base font-medium text-foreground line-clamp-1">
+      {item.title}
+    </h4>
+
+    <p className="text-sm text-muted-foreground line-clamp-1">
+      {item.description}
+    </p>
+  </div>
+</div>
                   </Card>
                 );
               })
@@ -401,13 +457,30 @@ export function HomeDashboard({ userId, userName, onCheckIn, onViewAiInsights, o
         </motion.div>
       </div>
       {dashboardSelectedContent && (
-        <ContentDetail
-          content={dashboardSelectedContent}
-          onClose={() => setDashboardSelectedContent(null)}
-          moreFromTherapist={[]} // Pustimo prazno ali naložimo naknadno
-          onOpenContent={(novaVsebina) => setDashboardSelectedContent(novaVsebina)}
-        />
-      )}
+  <ContentDetail
+    key={dashboardSelectedContent.id}
+    content={dashboardSelectedContent}
+    onClose={() => {
+      const previousContent = dashboardContentHistory[dashboardContentHistory.length - 1];
+
+      if (previousContent) {
+        setDashboardContentHistory((prevHistory) => prevHistory.slice(0, -1));
+        setDashboardSelectedContent(previousContent);
+        return;
+      }
+
+      setDashboardSelectedContent(null);
+    }}
+    moreFromTherapist={[]}
+    onOpenContent={(newContent) => {
+      setDashboardContentHistory((prevHistory) => [...prevHistory, dashboardSelectedContent]);
+      setDashboardSelectedContent(newContent);
+    }}
+    onViewTherapist={(therapistId) => {
+  onViewTherapist?.(therapistId, dashboardSelectedContent);
+}}
+  />
+)}
     </div>
   );
 }

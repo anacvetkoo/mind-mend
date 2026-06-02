@@ -36,7 +36,7 @@ import { SavedContentScreen } from './components/screens/SavedContentScreen';
 import { CompletedContentScreen } from './components/screens/CompletedContentScreen';
 import type { TherapistAvailability } from './types/appointments';
 import { saveCheckIn } from './utils/checkInUtils';
-import { onAuthChange, logout } from './services/auth';
+import { onAuthChange, logout, loginWithGoogleCredential } from './services/auth';
 import { getUserDocument, updateUserDisplayName, updateTherapistProfile, updateTherapistAvailability, getTherapistAvailability, getUserDarkMode, updateUserDarkMode, getUserNotificationsEnabled, updateUserNotificationsEnabled, getUserBiometricAuthEnabled, updateUserBiometricAuthEnabled } from './services/users';
 import { completeUserOnboarding } from './services/onboarding';
 import { getAuth } from 'firebase/auth';
@@ -126,27 +126,26 @@ export default function App() {
   useEffect(() => {
     let isFirstLoad = true;
 
-    // Preveri Google redirect result
-    const checkRedirect = async () => {
+    // Prejmi Google ID token od Expo native sloja in se prijavi
+    const handleNativeMessage = async (event: MessageEvent) => {
       try {
-        const { getRedirectResult } = await import('firebase/auth');
-        const { auth } = await import('./services/firebaseConfig');
-        const result = await getRedirectResult(auth);
-        if (result?.user) {
-          const userDoc = await getUserDocument(result.user.uid);
-          if (!userDoc) {
-            const { createUserDocument } = await import('./services/users');
-            await createUserDocument(result.user.uid, {
-              email: result.user.email ?? '',
-              displayName: result.user.displayName ?? '',
-            });
-          }
+        const data = typeof event.data === 'string' ? JSON.parse(event.data) : event.data;
+
+        if (data?.type === 'GOOGLE_SIGN_IN_RESULT') {
+          const { loginWithGoogleCredential } = await import('./services/auth');
+          const role = (data.role as UserRole) ?? 'user';
+          await loginWithGoogleCredential(data.idToken, role);
+        }
+
+        if (data?.type === 'GOOGLE_SIGN_IN_ERROR') {
+          console.warn('Google Sign-In failed on native side:', data.error);
         }
       } catch (e) {
-        console.log('No redirect result');
+        // Ignoriraj sporočila ki niso JSON ali niso naša
       }
     };
-    checkRedirect();
+
+    window.addEventListener('message', handleNativeMessage);
 
     const unsubscribe = onAuthChange(async (firebaseUser) => {
       if (!isFirstLoad) return;
@@ -224,7 +223,10 @@ export default function App() {
       }
     });
 
-    return () => unsubscribe();
+    return () => {
+      unsubscribe();
+      window.removeEventListener('message', handleNativeMessage);
+    };
   }, []);
 
   useEffect(() => {
@@ -1051,15 +1053,19 @@ const handleQuestionnaireComplete = async (data: any) => {
         <>
           {currentScreen === 'home' && (
             <HomeDashboard
-              userId={getAuth().currentUser?.uid || ""}
-              userName={userData.name}
-              onCheckIn={() => setShowDailyCheckIn(true)}
-              onViewAiInsights={() => setCurrentScreen('ai-insights')}
-              onFindTherapist={() => setCurrentScreen('therapists')}
-              onViewAppointments={() => setCurrentScreen('appointments')}
-              onViewNotifications={() => setCurrentScreen('notifications')}
-              onTabChange={handleTabChange}
-            />
+  userId={getAuth().currentUser?.uid || ""}
+  userName={userData.name}
+  onCheckIn={() => setShowDailyCheckIn(true)}
+  onViewAiInsights={() => setCurrentScreen('ai-insights')}
+  onFindTherapist={() => setCurrentScreen('therapists')}
+  onViewAppointments={() => setCurrentScreen('appointments')}
+  onViewNotifications={() => setCurrentScreen('notifications')}
+  onTabChange={handleTabChange}
+  onViewTherapist={(therapistId, previousContent) => {
+  setContentBeforeTherapistProfile(previousContent);
+  setSelectedTherapistId(therapistId);
+}}
+/>
           )}
           {currentScreen === 'journal' && (
             <JournalHistory onSelectCheckIn={(checkIn) => setSelectedCheckIn(checkIn)} />
