@@ -190,8 +190,7 @@ export default function App() {
     <SafeAreaView style={styles.container}>
       <StatusBar barStyle="dark-content" backgroundColor="#FAFAFA" />
       <WebView
-        ref={webViewRef}
-        source={{ uri: WEB_APP_URL }}
+        source={{ uri: 'https://mindmend-a8839.web.app' }}
         style={styles.webview}
         javaScriptEnabled
         domStorageEnabled
