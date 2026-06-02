@@ -14,7 +14,9 @@ import {
   getLibraryContent,
   getMoreContentFromTherapist,
   type LibraryContentItem,
-  incrementContentViews
+  incrementContentViews,
+  formatContentDuration,
+  formatContentDurationFromSeconds
 } from '../../services/content';
 import { BottomNav } from '../navigation/BottomNav';
 import type { UserRole } from './AuthScreen';
@@ -117,11 +119,11 @@ const formatPlayerTime = (seconds: number) => {
 };
 
 const getDuration = () => {
-  if (getContentType() === 'steps') {
-    return activeContent.duration || '';
+  if (mediaDuration) {
+    return formatContentDurationFromSeconds(Number(mediaDuration));
   }
 
-  return mediaDuration || activeContent.duration || '';
+  return formatContentDuration(activeContent.duration);
 };
 
 const getCreatedAtText = () => {

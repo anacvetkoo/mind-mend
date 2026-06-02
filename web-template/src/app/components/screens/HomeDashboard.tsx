@@ -11,7 +11,7 @@ import { generateAIWellnessTips } from '../../services/gemini';
 import { collection, doc, getDoc, getDocs } from 'firebase/firestore';
 import { db } from '../../services/firebaseConfig.js';
 import { ContentDetail } from './ContentDetail';
-import { getLibraryContent, type LibraryContentItem } from '../../services/content';
+import { getLibraryContent, type LibraryContentItem, formatContentDuration } from '../../services/content';
 
 interface HomeDashboardProps {
   userId: string;
@@ -68,14 +68,7 @@ const currentHour = new Date().getHours();
 };
 
 const formatRecommendedDuration = (duration?: string | number) => {
-  if (!duration) return '1 min';
-
-  const durationText = String(duration).trim();
-
-  if (!durationText) return '1 min';
-  if (durationText.toLowerCase().includes('min')) return durationText;
-
-  return `${durationText} min`;
+  return formatContentDuration(duration);
 };
 
 const formatRecommendedDifficulty = (difficulty?: string) => {
