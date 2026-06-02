@@ -115,6 +115,7 @@ export function ContentLibrary({
   const [showTodayOnly, setShowTodayOnly] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
   const [isLoading, setIsLoading] = useState(true);
+  const [hasLoadedContentLibrary, setHasLoadedContentLibrary] = useState(false);
   const [mediaDurations, setMediaDurations] = useState<Record<string, string>>({});
   const [likedContentIds, setLikedContentIds] = useState<string[]>([]);
   const [savedContentIds, setSavedContentIds] = useState<string[]>([]);
@@ -133,6 +134,7 @@ export function ContentLibrary({
         console.error('Error loading content library:', error);
       } finally {
         setIsLoading(false);
+        setHasLoadedContentLibrary(true);
       }
     };
 
@@ -668,6 +670,19 @@ const renderContinueContentCard = ({
       }}
       initialProgress={selectedContentProgress}
     />
+  );
+}
+
+if (!hasLoadedContentLibrary) {
+  return (
+    <div className="min-h-screen bg-background flex items-center justify-center px-6">
+      <div className="text-center">
+        <div className="w-16 h-16 rounded-full bg-gradient-to-br from-[var(--lavender)] to-[var(--soft-purple)] mx-auto mb-4 animate-pulse" />
+        <p className="text-sm text-muted-foreground">
+          Loading your content...
+        </p>
+      </div>
+    </div>
   );
 }
 
