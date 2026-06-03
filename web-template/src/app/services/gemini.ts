@@ -214,7 +214,7 @@ export async function generateAIRecommendations(checkIns: any[], userId: string,
 //prepoznavanje prožilcev
 export async function generateAITriggers(pastLogs: any[]): Promise<{ trigger: string; frequency: number; stressImpact: 'High' | 'Medium' | 'Low'; context: string }[]> {
   const fallbackTriggers = [
-    { trigger: "Sestanki & Roki", frequency: 1, stressImpact: 'Medium' as const, context: "Vzorci kažejo rahel dvig nemira pred večjimi obveznostmi." }
+    { trigger: "Meetings & Deadlines", frequency: 1, stressImpact: 'Medium' as const, context: "Patterns show a slight increase in anxiety before major obligations." }
   ];
   //zadnjih 10 dnevnikov - mby daj pol manj če bo predolgo trajalo
   const formattedLogs = (pastLogs || []).slice(0, 10).map((log, index) => `
