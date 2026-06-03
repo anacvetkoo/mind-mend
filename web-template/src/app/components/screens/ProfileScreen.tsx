@@ -67,24 +67,24 @@ export function ProfileScreen({ onLogout, userName = 'Alex', userRole = 'User', 
   const therapistProfile = therapistProfileProp ?? null;
 
   const handleConnectStripe = async () => {
-  try {
-    const url = await createStripeConnectAccount();
+    try {
+      const url = await createStripeConnectAccount();
 
-    if ((window as any).ReactNativeWebView) {
-      (window as any).ReactNativeWebView.postMessage(
-        JSON.stringify({
-          type: 'openURL',
-          url,
-        })
-      );
-      return;
+      if ((window as any).ReactNativeWebView) {
+        (window as any).ReactNativeWebView.postMessage(
+          JSON.stringify({
+            type: 'openURL',
+            url,
+          })
+        );
+        return;
+      }
+
+      window.location.href = url;
+    } catch (error) {
+      console.error('Failed to connect Stripe:', error);
     }
-
-    window.location.href = url;
-  } catch (error) {
-    console.error('Failed to connect Stripe:', error);
-  }
-};
+  };
 
   const [notificationPermission, setNotificationPermission] = useState<NotificationPermission>(() => {
     if ('Notification' in window) return Notification.permission;
@@ -290,44 +290,44 @@ export function ProfileScreen({ onLogout, userName = 'Alex', userRole = 'User', 
               Edit Profile
             </button>
           )}
-          
+
         </motion.div>
 
         {!isTherapist && (
-  <motion.div
-    initial={{ opacity: 0, y: 20 }}
-    animate={{ opacity: 1, y: 0 }}
-    transition={{ delay: 0.1 }}
-    className="grid grid-cols-3 gap-3 mb-6"
-  >
-    <button
-      onClick={onNavigateToLikedContent}
-      className="bg-card rounded-2xl p-4 shadow-md hover:shadow-xl transition-all border-2 border-transparent hover:border-[var(--lavender)]"
-    >
-      <Heart className="w-6 h-6 text-red-500 mx-auto mb-2" />
-      <div className="text-sm text-foreground mb-1">Liked</div>
-      <ChevronRight className="w-4 h-4 text-muted-foreground mx-auto" />
-    </button>
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.1 }}
+            className="grid grid-cols-3 gap-3 mb-6"
+          >
+            <button
+              onClick={onNavigateToLikedContent}
+              className="bg-card rounded-2xl p-4 shadow-md hover:shadow-xl transition-all border-2 border-transparent hover:border-[var(--lavender)]"
+            >
+              <Heart className="w-6 h-6 text-red-500 mx-auto mb-2" />
+              <div className="text-sm text-foreground mb-1">Liked</div>
+              <ChevronRight className="w-4 h-4 text-muted-foreground mx-auto" />
+            </button>
 
-    <button
-      onClick={onNavigateToSavedContent}
-      className="bg-card rounded-2xl p-4 shadow-md hover:shadow-xl transition-all border-2 border-transparent hover:border-[var(--lavender)]"
-    >
-      <Bookmark className="w-6 h-6 text-[var(--lavender)] mx-auto mb-2" />
-      <div className="text-sm text-foreground mb-1">Saved</div>
-      <ChevronRight className="w-4 h-4 text-muted-foreground mx-auto" />
-    </button>
+            <button
+              onClick={onNavigateToSavedContent}
+              className="bg-card rounded-2xl p-4 shadow-md hover:shadow-xl transition-all border-2 border-transparent hover:border-[var(--lavender)]"
+            >
+              <Bookmark className="w-6 h-6 text-[var(--lavender)] mx-auto mb-2" />
+              <div className="text-sm text-foreground mb-1">Saved</div>
+              <ChevronRight className="w-4 h-4 text-muted-foreground mx-auto" />
+            </button>
 
-    <button
-      onClick={onNavigateToCompletedContent}
-      className="bg-card rounded-2xl p-4 shadow-md hover:shadow-xl transition-all border-2 border-transparent hover:border-[var(--lavender)]"
-    >
-      <CheckCircle className="w-6 h-6 text-[var(--soft-mint)] mx-auto mb-2" />
-      <div className="text-sm text-foreground mb-1">Done</div>
-      <ChevronRight className="w-4 h-4 text-muted-foreground mx-auto" />
-    </button>
-  </motion.div>
-)}
+            <button
+              onClick={onNavigateToCompletedContent}
+              className="bg-card rounded-2xl p-4 shadow-md hover:shadow-xl transition-all border-2 border-transparent hover:border-[var(--lavender)]"
+            >
+              <CheckCircle className="w-6 h-6 text-[var(--soft-mint)] mx-auto mb-2" />
+              <div className="text-sm text-foreground mb-1">Done</div>
+              <ChevronRight className="w-4 h-4 text-muted-foreground mx-auto" />
+            </button>
+          </motion.div>
+        )}
 
         {isTherapist && (
           <motion.div
@@ -411,46 +411,46 @@ export function ProfileScreen({ onLogout, userName = 'Alex', userRole = 'User', 
         )}
 
         {isTherapist && (
-  <motion.div
-    initial={{ opacity: 0, y: 20 }}
-    animate={{ opacity: 1, y: 0 }}
-    transition={{ delay: 0.2 }}
-    className="mb-6"
-  >
-    <div className="flex items-center justify-between mb-4">
-      <h3 className="text-xl text-foreground">Stripe Payouts</h3>
-    </div>
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.2 }}
+            className="mb-6"
+          >
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-xl text-foreground">Stripe Payouts</h3>
+            </div>
 
-    <Card className="p-5">
-      <div className="flex items-start gap-3 mb-4">
-        <ShieldCheck className="w-5 h-5 text-[var(--lavender)] mt-0.5" />
-        <div>
-          <p className="text-foreground mb-1">
-            {therapistProfile?.stripeAccountStatus === 'verified'
-              ? 'Stripe account connected'
-              : 'Connect your Stripe account'}
-          </p>
-          <p className="text-sm text-muted-foreground">
-            {therapistProfile?.stripeAccountStatus === 'verified'
-              ? 'You can receive payouts after completed sessions.'
-              : 'Connect Stripe to receive payouts after completed sessions.'}
-          </p>
-        </div>
-      </div>
+            <Card className="p-5">
+              <div className="flex items-start gap-3 mb-4">
+                <ShieldCheck className="w-5 h-5 text-[var(--lavender)] mt-0.5" />
+                <div>
+                  <p className="text-foreground mb-1">
+                    {therapistProfile?.stripeAccountStatus === 'verified'
+                      ? 'Stripe account connected'
+                      : 'Connect your Stripe account'}
+                  </p>
+                  <p className="text-sm text-muted-foreground">
+                    {therapistProfile?.stripeAccountStatus === 'verified'
+                      ? 'You can receive payouts after completed sessions.'
+                      : 'Connect Stripe to receive payouts after completed sessions.'}
+                  </p>
+                </div>
+              </div>
 
-      {therapistProfile?.stripeAccountStatus !== 'verified' && (
-        <Button
-  variant="primary"
-  onClick={handleConnectStripe}
-  disabled={isConnectingStripe}
-  className="w-full"
->
-  {isConnectingStripe ? 'Connecting...' : 'Connect Stripe account'}
-</Button>
-      )}
-    </Card>
-  </motion.div>
-)}
+              {therapistProfile?.stripeAccountStatus !== 'verified' && (
+                <Button
+                  variant="primary"
+                  onClick={handleConnectStripe}
+                  disabled={isConnectingStripe}
+                  className="w-full"
+                >
+                  {isConnectingStripe ? 'Connecting...' : 'Connect Stripe account'}
+                </Button>
+              )}
+            </Card>
+          </motion.div>
+        )}
 
         <motion.div
           initial={{ opacity: 0, y: 20 }}
@@ -499,8 +499,8 @@ export function ProfileScreen({ onLogout, userName = 'Alex', userRole = 'User', 
           </Card>
         </motion.div>
 
-         {/* Terms and conditions in privacy policy */}
-         <motion.div
+       {/* Terms and conditions in privacy policy */}
+       <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.4 }}
@@ -541,48 +541,48 @@ export function ProfileScreen({ onLogout, userName = 'Alex', userRole = 'User', 
           transition={{ delay: 0.3 }}
         >
 
-          
-        <Button
-          variant="outline"
-          className="w-full text-[var(--destructive)] border-[var(--destructive)]"
-          onClick={() => setShowLogoutConfirm(true)}
-        >
-          <LogOut className="w-5 h-5 mr-2" />
-          Log Out
-        </Button>
 
-        {/* Logout confirmation popup */}
-        {showLogoutConfirm && (
-          <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-6">
-            <motion.div
-              initial={{ opacity: 0, scale: 0.95 }}
-              animate={{ opacity: 1, scale: 1 }}
-              className="bg-card rounded-3xl p-6 w-full max-w-sm shadow-2xl"
-            >
-              <h2 className="text-xl text-foreground mb-2 text-center">Log Out</h2>
-              <p className="text-muted-foreground text-center mb-6">
-                Are you sure you want to log out?
-              </p>
-              <div className="flex gap-3">
-              <button
-                onClick={() => setShowLogoutConfirm(false)}
-                className="flex-1 py-3 rounded-2xl border-2 border-[var(--lavender)] text-[var(--lavender)] hover:bg-[var(--lavender)]/10 transition-colors"
+          <Button
+            variant="outline"
+            className="w-full text-[var(--destructive)] border-[var(--destructive)]"
+            onClick={() => setShowLogoutConfirm(true)}
+          >
+            <LogOut className="w-5 h-5 mr-2" />
+            Log Out
+          </Button>
+
+          {/* Logout confirmation popup */}
+          {showLogoutConfirm && (
+            <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-6">
+              <motion.div
+                initial={{ opacity: 0, scale: 0.95 }}
+                animate={{ opacity: 1, scale: 1 }}
+                className="bg-card rounded-3xl p-6 w-full max-w-sm shadow-2xl"
               >
-                Cancel
-              </button>                
-              <button
-                onClick={() => {
-                  setShowLogoutConfirm(false);
-                  onLogout();
-                }}
-                className="flex-1 py-3 rounded-2xl bg-gradient-to-r from-[var(--lavender)] to-[var(--soft-purple)] text-white hover:opacity-90 transition-opacity"
-              >
-                Log Out
-              </button>
-              </div>
-            </motion.div>
-          </div>
-        )}          
+                <h2 className="text-xl text-foreground mb-2 text-center">Log Out</h2>
+                <p className="text-muted-foreground text-center mb-6">
+                  Are you sure you want to log out?
+                </p>
+                <div className="flex gap-3">
+                  <button
+                    onClick={() => setShowLogoutConfirm(false)}
+                    className="flex-1 py-3 rounded-2xl border-2 border-[var(--lavender)] text-[var(--lavender)] hover:bg-[var(--lavender)]/10 transition-colors"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    onClick={() => {
+                      setShowLogoutConfirm(false);
+                      onLogout();
+                    }}
+                    className="flex-1 py-3 rounded-2xl bg-gradient-to-r from-[var(--lavender)] to-[var(--soft-purple)] text-white hover:opacity-90 transition-opacity"
+                  >
+                    Log Out
+                  </button>
+                </div>
+              </motion.div>
+            </div>
+          )}
         </motion.div>
 
 

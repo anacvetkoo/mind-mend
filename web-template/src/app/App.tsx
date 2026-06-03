@@ -1276,6 +1276,12 @@ const handleQuestionnaireComplete = async (data: any) => {
             />
           )}
           {currentScreen === 'notifications' && <NotificationsScreen onClose={() => setCurrentScreen('dashboard')} />}
+          {currentScreen === 'privacy-policy' && (
+            <PrivacyPolicyPage onBack={() => setCurrentScreen('profile')} />
+          )}
+          {currentScreen === 'terms-conditions' && (
+            <TermsConditionsPage onBack={() => setCurrentScreen('profile')} />
+          )}
           {currentScreen === 'profile' && (
             <ProfileScreen
               onLogout={handleLogout}
@@ -1292,6 +1298,8 @@ const handleQuestionnaireComplete = async (data: any) => {
               onNavigateToCompletedContent={() => setShowCompletedContent(true)}
               onEditProfile={() => setShowTherapistProfileEdit(true)}
               therapistProfileProp={therapistProfileData}
+              onViewPrivacy={() => setCurrentScreen('privacy-policy')}
+              onViewTerms={() => setCurrentScreen('terms-conditions')}
             />
           )}
         </>
