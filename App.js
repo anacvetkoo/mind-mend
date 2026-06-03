@@ -14,6 +14,9 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import * as LocalAuthentication from "expo-local-authentication";
 import * as Google from "expo-auth-session/providers/google";
 import * as WebBrowser from "expo-web-browser";
+// 🔥 Spremenjeno v /legacy uvoz, da TypeScript ne javlja napak in koda deluje stabilno:
+import * as FileSystem from 'expo-file-system/legacy';
+import * as Sharing from 'expo-sharing';
 
 // Potrebno za pravilno zapiranje browser popup-a po OAuth
 WebBrowser.maybeCompleteAuthSession();
@@ -21,11 +24,6 @@ WebBrowser.maybeCompleteAuthSession();
 const WEB_APP_URL = process.env.EXPO_PUBLIC_WEB_APP_URL;
 const BIOMETRIC_AUTH_KEY = "mindmendBiometricAuthEnabled";
 
-// ─── Google OAuth Client ID-ji ────────────────────────────────────────────────
-// Najdeš jih v: Google Cloud Console → APIs & Services → Credentials
-// ANDROID_CLIENT_ID: tip "Android" (package name mora biti enak kot v app.json)
-// IOS_CLIENT_ID: tip "iOS" (bundle ID mora biti enak kot v app.json)
-// WEB_CLIENT_ID: obstoječi web client ID iz Firebase projekta
 const ANDROID_CLIENT_ID = "163326676496-r2uh0s7ooi6pmv3sdp3b6r04r7a8lbek.apps.googleusercontent.com";
 const IOS_CLIENT_ID = "163326676496-r2uh0s7ooi6pmv3sdp3b6r04r7a8lbek.apps.googleusercontent.com";
 const WEB_CLIENT_ID = "163326676496-r2uh0s7ooi6pmv3sdp3b6r04r7a8lbek.apps.googleusercontent.com";
@@ -152,14 +150,33 @@ export default function App() {
       }
 
       if ((data.type === "openURL" || data.type === "openExternalUrl") && data.url) {
-  const canOpen = await Linking.canOpenURL(data.url);
+        const canOpen = await Linking.canOpenURL(data.url);
+        if (canOpen) {
+          await Linking.openURL(data.url);
+        }
+        return;
+      }
 
-  if (canOpen) {
-    await Linking.openURL(data.url);
-  }
+      // shranjevanje pdf
+      if (data.type === "downloadPDF") {
+        const fileUri = `${FileSystem.documentDirectory}${data.fileName}`;
+        
+        await FileSystem.writeAsStringAsync(fileUri, data.html, {
+          encoding: FileSystem.EncodingType.UTF8
+        });
 
-  return;
-}
+        if (await Sharing.isAvailableAsync()) {
+          await Sharing.shareAsync(fileUri, {
+            mimeType: 'text/html',
+            dialogTitle: 'Save Cognitive Report',
+            UTI: 'public.html'
+          });
+        } else {
+          alert("Sharing is not available on this device.");
+        }
+        return;
+      }
+
     } catch (error) {
       console.log("Invalid WebView message:", error);
     }
