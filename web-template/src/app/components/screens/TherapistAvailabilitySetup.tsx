@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { motion } from 'motion/react';
 import { ArrowLeft, MessageCircle, Phone, Video, MapPin } from 'lucide-react';
-import type { TherapistAvailability, AppointmentType, DayOfWeek, WorkingHours } from '../../types/appointments';
+import type { TherapistAvailability, AppointmentType, DayOfWeek, WorkingHours, SessionPricePerType } from '../../types/appointments';
 
 interface TherapistAvailabilitySetupProps {
   onClose: () => void;
@@ -11,6 +11,7 @@ interface TherapistAvailabilitySetupProps {
 
 const DAYS: DayOfWeek[] = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
 const DURATIONS = [30, 45, 50, 60, 90, 120];
+const TOTAL_STEPS = 4;
 
 export function TherapistAvailabilitySetup({ onClose, existingAvailability, onSave }: TherapistAvailabilitySetupProps) {
   const [step, setStep] = useState(1);
@@ -29,6 +30,14 @@ export function TherapistAvailabilitySetup({ onClose, existingAvailability, onSa
   );
   const [inPersonAddress, setInPersonAddress] = useState(existingAvailability?.inPersonAddress || '');
   const [zoomLink, setZoomLink] = useState(existingAvailability?.zoomLink || '');
+  const [pricePerType, setPricePerType] = useState<SessionPricePerType>(
+    existingAvailability?.pricePerType ?? {
+      Chat: 60,
+      'Voice Call': 70,
+      'Video Call': 80,
+      'In Person': 90,
+    }
+  );
 
   const appointmentTypes: { type: AppointmentType; icon: typeof MessageCircle; label: string }[] = [
     { type: 'Chat', icon: MessageCircle, label: 'Chat' },
@@ -57,6 +66,11 @@ export function TherapistAvailabilitySetup({ onClose, existingAvailability, onSa
     }
   };
 
+  const isStep3Valid =
+    enabledTypes.length > 0 &&
+    (!enabledTypes.includes('In Person') || inPersonAddress.trim() !== '') &&
+    (!enabledTypes.includes('Video Call') || zoomLink.trim() !== '');
+
   const handleSave = () => {
     const availability: TherapistAvailability = {
       therapistId: 'current-therapist-id',
@@ -66,10 +80,19 @@ export function TherapistAvailabilitySetup({ onClose, existingAvailability, onSa
       enabledTypes,
       inPersonAddress: enabledTypes.includes('In Person') ? inPersonAddress : '',
       zoomLink: enabledTypes.includes('Video Call') ? zoomLink : '',
+      pricePerType: {
+        Chat: pricePerType['Chat'] ?? 60,
+        'Voice Call': pricePerType['Voice Call'] ?? 70,
+        'Video Call': pricePerType['Video Call'] ?? 80,
+        'In Person': pricePerType['In Person'] ?? 90,
+      },
       isSetupComplete: true
     };
     onSave(availability);
   };
+
+  // Only the types the therapist selected
+  const selectedTypes = appointmentTypes.filter(({ type }) => enabledTypes.includes(type));
 
   return (
     <div className="fixed inset-0 bg-background z-50 overflow-y-auto overflow-x-hidden">
@@ -86,11 +109,13 @@ export function TherapistAvailabilitySetup({ onClose, existingAvailability, onSa
             <h1 className="text-xl text-foreground truncate">
               {existingAvailability ? 'Edit Availability' : 'Set Up Availability'}
             </h1>
-            <p className="text-xs text-muted-foreground">Step {step} of 3</p>
+            <p className="text-xs text-muted-foreground">Step {step} of {TOTAL_STEPS}</p>
           </div>
         </div>
 
         <div className="px-4 pt-6">
+
+          {/* ── Step 1: Working Hours ─────────────────────────────── */}
           {step === 1 && (
             <motion.div
               initial={{ opacity: 0, x: 20 }}
@@ -116,7 +141,6 @@ export function TherapistAvailabilitySetup({ onClose, existingAvailability, onSa
                         }`} />
                       </button>
                     </div>
-
                     {enabled && (
                       <div className="grid grid-cols-2 gap-2">
                         <div className="min-w-0">
@@ -155,6 +179,7 @@ export function TherapistAvailabilitySetup({ onClose, existingAvailability, onSa
             </motion.div>
           )}
 
+          {/* ── Step 2: Session Settings ──────────────────────────── */}
           {step === 2 && (
             <motion.div
               initial={{ opacity: 0, x: 20 }}
@@ -165,9 +190,7 @@ export function TherapistAvailabilitySetup({ onClose, existingAvailability, onSa
               <p className="text-sm text-muted-foreground mb-6">Configure appointment timing</p>
 
               <div className="mb-6">
-                <label className="block text-sm text-foreground mb-3">
-                  Appointment Duration
-                </label>
+                <label className="block text-sm text-foreground mb-3">Appointment Duration</label>
                 <div className="grid grid-cols-3 gap-2">
                   {DURATIONS.map(duration => (
                     <button
@@ -186,9 +209,7 @@ export function TherapistAvailabilitySetup({ onClose, existingAvailability, onSa
               </div>
 
               <div className="mb-6">
-                <label className="block text-sm text-foreground mb-3">
-                  Break Between Appointments
-                </label>
+                <label className="block text-sm text-foreground mb-3">Break Between Appointments</label>
                 <div className="grid grid-cols-4 gap-2">
                   {[0, 5, 10, 15].map(duration => (
                     <button
@@ -225,6 +246,7 @@ export function TherapistAvailabilitySetup({ onClose, existingAvailability, onSa
             </motion.div>
           )}
 
+          {/* ── Step 3: Appointment Types ─────────────────────────── */}
           {step === 3 && (
             <motion.div
               initial={{ opacity: 0, x: 20 }}
@@ -304,8 +326,66 @@ export function TherapistAvailabilitySetup({ onClose, existingAvailability, onSa
                 </motion.button>
                 <motion.button
                   whileTap={{ scale: 0.98 }}
+                  onClick={() => setStep(4)}
+                  disabled={!isStep3Valid}
+                  className="flex-1 py-4 rounded-2xl bg-gradient-to-r from-[var(--lavender)] to-[var(--soft-purple)] text-white disabled:opacity-50"
+                >
+                  Continue
+                </motion.button>
+              </div>
+            </motion.div>
+          )}
+
+          {/* ── Step 4: Session Prices ────────────────────────────── */}
+          {step === 4 && (
+            <motion.div
+              initial={{ opacity: 0, x: 20 }}
+              animate={{ opacity: 1, x: 0 }}
+              exit={{ opacity: 0, x: -20 }}
+            >
+              <h2 className="text-2xl mb-2 text-foreground">Session Prices</h2>
+              <p className="text-sm text-muted-foreground mb-1">
+                Set your base payout for each session type
+              </p>
+              <p className="text-xs text-muted-foreground mb-6">
+                Clients will pay slightly more due to a platform fee
+              </p>
+
+              <div className="space-y-3 mb-6">
+                {selectedTypes.map(({ type, icon: Icon, label }) => (
+                  <div key={type} className="bg-card border-2 border-[var(--border)] rounded-2xl p-4 flex items-center gap-3">
+                    <Icon className="w-5 h-5 text-[var(--lavender)] shrink-0" />
+                    <span className="flex-1 text-foreground text-sm">{label}</span>
+                    <div className="relative w-28 shrink-0">
+                      <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground text-sm">€</span>
+                      <input
+                        type="number"
+                        min={0}
+                        step={5}
+                        value={pricePerType[type] ?? 0}
+                        onChange={(e) => setPricePerType(prev => ({
+                          ...prev,
+                          [type]: Math.max(0, Number(e.target.value))
+                        }) as SessionPricePerType)}
+                        className="w-full pl-7 pr-3 py-2 rounded-xl bg-[var(--input-background)] border-2 border-[var(--border)] text-foreground text-sm text-right"
+                      />
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              <div className="flex gap-3">
+                <motion.button
+                  whileTap={{ scale: 0.98 }}
+                  onClick={() => setStep(3)}
+                  className="flex-1 py-4 rounded-2xl bg-card border-2 border-[var(--border)] text-foreground"
+                >
+                  Back
+                </motion.button>
+                <motion.button
+                  whileTap={{ scale: 0.98 }}
                   onClick={handleSave}
-                  disabled={enabledTypes.length === 0 || (enabledTypes.includes('In Person') && !inPersonAddress.trim()) || (enabledTypes.includes('Video Call') && !zoomLink.trim())}
+                  disabled={selectedTypes.some(({ type }) => !pricePerType[type] || pricePerType[type] <= 0)}
                   className="flex-1 py-4 rounded-2xl bg-gradient-to-r from-[var(--lavender)] to-[var(--soft-purple)] text-white disabled:opacity-50"
                 >
                   Save Availability
@@ -313,6 +393,7 @@ export function TherapistAvailabilitySetup({ onClose, existingAvailability, onSa
               </div>
             </motion.div>
           )}
+
         </div>
       </div>
     </div>

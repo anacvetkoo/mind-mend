@@ -29,7 +29,7 @@ import {
 import type { TherapistAvailability } from '../../types/appointments';
 import { TherapistAvailabilitySetup } from './TherapistAvailabilitySetup';
 import { BlockedTimeManagement } from './BlockedTimeManagement';
-import { createStripeConnectAccount } from '../../services/payments';
+import { createStripeConnectAccount, refreshStripeConnectStatus } from '../../services/payments';
 
 interface ProfileScreenProps {
   onLogout: () => void;
@@ -49,9 +49,10 @@ interface ProfileScreenProps {
   onNavigateToCompletedContent?: () => void;
   onViewPrivacy?: () => void;
   onViewTerms?: () => void;
+  onStripeStatusRefresh?: () => Promise<void>;
 }
 
-export function ProfileScreen({ onLogout, userName = 'Alex', userRole = 'User', darkMode = false, onToggleDarkMode, notificationsEnabled = false, onToggleNotifications, biometricAuthEnabled = false, onToggleBiometricAuth, onNavigateToLikedContent, onNavigateToSavedContent, onEditProfile, onUpdateName, therapistProfileProp, onNavigateToCompletedContent, onViewPrivacy, onViewTerms }: ProfileScreenProps) {
+export function ProfileScreen({ onLogout, userName = 'Alex', userRole = 'User', darkMode = false, onToggleDarkMode, notificationsEnabled = false, onToggleNotifications, biometricAuthEnabled = false, onToggleBiometricAuth, onNavigateToLikedContent, onNavigateToSavedContent, onEditProfile, onUpdateName, therapistProfileProp, onNavigateToCompletedContent, onViewPrivacy, onViewTerms, onStripeStatusRefresh }: ProfileScreenProps) {
   const [availability, setAvailability] = useState<TherapistAvailability | null>(null);
   const [showAvailabilitySetup, setShowAvailabilitySetup] = useState(false);
   const [showBlockedTimeManagement, setShowBlockedTimeManagement] = useState(false);
@@ -65,6 +66,31 @@ export function ProfileScreen({ onLogout, userName = 'Alex', userRole = 'User', 
 
   const isTherapist = userRole === 'Therapist';
   const therapistProfile = therapistProfileProp ?? null;
+  const hasConnectedStripeAccount = Boolean(therapistProfile?.stripeAccountId);
+const hasVerifiedStripeAccount =
+  therapistProfile?.stripeAccountStatus === 'verified';
+  useEffect(() => {
+  if (!isTherapist) return;
+
+  const isStripeReturn = window.location.pathname.includes('stripe-connect-return');
+
+  if (!isStripeReturn) return;
+
+  const handleStripeReturn = async () => {
+    try {
+      setIsConnectingStripe(true);
+      await refreshStripeConnectStatus();
+      await onStripeStatusRefresh?.();
+      window.history.replaceState({}, '', '/');
+    } catch (error) {
+      console.error('Failed to refresh Stripe status:', error);
+    } finally {
+      setIsConnectingStripe(false);
+    }
+  };
+
+  handleStripeReturn();
+}, [isTherapist, onStripeStatusRefresh]);
 
   const handleConnectStripe = async () => {
     try {
@@ -422,33 +448,35 @@ export function ProfileScreen({ onLogout, userName = 'Alex', userRole = 'User', 
             </div>
 
             <Card className="p-5">
-              <div className="flex items-start gap-3 mb-4">
-                <ShieldCheck className="w-5 h-5 text-[var(--lavender)] mt-0.5" />
-                <div>
-                  <p className="text-foreground mb-1">
-                    {therapistProfile?.stripeAccountStatus === 'verified'
-                      ? 'Stripe account connected'
-                      : 'Connect your Stripe account'}
-                  </p>
-                  <p className="text-sm text-muted-foreground">
-                    {therapistProfile?.stripeAccountStatus === 'verified'
-                      ? 'You can receive payouts after completed sessions.'
-                      : 'Connect Stripe to receive payouts after completed sessions.'}
-                  </p>
-                </div>
-              </div>
+  <div className="flex items-start gap-3 mb-4">
+    <ShieldCheck className="w-5 h-5 text-[var(--lavender)] mt-0.5" />
+    <div>
+      <p className="text-foreground mb-1">
+        {hasConnectedStripeAccount
+          ? 'Stripe account connected'
+          : 'Connect your Stripe account'}
+      </p>
+      <p className="text-sm text-muted-foreground">
+        {hasVerifiedStripeAccount
+          ? 'You can receive payouts after completed sessions.'
+          : hasConnectedStripeAccount
+            ? 'Your Stripe account is connected. Verification may still be pending.'
+            : 'Connect Stripe to receive payouts after completed sessions.'}
+      </p>
+    </div>
+  </div>
 
-              {therapistProfile?.stripeAccountStatus !== 'verified' && (
-                <Button
-                  variant="primary"
-                  onClick={handleConnectStripe}
-                  disabled={isConnectingStripe}
-                  className="w-full"
-                >
-                  {isConnectingStripe ? 'Connecting...' : 'Connect Stripe account'}
-                </Button>
-              )}
-            </Card>
+  {!hasConnectedStripeAccount && (
+    <Button
+      variant="primary"
+      onClick={handleConnectStripe}
+      disabled={isConnectingStripe}
+      className="w-full"
+    >
+      {isConnectingStripe ? 'Connecting...' : 'Connect Stripe account'}
+    </Button>
+  )}
+</Card>
           </motion.div>
         )}
 
