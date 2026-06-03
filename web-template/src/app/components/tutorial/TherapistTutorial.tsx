@@ -42,13 +42,13 @@ const tutorialSteps: TutorialStep[] = [
     targetSelector: '[data-tutorial="appointments-card"]'
   },
   {
-    id: 'messages',
-    title: 'Connect with Clients',
-    description: 'Communicate with your clients through secure messaging. Stay connected between sessions',
-    position: 'bottom',
-    targetSelector: '[data-tutorial="messages-tab"]',
-    highlightBottom: true
-  },
+  id: 'clients',
+  title: 'Client Files',
+  description: 'Access your client files, review client details, wellbeing updates, session history, and therapy notes in one secure place.',
+  position: 'bottom',
+  targetSelector: '[data-tutorial="clients-tab"]',
+  highlightBottom: true
+},
   {
     id: 'content',
     title: 'Share Your Content',
