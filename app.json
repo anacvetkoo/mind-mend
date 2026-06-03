@@ -4,7 +4,7 @@
     "slug": "mind-mend",
     "version": "1.0.0",
     "orientation": "portrait",
-    "icon": "./assets/mindmend_app_icon.png",
+    "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
     "newArchEnabled": true,
     "scheme": "mindmend",
