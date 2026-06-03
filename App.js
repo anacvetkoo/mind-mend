@@ -151,10 +151,15 @@ export default function App() {
         return;
       }
 
-      if (data.type === "openURL") {
-        await Linking.openURL(data.url);
-        return;
-      }
+      if ((data.type === "openURL" || data.type === "openExternalUrl") && data.url) {
+  const canOpen = await Linking.canOpenURL(data.url);
+
+  if (canOpen) {
+    await Linking.openURL(data.url);
+  }
+
+  return;
+}
     } catch (error) {
       console.log("Invalid WebView message:", error);
     }
@@ -190,6 +195,7 @@ export default function App() {
     <SafeAreaView style={styles.container}>
       <StatusBar barStyle="dark-content" backgroundColor="#FAFAFA" />
       <WebView
+        ref={webViewRef}
         source={{ uri: 'https://mindmend-a8839.web.app' }}
         style={styles.webview}
         javaScriptEnabled

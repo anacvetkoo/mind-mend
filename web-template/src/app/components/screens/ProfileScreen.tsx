@@ -61,6 +61,7 @@ export function ProfileScreen({ onLogout, userName = 'Alex', userRole = 'User', 
   const [userEmail, setUserEmail] = useState('');
   const [userPhotoURL, setUserPhotoURL] = useState('');
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
+  const [isConnectingStripe, setIsConnectingStripe] = useState(false);
 
   const isTherapist = userRole === 'Therapist';
   const therapistProfile = therapistProfileProp ?? null;
@@ -68,6 +69,17 @@ export function ProfileScreen({ onLogout, userName = 'Alex', userRole = 'User', 
   const handleConnectStripe = async () => {
   try {
     const url = await createStripeConnectAccount();
+
+    if ((window as any).ReactNativeWebView) {
+      (window as any).ReactNativeWebView.postMessage(
+        JSON.stringify({
+          type: 'openURL',
+          url,
+        })
+      );
+      return;
+    }
+
     window.location.href = url;
   } catch (error) {
     console.error('Failed to connect Stripe:', error);
@@ -428,12 +440,13 @@ export function ProfileScreen({ onLogout, userName = 'Alex', userRole = 'User', 
 
       {therapistProfile?.stripeAccountStatus !== 'verified' && (
         <Button
-          variant="primary"
-          onClick={handleConnectStripe}
-          className="w-full"
-        >
-          Connect Stripe account
-        </Button>
+  variant="primary"
+  onClick={handleConnectStripe}
+  disabled={isConnectingStripe}
+  className="w-full"
+>
+  {isConnectingStripe ? 'Connecting...' : 'Connect Stripe account'}
+</Button>
       )}
     </Card>
   </motion.div>
