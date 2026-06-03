@@ -25,12 +25,12 @@ formatContentDurationFromSeconds
 import {
   getUserContentInteractions,
   toggleLikedContent,
-  toggleSavedContent,
   getUserContentProgress,
   type ContentProgressItem,
   removeContentProgress
 } from '../../services/contentInteractions';
 import { db } from '../../services/firebaseConfig';
+import { SaveContentModal } from '../ui/SaveContentModal';
 
 type ContentType = 'all' | 'relaxation' | 'breathing' | 'sound';
 type SortOption = 'newest' | 'likes' | 'views';
@@ -120,6 +120,7 @@ export function ContentLibrary({
   const [likedContentIds, setLikedContentIds] = useState<string[]>([]);
   const [savedContentIds, setSavedContentIds] = useState<string[]>([]);
   const [contentProgressItems, setContentProgressItems] = useState<ContentProgressItem[]>([]);
+  const [saveModalContentId, setSaveModalContentId] = useState<string | null>(null);
   const resultsSectionRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
@@ -352,15 +353,15 @@ useEffect(() => {
   scrollToResults();
 };
 
-  const handleBookmark = async (contentId: string) => {
-  const isCurrentlySaved = savedContentIds.includes(contentId);
+  const handleBookmark = (contentId: string) => {
+  setSaveModalContentId(contentId);
+};
 
-  await toggleSavedContent(contentId, isCurrentlySaved);
-
+const handleSavedCollectionsChange = (contentId: string, isSaved: boolean) => {
   setSavedContentIds((previousIds) =>
-    isCurrentlySaved
-      ? previousIds.filter((id) => id !== contentId)
-      : [...previousIds, contentId]
+    isSaved
+      ? Array.from(new Set([...previousIds, contentId]))
+      : previousIds.filter((id) => id !== contentId)
   );
 };
 
@@ -914,6 +915,14 @@ if (!hasLoadedContentLibrary) {
           </div>
         )}
       </div>
+      {saveModalContentId && (
+  <SaveContentModal
+    contentId={saveModalContentId}
+    isOpen={Boolean(saveModalContentId)}
+    onClose={() => setSaveModalContentId(null)}
+    onSavedChange={(isSaved) => handleSavedCollectionsChange(saveModalContentId, isSaved)}
+  />
+)}
     </div>
   );
 }
