@@ -50,6 +50,7 @@ import { auth } from './services/firebaseConfig';
 import { SessionScreen } from './components/screens/SessionScreen';
 import { startSession } from './services/appointments';
 import { getContentDetailById, type LibraryContentItem } from './services/content';
+import { refreshStripeConnectStatus } from './services/payments';
 
 type AppState = 'splash' | 'welcome' | 'auth' | 'questionnaire' | 'therapist-profile-setup' | 'app';
 type ContentPreviousView =
@@ -79,6 +80,18 @@ export default function App() {
     return saved ? JSON.parse(saved) : null;
 
   });
+  const refreshTherapistProfileData = async () => {
+  const currentUser = getAuth().currentUser;
+
+  if (!currentUser) return;
+
+  const updatedUserData = await getUserDocument(currentUser.uid);
+
+  if (!updatedUserData) return;
+
+  setTherapistProfileData(updatedUserData);
+  localStorage.setItem('therapistProfile', JSON.stringify(updatedUserData));
+};
   const [isContentDetailLoading, setIsContentDetailLoading] = useState(false);
   const [darkMode, setDarkMode] = useState(false);
   const [notificationsEnabled, setNotificationsEnabled] = useState(false);
@@ -1298,6 +1311,7 @@ const handleQuestionnaireComplete = async (data: any) => {
               onNavigateToCompletedContent={() => setShowCompletedContent(true)}
               onEditProfile={() => setShowTherapistProfileEdit(true)}
               therapistProfileProp={therapistProfileData}
+              onStripeStatusRefresh={refreshTherapistProfileData}
               onViewPrivacy={() => setCurrentScreen('privacy-policy')}
               onViewTerms={() => setCurrentScreen('terms-conditions')}
             />

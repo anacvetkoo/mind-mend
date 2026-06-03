@@ -29,7 +29,7 @@ import {
 import type { TherapistAvailability } from '../../types/appointments';
 import { TherapistAvailabilitySetup } from './TherapistAvailabilitySetup';
 import { BlockedTimeManagement } from './BlockedTimeManagement';
-import { createStripeConnectAccount } from '../../services/payments';
+import { createStripeConnectAccount, refreshStripeConnectStatus } from '../../services/payments';
 
 interface ProfileScreenProps {
   onLogout: () => void;
@@ -49,9 +49,10 @@ interface ProfileScreenProps {
   onNavigateToCompletedContent?: () => void;
   onViewPrivacy?: () => void;
   onViewTerms?: () => void;
+  onStripeStatusRefresh?: () => Promise<void>;
 }
 
-export function ProfileScreen({ onLogout, userName = 'Alex', userRole = 'User', darkMode = false, onToggleDarkMode, notificationsEnabled = false, onToggleNotifications, biometricAuthEnabled = false, onToggleBiometricAuth, onNavigateToLikedContent, onNavigateToSavedContent, onEditProfile, onUpdateName, therapistProfileProp, onNavigateToCompletedContent, onViewPrivacy, onViewTerms }: ProfileScreenProps) {
+export function ProfileScreen({ onLogout, userName = 'Alex', userRole = 'User', darkMode = false, onToggleDarkMode, notificationsEnabled = false, onToggleNotifications, biometricAuthEnabled = false, onToggleBiometricAuth, onNavigateToLikedContent, onNavigateToSavedContent, onEditProfile, onUpdateName, therapistProfileProp, onNavigateToCompletedContent, onViewPrivacy, onViewTerms, onStripeStatusRefresh }: ProfileScreenProps) {
   const [availability, setAvailability] = useState<TherapistAvailability | null>(null);
   const [showAvailabilitySetup, setShowAvailabilitySetup] = useState(false);
   const [showBlockedTimeManagement, setShowBlockedTimeManagement] = useState(false);
@@ -65,6 +66,28 @@ export function ProfileScreen({ onLogout, userName = 'Alex', userRole = 'User', 
 
   const isTherapist = userRole === 'Therapist';
   const therapistProfile = therapistProfileProp ?? null;
+  useEffect(() => {
+  if (!isTherapist) return;
+
+  const isStripeReturn = window.location.pathname.includes('stripe-connect-return');
+
+  if (!isStripeReturn) return;
+
+  const handleStripeReturn = async () => {
+    try {
+      setIsConnectingStripe(true);
+      await refreshStripeConnectStatus();
+      await onStripeStatusRefresh?.();
+      window.history.replaceState({}, '', '/');
+    } catch (error) {
+      console.error('Failed to refresh Stripe status:', error);
+    } finally {
+      setIsConnectingStripe(false);
+    }
+  };
+
+  handleStripeReturn();
+}, [isTherapist, onStripeStatusRefresh]);
 
   const handleConnectStripe = async () => {
     try {
