@@ -9,7 +9,7 @@ const corsHandler = cors({ origin: true });
 const db = admin.firestore();
 
 const stripeSecretKey = process.env.STRIPE_SECRET_KEY;
-const appBaseUrl = process.env.APP_BASE_URL || 'http://localhost:5173';
+const appBaseUrl = "https://mindmend-a8839.web.app";
 const platformFeePercent = Number(process.env.PLATFORM_FEE_PERCENT || 20);
 
 const getStripe = ()=> {
