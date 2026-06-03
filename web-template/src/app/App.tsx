@@ -37,7 +37,7 @@ import { CompletedContentScreen } from './components/screens/CompletedContentScr
 import type { TherapistAvailability, AppointmentType } from './types/appointments';
 import { saveCheckIn } from './utils/checkInUtils';
 import { onAuthChange, logout, loginWithGoogleCredential } from './services/auth';
-import { getUserDocument, updateUserDisplayName, updateTherapistProfile, updateTherapistAvailability, getTherapistAvailability, getUserDarkMode, updateUserDarkMode, getUserNotificationsEnabled, updateUserNotificationsEnabled, getUserBiometricAuthEnabled, updateUserBiometricAuthEnabled } from './services/users';
+import { getUserDocument, updateUserDisplayName, updateTherapistProfile, updateTherapistAvailability, getTherapistAvailability, getUserDarkMode, updateUserDarkMode, getUserNotificationsEnabled, updateUserNotificationsEnabled, getUserBiometricAuthEnabled, updateUserBiometricAuthEnabled, saveUserExpoPushToken } from './services/users';
 import { completeUserOnboarding } from './services/onboarding';
 import { getAuth } from 'firebase/auth';
 import { createAppointment, updateAppointmentStatus } from './services/appointments';
@@ -269,6 +269,18 @@ const closeContentDetail = () => {
         if (data?.type === 'GOOGLE_SIGN_IN_ERROR') {
           console.warn('Google Sign-In failed on native side:', data.error);
         }
+
+        // ─── NOVO: Expo Push Token ────────────────────────────────────────────
+        if (data?.type === 'EXPO_PUSH_TOKEN') {
+          const { auth } = await import('./services/firebaseConfig');
+          const currentUser = auth.currentUser;
+          if (currentUser && data.token) {
+            await saveUserExpoPushToken(currentUser.uid, data.token);
+          } else if (data.token) {
+            // User še ni loginan — shrani začasno
+            (window as any).__pendingExpoPushToken = data.token;
+          }
+        }
       } catch (e) {
         // Ignoriraj sporočila ki niso JSON ali niso naša
       }
@@ -299,6 +311,13 @@ const closeContentDetail = () => {
             type: 'biometricAuthChanged',
             enabled: savedBiometric,
           });
+
+          // ─── NOVO: Shrani push token ki je prišel pred loginom ────────────
+          const pendingToken = (window as any).__pendingExpoPushToken;
+          if (pendingToken) {
+            await saveUserExpoPushToken(firebaseUser.uid, pendingToken);
+            delete (window as any).__pendingExpoPushToken;
+          }
 
           if (role === 'therapist') {
             const doc = userDoc as any;

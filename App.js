@@ -17,6 +17,8 @@ import * as WebBrowser from "expo-web-browser";
 // 🔥 Spremenjeno v /legacy uvoz, da TypeScript ne javlja napak in koda deluje stabilno:
 import * as FileSystem from 'expo-file-system/legacy';
 import * as Sharing from 'expo-sharing';
+import * as Notifications from 'expo-notifications';
+import * as Device from 'expo-device';
 
 // Potrebno za pravilno zapiranje browser popup-a po OAuth
 WebBrowser.maybeCompleteAuthSession();
@@ -27,6 +29,36 @@ const BIOMETRIC_AUTH_KEY = "mindmendBiometricAuthEnabled";
 const ANDROID_CLIENT_ID = "163326676496-r2uh0s7ooi6pmv3sdp3b6r04r7a8lbek.apps.googleusercontent.com";
 const IOS_CLIENT_ID = "163326676496-r2uh0s7ooi6pmv3sdp3b6r04r7a8lbek.apps.googleusercontent.com";
 const WEB_CLIENT_ID = "163326676496-r2uh0s7ooi6pmv3sdp3b6r04r7a8lbek.apps.googleusercontent.com";
+
+// ─── Push Notifications setup ─────────────────────────────────────────────────
+
+Notifications.setNotificationHandler({
+  handleNotification: async () => ({
+    shouldShowAlert: true,
+    shouldPlaySound: true,
+    shouldSetBadge: false,
+  }),
+});
+
+const registerForPushNotificationsAsync = async () => {
+  if (!Device.isDevice) return null;
+
+  const { status: existingStatus } = await Notifications.getPermissionsAsync();
+  let finalStatus = existingStatus;
+
+  if (existingStatus !== 'granted') {
+    const { status } = await Notifications.requestPermissionsAsync();
+    finalStatus = status;
+  }
+
+  if (finalStatus !== 'granted') return null;
+
+  const tokenData = await Notifications.getExpoPushTokenAsync({
+    projectId: 'bcbde360-111d-4d94-ad8b-679d820f6ae1',
+  });
+
+  return tokenData.data;
+};
 
 export default function App() {
   const webViewRef = useRef(null);
@@ -42,6 +74,18 @@ export default function App() {
     webClientId: WEB_CLIENT_ID,
     scopes: ["openid", "profile", "email"],
   });
+
+  // ─── Registracija Expo push tokena ───────────────────────────────────────────
+
+  useEffect(() => {
+    registerForPushNotificationsAsync().then((token) => {
+      if (token && webViewRef.current) {
+        webViewRef.current.postMessage(
+          JSON.stringify({ type: 'EXPO_PUSH_TOKEN', token })
+        );
+      }
+    });
+  }, []);
 
   // ─── Obdelaj Google OAuth odgovor ──────────────────────────────────────────
 

@@ -194,6 +194,13 @@ export const updateUserBiometricAuthEnabled = async (uid: string, biometricAuthE
   await setDoc(userRef, { biometricAuthEnabled }, { merge: true });
 };
 
+// ─── Expo Push Token (per-user) ───────────────────────────────────────────────
+
+export const saveUserExpoPushToken = async (uid: string, expoPushToken: string): Promise<void> => {
+  const userRef = doc(db, 'users', uid);
+  await setDoc(userRef, { expoPushToken }, { merge: true });
+};
+
 // ─── Therapist Public Profile ─────────────────────────────────────────────────
 
 export interface TherapistContentPreview {
