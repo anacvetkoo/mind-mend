@@ -22,6 +22,13 @@ export interface WorkingHours {
   endTime: string; // HH:MM format
 }
 
+export interface SessionPricePerType {
+  Chat: number;
+  'Voice Call': number;
+  'Video Call': number;
+  'In Person': number;
+}
+
 export interface TherapistAvailability {
   therapistId: string;
   workingHours: WorkingHours[];
@@ -30,6 +37,7 @@ export interface TherapistAvailability {
   enabledTypes: AppointmentType[];
   inPersonAddress?: string;
   zoomLink?: string;
+  pricePerType?: SessionPricePerType; // therapist's base price per session type (before platform fee)
   isSetupComplete: boolean;
 }
 
