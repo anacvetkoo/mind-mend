@@ -2,13 +2,13 @@ import React, { useEffect, useRef, useState } from "react";
 import {
   ActivityIndicator,
   Linking,
-  SafeAreaView,
   StatusBar,
   StyleSheet,
   Text,
   TouchableOpacity,
   View,
 } from "react-native";
+import { SafeAreaProvider, SafeAreaView } from "react-native-safe-area-context";
 import { WebView } from "react-native-webview";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import * as LocalAuthentication from "expo-local-authentication";
@@ -186,41 +186,47 @@ export default function App() {
 
   if (isCheckingBiometricAuth) {
     return (
-      <SafeAreaView style={styles.centeredContainer}>
-        <StatusBar barStyle="dark-content" backgroundColor="#FAFAFA" />
-        <ActivityIndicator size="large" />
-      </SafeAreaView>
+      <SafeAreaProvider>
+        <SafeAreaView style={styles.centeredContainer}>
+          <StatusBar barStyle="dark-content" backgroundColor="#FAFAFA" />
+          <ActivityIndicator size="large" />
+        </SafeAreaView>
+      </SafeAreaProvider>
     );
   }
 
   if (!isBiometricVerified) {
     return (
-      <SafeAreaView style={styles.centeredContainer}>
-        <StatusBar barStyle="dark-content" backgroundColor="#FAFAFA" />
-        <View style={styles.authCard}>
-          <Text style={styles.title}>MindMend is locked</Text>
-          <Text style={styles.description}>{biometricError}</Text>
-          <TouchableOpacity style={styles.button} onPress={checkBiometricAuth}>
-            <Text style={styles.buttonText}>Try Again</Text>
-          </TouchableOpacity>
-        </View>
-      </SafeAreaView>
+      <SafeAreaProvider>
+        <SafeAreaView style={styles.centeredContainer}>
+          <StatusBar barStyle="dark-content" backgroundColor="#FAFAFA" />
+          <View style={styles.authCard}>
+            <Text style={styles.title}>MindMend is locked</Text>
+            <Text style={styles.description}>{biometricError}</Text>
+            <TouchableOpacity style={styles.button} onPress={checkBiometricAuth}>
+              <Text style={styles.buttonText}>Try Again</Text>
+            </TouchableOpacity>
+          </View>
+        </SafeAreaView>
+      </SafeAreaProvider>
     );
   }
 
   return (
-    <SafeAreaView style={styles.container}>
-      <StatusBar barStyle="dark-content" backgroundColor="#FAFAFA" />
-      <WebView
-        ref={webViewRef}
-        source={{ uri: 'https://mindmend-a8839.web.app' }}
-        style={styles.webview}
-        javaScriptEnabled
-        domStorageEnabled
-        originWhitelist={["*"]}
-        onMessage={handleMessage}
-      />
-    </SafeAreaView>
+    <SafeAreaProvider>
+      <SafeAreaView style={styles.container}>
+        <StatusBar barStyle="dark-content" backgroundColor="#FAFAFA" />
+        <WebView
+          ref={webViewRef}
+          source={{ uri: 'https://mindmend-a8839.web.app' }}
+          style={styles.webview}
+          javaScriptEnabled
+          domStorageEnabled
+          originWhitelist={["*"]}
+          onMessage={handleMessage}
+        />
+      </SafeAreaView>
+    </SafeAreaProvider>
   );
 }
 
