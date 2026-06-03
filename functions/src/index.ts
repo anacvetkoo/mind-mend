@@ -121,20 +121,30 @@ export const refreshStripeConnectStatus = onRequest((request, response) => {
       }
 
       const account = await stripe.accounts.retrieve(userData.stripeAccountId);
-      const isVerified = account.charges_enabled && account.payouts_enabled;
 
-      await userRef.set({
-        stripeAccountStatus: isVerified ? 'verified' : 'pending',
-        stripeChargesEnabled: account.charges_enabled,
-        stripePayoutsEnabled: account.payouts_enabled,
-        updatedAt: new Date().toISOString(),
-      }, { merge: true });
+const hasSubmittedDetails = account.details_submitted;
+const isVerified = account.charges_enabled && account.payouts_enabled;
 
-      response.status(200).json({
-        stripeAccountStatus: isVerified ? 'verified' : 'pending',
-        stripeChargesEnabled: account.charges_enabled,
-        stripePayoutsEnabled: account.payouts_enabled,
-      });
+const stripeAccountStatus = isVerified
+  ? "verified"
+  : hasSubmittedDetails
+    ? "submitted"
+    : "pending";
+
+await userRef.set({
+  stripeAccountStatus,
+  stripeChargesEnabled: account.charges_enabled,
+  stripePayoutsEnabled: account.payouts_enabled,
+  stripeDetailsSubmitted: account.details_submitted,
+  updatedAt: new Date().toISOString(),
+}, {merge: true});
+
+response.status(200).json({
+  stripeAccountStatus,
+  stripeChargesEnabled: account.charges_enabled,
+  stripePayoutsEnabled: account.payouts_enabled,
+  stripeDetailsSubmitted: account.details_submitted,
+});
     } catch (error) {
       sendError(response, error, 'Failed to refresh Stripe Connect status.');
     }

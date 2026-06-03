@@ -66,6 +66,9 @@ export function ProfileScreen({ onLogout, userName = 'Alex', userRole = 'User', 
 
   const isTherapist = userRole === 'Therapist';
   const therapistProfile = therapistProfileProp ?? null;
+  const hasConnectedStripeAccount = Boolean(therapistProfile?.stripeAccountId);
+const hasVerifiedStripeAccount =
+  therapistProfile?.stripeAccountStatus === 'verified';
   useEffect(() => {
   if (!isTherapist) return;
 
@@ -445,33 +448,35 @@ export function ProfileScreen({ onLogout, userName = 'Alex', userRole = 'User', 
             </div>
 
             <Card className="p-5">
-              <div className="flex items-start gap-3 mb-4">
-                <ShieldCheck className="w-5 h-5 text-[var(--lavender)] mt-0.5" />
-                <div>
-                  <p className="text-foreground mb-1">
-                    {therapistProfile?.stripeAccountStatus === 'verified'
-                      ? 'Stripe account connected'
-                      : 'Connect your Stripe account'}
-                  </p>
-                  <p className="text-sm text-muted-foreground">
-                    {therapistProfile?.stripeAccountStatus === 'verified'
-                      ? 'You can receive payouts after completed sessions.'
-                      : 'Connect Stripe to receive payouts after completed sessions.'}
-                  </p>
-                </div>
-              </div>
+  <div className="flex items-start gap-3 mb-4">
+    <ShieldCheck className="w-5 h-5 text-[var(--lavender)] mt-0.5" />
+    <div>
+      <p className="text-foreground mb-1">
+        {hasConnectedStripeAccount
+          ? 'Stripe account connected'
+          : 'Connect your Stripe account'}
+      </p>
+      <p className="text-sm text-muted-foreground">
+        {hasVerifiedStripeAccount
+          ? 'You can receive payouts after completed sessions.'
+          : hasConnectedStripeAccount
+            ? 'Your Stripe account is connected. Verification may still be pending.'
+            : 'Connect Stripe to receive payouts after completed sessions.'}
+      </p>
+    </div>
+  </div>
 
-              {therapistProfile?.stripeAccountStatus !== 'verified' && (
-                <Button
-                  variant="primary"
-                  onClick={handleConnectStripe}
-                  disabled={isConnectingStripe}
-                  className="w-full"
-                >
-                  {isConnectingStripe ? 'Connecting...' : 'Connect Stripe account'}
-                </Button>
-              )}
-            </Card>
+  {!hasConnectedStripeAccount && (
+    <Button
+      variant="primary"
+      onClick={handleConnectStripe}
+      disabled={isConnectingStripe}
+      className="w-full"
+    >
+      {isConnectingStripe ? 'Connecting...' : 'Connect Stripe account'}
+    </Button>
+  )}
+</Card>
           </motion.div>
         )}
 
