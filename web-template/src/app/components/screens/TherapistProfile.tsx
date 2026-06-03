@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { motion } from 'motion/react';
 import { ArrowLeft, Star, Award, Users, Calendar, Clock, MessageCircle, Phone, Video, MapPin, BanIcon, Wind, Volume2, Brain } from 'lucide-react';
-import { getTherapistById, getTherapistAvailability, getBlockedTimes, submitTherapistRating, type TherapistProfileData, type TherapistContentPreview } from '../../services/users';
+import { getTherapistById, getTherapistAvailability, getBlockedTimes, submitTherapistRating, type TherapistPublicProfile, type TherapistContentPreview } from '../../services/users';
 import type { TherapistAvailability, BlockedTime } from '../../types/appointments';
 import { getAppointmentsForTherapist } from '../../services/appointments';
 
@@ -15,7 +15,7 @@ interface TherapistProfileProps {
   onSelectContent?: (content: TherapistContentPreview) => void;
 }
 
-const defaultTherapist: TherapistProfileData = {
+const defaultTherapist: TherapistPublicProfile = {
   id: '',
   name: 'Therapist',
   avatar: '',
@@ -27,7 +27,8 @@ const defaultTherapist: TherapistProfileData = {
   tags: [],
   yearsExperience: 0,
   sessionsCompleted: 0,
-  content: []
+  content: [],
+  isAvailable: false,
 };
 
 const SESSION_TYPE_ICONS: Record<string, typeof MessageCircle> = {
@@ -65,7 +66,7 @@ export function TherapistProfile({
   const [userRating, setUserRating] = useState(0);
   const [hoveredRating, setHoveredRating] = useState(0);
   const [hasRated, setHasRated] = useState(false);
-  const [therapist, setTherapist] = useState<TherapistProfileData>(defaultTherapist);
+  const [therapist, setTherapist] = useState<TherapistPublicProfile>(defaultTherapist);
   const [availability, setAvailability] = useState<TherapistAvailability | null>(null);
   const [blockedTimes, setBlockedTimes] = useState<BlockedTime[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -303,6 +304,25 @@ setIsLoading(false);
                       Session duration:{' '}
                       <span className="text-foreground">{availability!.appointmentDuration} min</span>
                     </span>
+                  </div>
+                )}
+
+                {availability!.pricePerType && (
+                  <div className="mb-4 pb-4 border-b border-[var(--border)]">
+                    <p className="text-xs text-muted-foreground mb-3">Session prices</p>
+                    <div className="space-y-2">
+                      {(Object.entries(availability!.pricePerType) as [string, number][])
+                        .filter(([type]) => availability!.enabledTypes.includes(type as any))
+                        .map(([type, basePrice]) => {
+                          const userPrice = Math.round((basePrice * 1.15) * 100) / 100;
+                          return (
+                            <div key={type} className="flex justify-between items-center">
+                              <span className="text-sm text-muted-foreground">{type}</span>
+                              <span className="text-sm text-foreground">€{userPrice}</span>
+                            </div>
+                          );
+                        })}
+                    </div>
                   </div>
                 )}
 

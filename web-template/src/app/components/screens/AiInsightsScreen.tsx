@@ -157,15 +157,21 @@ export function AiInsightsScreen({ userId, onBack, onCheckIn }: AiInsightsScreen
         </html>
       `.trim();
 
-      const blob = new Blob([htmlContent], { type: 'text/html;charset=utf-8' });
-      const url = URL.createObjectURL(blob);
-      
-      const newWindow = window.open(url, '_blank');
-      
-      if (!newWindow) {
-        alert("Please allow pop-ups for MindMend to export your PDF.");
+      if ((window as any).ReactNativeWebView) {
+        (window as any).ReactNativeWebView.postMessage(
+          JSON.stringify({
+            type: 'downloadPDF',
+            html: htmlContent,
+            fileName: `MindMend_Report_${new Date().toISOString().split('T')[0]}.html`
+          })
+        );
+        return;
       }
 
+      const blob = new Blob([htmlContent], { type: 'text/html;charset=utf-8' });
+      const url = URL.createObjectURL(blob);
+      const newWindow = window.open(url, '_blank');
+      if (!newWindow) alert("Please allow pop-ups for MindMend.");
       setTimeout(() => URL.revokeObjectURL(url), 100);
 
     } catch (error) {

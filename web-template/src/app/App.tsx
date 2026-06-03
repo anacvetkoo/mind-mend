@@ -34,7 +34,7 @@ import { TherapistTutorial } from './components/tutorial/TherapistTutorial';
 import { LikedContentScreen } from './components/screens/LikedContentScreen';
 import { SavedContentScreen } from './components/screens/SavedContentScreen';
 import { CompletedContentScreen } from './components/screens/CompletedContentScreen';
-import type { TherapistAvailability } from './types/appointments';
+import type { TherapistAvailability, AppointmentType } from './types/appointments';
 import { saveCheckIn } from './utils/checkInUtils';
 import { onAuthChange, logout, loginWithGoogleCredential } from './services/auth';
 import { getUserDocument, updateUserDisplayName, updateTherapistProfile, updateTherapistAvailability, getTherapistAvailability, getUserDarkMode, updateUserDarkMode, getUserNotificationsEnabled, updateUserNotificationsEnabled, getUserBiometricAuthEnabled, updateUserBiometricAuthEnabled } from './services/users';
@@ -129,15 +129,35 @@ const [contentPreviousView, setContentPreviousView] = useState<ContentPreviousVi
   const [selectedClientUserId, setSelectedClientUserId] = useState<string | null>(null);
   const [activeSession, setActiveSession] = useState<{ appointment: any; isTherapist: boolean } | null>(null);
 
-  const getAppointmentPrice = (appointmentType?: string | null) => {
-    switch (appointmentType) {
-      case 'Chat': return 80;
-      case 'Voice Call': return 100;
-      case 'Video Call': return 120;
-      case 'In Person': return 140;
-      default: return 120;
-    }
+  const PLATFORM_FEE_PERCENT = 15; // platform takes 15% on top of therapist's base price
+
+  const getAppointmentPricing = (appointmentType?: string | null) => {
+    const type = appointmentType as AppointmentType | undefined;
+    const fallbackBase: Record<string, number> = {
+      Chat: 60,
+      'Voice Call': 70,
+      'Video Call': 80,
+      'In Person': 90,
+    };
+    const therapistBase =
+      type && bookingTherapistAvailability?.pricePerType?.[type] != null
+        ? bookingTherapistAvailability.pricePerType[type]
+        : (type ? (fallbackBase[type] ?? 60) : 60);
+
+    const platformFeeAmount = Math.round(therapistBase * PLATFORM_FEE_PERCENT) / 100;
+    const userPrice = Math.round((therapistBase + platformFeeAmount) * 100) / 100;
+
+    return {
+      therapistBase,
+      platformFeePercent: PLATFORM_FEE_PERCENT,
+      platformFeeAmount,
+      userPrice,
+    };
   };
+
+  // convenience wrapper — returns what the user pays
+  const getAppointmentPrice = (appointmentType?: string | null) =>
+    getAppointmentPricing(appointmentType).userPrice;
 
   const getAppointmentEndTime = (startTime: string, durationMinutes: number) => {
     const [hours, minutes] = startTime.split(':').map(Number);
@@ -978,7 +998,7 @@ const handleQuestionnaireComplete = async (data: any) => {
   }
 
   try {
-    const price = getAppointmentPrice(data.appointmentType);
+    const pricing = getAppointmentPricing(data.appointmentType);
 
     const appointmentId = await createAppointment({
       therapistId: data.therapistId,
@@ -992,7 +1012,10 @@ const handleQuestionnaireComplete = async (data: any) => {
       status: 'PENDING_PAYMENT',
       notes: data.notes || '',
       inPersonAddress: data.inPersonAddress || '',
-      price,
+      price: pricing.userPrice,
+      platformFeePercent: pricing.platformFeePercent,
+      platformFeeAmount: pricing.platformFeeAmount,
+      therapistPayoutAmount: pricing.therapistBase,
     });
 
     setBookingData({
@@ -1000,7 +1023,7 @@ const handleQuestionnaireComplete = async (data: any) => {
       id: appointmentId,
       userId: currentUser.uid,
       userName: userData.name || currentUser.displayName || 'MindMend User',
-      price,
+      price: pricing.userPrice,
     });
 
     setShowBookingFlow(false);
@@ -1043,6 +1066,8 @@ const handleQuestionnaireComplete = async (data: any) => {
               bookingTherapistAvailability?.appointmentDuration || 50
             );
 
+            const customPricing = getAppointmentPricing(appointmentType);
+
             await createAppointment({
               therapistId: data.therapistId,
               therapistName: bookingTherapistName || 'Your Therapist',
@@ -1054,7 +1079,10 @@ const handleQuestionnaireComplete = async (data: any) => {
               endTime,
               status: 'REQUESTED',
               notes: data.message || '',
-              price: getAppointmentPrice(appointmentType),
+              price: customPricing.userPrice,
+              platformFeePercent: customPricing.platformFeePercent,
+              platformFeeAmount: customPricing.platformFeeAmount,
+              therapistPayoutAmount: customPricing.therapistBase,
             });
 
             setShowCustomRequest(false);
@@ -1289,12 +1317,6 @@ const handleQuestionnaireComplete = async (data: any) => {
             />
           )}
           {currentScreen === 'notifications' && <NotificationsScreen onClose={() => setCurrentScreen('dashboard')} />}
-          {currentScreen === 'privacy-policy' && (
-            <PrivacyPolicyPage onBack={() => setCurrentScreen('profile')} />
-          )}
-          {currentScreen === 'terms-conditions' && (
-            <TermsConditionsPage onBack={() => setCurrentScreen('profile')} />
-          )}
           {currentScreen === 'profile' && (
             <ProfileScreen
               onLogout={handleLogout}

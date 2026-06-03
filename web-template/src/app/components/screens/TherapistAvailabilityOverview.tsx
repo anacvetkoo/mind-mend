@@ -76,6 +76,20 @@ export function TherapistAvailabilityOverview({ availability, onEdit, onManageBl
             <p className="text-foreground">{availability.breakDuration} minutes</p>
           </div>
         </div>
+
+        {availability.pricePerType && (
+          <div className="mt-4 pt-4 border-t border-[var(--border)]">
+            <p className="text-xs text-muted-foreground mb-3">Your base payout per session type</p>
+            <div className="space-y-2">
+              {(Object.entries(availability.pricePerType) as [string, number][]).map(([type, price]) => (
+                <div key={type} className="flex justify-between items-center">
+                  <span className="text-sm text-muted-foreground">{type}</span>
+                  <span className="text-sm text-foreground">€{price}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
       </motion.div>
 
       {/* Appointment Types Card */}
