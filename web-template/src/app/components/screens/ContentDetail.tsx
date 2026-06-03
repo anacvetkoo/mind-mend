@@ -5,7 +5,6 @@ import {
   getUserContentInteractions,
   markContentAsCompleted,
   toggleLikedContent,
-  toggleSavedContent,
   saveContentProgress,
   getContentProgress,
   type ContentProgressItem
@@ -20,6 +19,7 @@ import {
 } from '../../services/content';
 import { BottomNav } from '../navigation/BottomNav';
 import type { UserRole } from './AuthScreen';
+import { SaveContentModal } from '../ui/SaveContentModal';
 
 type ContentItem = LibraryContentItem;
 
@@ -67,6 +67,7 @@ onTabChange
   const [youMightLikeContent, setYouMightLikeContent] = useState<ContentItem[]>([]);
   const [likedContentIds, setLikedContentIds] = useState<string[]>([]);
   const [savedContentIds, setSavedContentIds] = useState<string[]>([]);
+  const [showSaveModal, setShowSaveModal] = useState(false);
 
 const contentDetailContainerRef = useRef<HTMLDivElement | null>(null);
   const audioRef = useRef<HTMLAudioElement | null>(null);
@@ -343,13 +344,15 @@ useEffect(() => {
 
 
 
-  const handleBookmark = async () => {
-  await toggleSavedContent(activeContent.id, itemIsBookmarked);
+  const handleBookmark = () => {
+  setShowSaveModal(true);
+};
 
+const handleSavedCollectionsChange = (isSaved: boolean) => {
   setSavedContentIds((previousIds) =>
-    itemIsBookmarked
-      ? previousIds.filter((id) => id !== activeContent.id)
-      : [...previousIds, activeContent.id]
+    isSaved
+      ? Array.from(new Set([...previousIds, activeContent.id]))
+      : previousIds.filter((id) => id !== activeContent.id)
   );
 };
 
@@ -1082,6 +1085,12 @@ style={headerBackground}
           />
         )}
       </div>
+      <SaveContentModal
+  contentId={activeContent.id}
+  isOpen={showSaveModal}
+  onClose={() => setShowSaveModal(false)}
+  onSavedChange={handleSavedCollectionsChange}
+/>
     </div>
   );
 }
