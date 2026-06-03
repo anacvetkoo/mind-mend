@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { motion } from 'motion/react';
-import { ArrowLeft, Save, Upload, Plus } from 'lucide-react';
+import { ArrowLeft, Save, Upload, Plus, X } from 'lucide-react';
 import { formatContentDuration, formatContentDurationFromSeconds, type ContentFiles, type ContentItem, type ContentStep } from '../../services/content';
 
 interface TherapistContentEditorProps {
@@ -127,6 +127,22 @@ export function TherapistContentEditor({ onClose, onSave, existingContent }: The
     };
     setSteps([...steps, newStep]);
   };
+
+  const removeStep = (id: number) => {
+  if (steps.length === 1) {
+    setSteps([{ id: 1, title: '', description: '' }]);
+    return;
+  }
+
+  setSteps(
+    steps
+      .filter((step) => step.id !== id)
+      .map((step, index) => ({
+        ...step,
+        id: index + 1
+      }))
+  );
+};
 
   const updateStep = (id: number, field: 'title' | 'description', value: string) => {
     setSteps(steps.map(step =>
@@ -372,7 +388,19 @@ export function TherapistContentEditor({ onClose, onSave, existingContent }: The
                           key={step.id}
                           className="bg-[var(--input-background)] rounded-2xl p-4 space-y-3"
                         >
-                          <h4 className="text-sm text-muted-foreground">Step {index + 1}</h4>
+                          <div className="flex items-center justify-between mb-3">
+  <p className="text-sm text-muted-foreground">
+    Step {index + 1}
+  </p>
+
+  <button
+    type="button"
+    onClick={() => removeStep(step.id)}
+    className="w-8 h-8 rounded-full bg-background flex items-center justify-center text-muted-foreground hover:text-red-400 transition-colors"
+  >
+    <X className="w-4 h-4" />
+  </button>
+</div>
                           <input
                             type="text"
                             value={step.title}
