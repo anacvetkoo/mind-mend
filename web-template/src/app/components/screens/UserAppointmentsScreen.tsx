@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { motion } from 'motion/react';
-import { Calendar, Clock, MessageCircle, Phone, Video, MapPin, DollarSign, AlertCircle, Loader2, RefreshCw } from 'lucide-react';
+import { Calendar, Clock, MessageCircle, Phone, Video, MapPin, DollarSign, Euro, AlertCircle, Loader2, RefreshCw } from 'lucide-react';
 import { getAuth } from 'firebase/auth';
 import { collection, query, where, orderBy, onSnapshot } from 'firebase/firestore';
 import { db } from '../../services/firebaseConfig';
@@ -169,8 +169,8 @@ export function UserAppointmentsScreen({ onCompletePayment, onJoinSession, isJoi
             </div>
           )}
           <div className="flex items-center gap-2 text-sm">
-            <DollarSign className="w-4 h-4 text-foreground" />
-            <span className="text-foreground font-medium">${apt.price}</span>
+            <Euro className="w-4 h-4 text-foreground" />
+            <span className="text-foreground font-medium">{apt.price}</span>
           </div>
         </div>
 
