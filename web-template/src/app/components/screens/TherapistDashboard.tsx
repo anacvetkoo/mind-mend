@@ -4,7 +4,7 @@ import { OtterMascot } from '../mascot/OtterMascot';
 import { Users, FileText, Star, Calendar, Clock, MessageCircle, Phone, Video, MapPin, AlertCircle, X, Bell, RefreshCw } from 'lucide-react';
 import type { Appointment, AppointmentStatus } from '../../types/appointments';
 import { getAuth } from 'firebase/auth';
-import { collection, query, where, orderBy, onSnapshot } from 'firebase/firestore';
+import { collection, query, where, orderBy, onSnapshot, doc, getDoc } from 'firebase/firestore';
 import { db } from '../../services/firebaseConfig';
 import { cancelAppointment, updateAppointmentStatus } from '../../services/appointments';
 import { getPublishedContentCountForTherapist } from '../../services/content';
@@ -25,6 +25,7 @@ export function TherapistDashboard({ therapistName = 'Dr. Sarah', onViewNotifica
   const [appointmentToCancel, setAppointmentToCancel] = useState<string | null>(null);
   const [now, setNow] = useState(() => new Date());
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const [therapistRating, setTherapistRating] = useState<string>('—');
 
   const refreshNow = () => {
     setNow(new Date());
@@ -40,6 +41,24 @@ export function TherapistDashboard({ therapistName = 'Dr. Sarah', onViewNotifica
       setPublishedContentCount(contentCount);
     } catch (error) {
       console.error('Error loading dashboard stats:', error);
+    }
+  };
+
+  //nalaganje ocene iz firebase
+  const loadRating = async (uid: string) => {
+    try {
+      const docRef = doc(db, 'users', uid);
+      const docSnap = await getDoc(docRef);
+      
+      if (docSnap.exists() && docSnap.data().rating !== undefined) {
+        const ratingValue = Number(docSnap.data().rating);
+        setTherapistRating(ratingValue.toFixed(1));//zaokrožanje
+      } else {
+        setTherapistRating('5.0'); //privzeto
+      }
+    } catch (error) {
+      console.error('Error loading therapist rating:', error);
+      setTherapistRating('—');
     }
   };
 
@@ -63,6 +82,7 @@ export function TherapistDashboard({ therapistName = 'Dr. Sarah', onViewNotifica
     });
 
     loadStats(currentUser.uid);
+    loadRating(currentUser.uid);
 
     return () => unsubscribe();
   }, []);
@@ -144,7 +164,7 @@ const stats = [
   { label: 'Total Sessions', value: completedAppointments.length.toString(), icon: Calendar, color: 'var(--lavender)' },
   { label: 'Active Clients', value: activeClientsCount === null ? '—' : activeClientsCount.toString(), icon: Users, color: 'var(--soft-mint)' },
   { label: 'Content Published', value: publishedContentCount === null ? '—' : publishedContentCount.toString(), icon: FileText, color: 'var(--muted-blue)' },
-  { label: 'Rating', value: '4.9', icon: Star, color: 'var(--soft-pink)' },
+  { label: 'Rating', value: therapistRating, icon: Star, color: 'var(--soft-pink)' },
 ];
 
   return (
