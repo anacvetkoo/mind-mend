@@ -1,6 +1,7 @@
 import * as admin from 'firebase-admin';
 import cors from 'cors';
 import { onRequest } from 'firebase-functions/v2/https';
+import { onSchedule } from 'firebase-functions/v2/scheduler';
 import Stripe from 'stripe';
 
 admin.initializeApp();
@@ -388,3 +389,80 @@ export const releaseTherapistPayout = onRequest((request, response) => {
     }
   });
 });
+
+// ─── Daily Check-In Reminder ──────────────────────────────────────────────────
+
+const checkInTimeSlots: Record<string, number[]> = {
+  morning: [8],    // 8:00
+  daytime: [13],   // 13:00
+  evening: [20],   // 20:00
+};
+
+export const sendDailyCheckInReminders = onSchedule(
+  {
+    schedule: 'every 60 minutes',
+    timeZone: 'Europe/Ljubljana',
+    region: 'europe-west1',
+  },
+  async () => {
+    const now = new Date();
+    const currentHour = now.getHours();
+
+    const matchingSlot = Object.entries(checkInTimeSlots).find(([, hours]) =>
+      hours.includes(currentHour)
+    );
+
+    if (!matchingSlot) return;
+
+    const [slotName] = matchingSlot;
+
+    const usersSnapshot = await db
+      .collection('users')
+      .where('checkInTime', '==', slotName)
+      .where('notificationsEnabled', '==', true)
+      .get();
+
+    if (usersSnapshot.empty) {
+      console.log(`[CheckInReminder] No users found for slot: ${slotName}`);
+      return;
+    }
+
+    const validTokens = usersSnapshot.docs
+      .map((userDoc) => userDoc.data().expoPushToken)
+      .filter((token): token is string => typeof token === 'string' && token.startsWith('ExponentPushToken'));
+
+    const messages = validTokens.map((token) => ({
+      to: token,
+      sound: 'default' as const,
+      title: '💜 Daily Check-In',
+      body: 'How are you feeling today? Take a moment to check in with yourself.',
+      data: { screen: 'checkin' },
+    }));
+
+    if (messages.length === 0) {
+      console.log(`[CheckInReminder] No valid push tokens for slot: ${slotName}`);
+      return;
+    }
+
+    const chunks: (typeof messages)[] = [];
+    for (let i = 0; i < messages.length; i += 100) {
+      chunks.push(messages.slice(i, i + 100));
+    }
+
+    await Promise.all(
+      chunks.map((chunk) =>
+        fetch('https://exp.host/--/api/v2/push/send', {
+          method: 'POST',
+          headers: {
+            Accept: 'application/json',
+            'Accept-Encoding': 'gzip, deflate',
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify(chunk),
+        })
+      )
+    );
+
+    console.log(`[CheckInReminder] Sent to ${messages.length} users (slot: ${slotName})`);
+  }
+);
