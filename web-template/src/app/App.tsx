@@ -92,6 +92,26 @@ export default function App() {
   setTherapistProfileData(updatedUserData);
   localStorage.setItem('therapistProfile', JSON.stringify(updatedUserData));
 };
+
+useEffect(() => {
+  const isStripeReturn = window.location.pathname.includes('stripe-connect-return');
+
+  if (!isStripeReturn || appState !== 'app' || userRole !== 'therapist') return;
+
+  const handleStripeConnectReturn = async () => {
+    try {
+      await refreshStripeConnectStatus();
+      await refreshTherapistProfileData();
+
+      setCurrentScreen('profile');
+      window.history.replaceState({}, '', '/');
+    } catch (error) {
+      console.error('Failed to refresh Stripe Connect status:', error);
+    }
+  };
+
+  handleStripeConnectReturn();
+}, [appState, userRole]);
   const [isContentDetailLoading, setIsContentDetailLoading] = useState(false);
   const [darkMode, setDarkMode] = useState(false);
   const [notificationsEnabled, setNotificationsEnabled] = useState(false);
