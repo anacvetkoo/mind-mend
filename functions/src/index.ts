@@ -2,6 +2,7 @@ import * as admin from 'firebase-admin';
 import cors from 'cors';
 import { onRequest } from 'firebase-functions/v2/https';
 import { onSchedule } from 'firebase-functions/v2/scheduler';
+import { onDocumentCreated, onDocumentUpdated } from 'firebase-functions/v2/firestore';
 import Stripe from 'stripe';
 
 admin.initializeApp();
@@ -37,6 +38,52 @@ const verifyUser = async (request: any): Promise<admin.auth.DecodedIdToken> => {
 const sendError = (response: any, error: unknown, fallbackMessage: string): void => {
   console.error(fallbackMessage, error);
   response.status(500).json({ error: fallbackMessage });
+};
+
+// ─── Helper: pošlji push notifikacijo in shrani v Firestore ──────────────────
+
+const sendNotificationToUser = async (
+  userId: string,
+  type: string,
+  title: string,
+  message: string,
+  appointmentId?: string,
+  screen = 'appointments'
+) => {
+  const userDoc = await db.collection('users').doc(userId).get();
+  const userData = userDoc.data();
+  if (!userData) return;
+
+  // Shrani in-app notifikacijo v Firestore
+  await db.collection('notifications').add({
+    userId,
+    type,
+    title,
+    message,
+    appointmentId: appointmentId || null,
+    isRead: false,
+    createdAt: new Date().toISOString(),
+  });
+
+  // Pošlji push notifikacijo če ima token
+  const expoPushToken = userData.expoPushToken;
+  if (expoPushToken && typeof expoPushToken === 'string' && expoPushToken.startsWith('ExponentPushToken')) {
+    await fetch('https://exp.host/--/api/v2/push/send', {
+      method: 'POST',
+      headers: {
+        Accept: 'application/json',
+        'Accept-Encoding': 'gzip, deflate',
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        to: expoPushToken,
+        sound: 'default',
+        title,
+        body: message,
+        data: { screen, appointmentId: appointmentId || null },
+      }),
+    });
+  }
 };
 
 export const createStripeConnectAccount = onRequest((request, response) => {
@@ -464,5 +511,262 @@ export const sendDailyCheckInReminders = onSchedule(
     );
 
     console.log(`[CheckInReminder] Sent to ${messages.length} users (slot: ${slotName})`);
+  }
+);
+
+// ─── Therapist Incomplete Profile Notification ────────────────────────────────
+
+export const notifyTherapistIncompleteProfile = onRequest({ region: 'europe-west1' }, (request, response) => {
+  corsHandler(request, response, async () => {
+    try {
+      if (request.method !== 'POST') {
+        response.status(405).json({ error: 'Method not allowed' });
+        return;
+      }
+
+      const decodedToken = await verifyUser(request);
+
+      const userRef = db.collection('users').doc(decodedToken.uid);
+      const userSnapshot = await userRef.get();
+      const userData = userSnapshot.data();
+
+      if (!userData || userData.role !== 'therapist') {
+        response.status(403).json({ error: 'Only therapists can receive this notification.' });
+        return;
+      }
+
+      // Shrani in-app notifikacijo v Firestore
+      await db.collection('notifications').add({
+        userId: decodedToken.uid,
+        type: 'profile_incomplete',
+        title: 'Complete your profile',
+        message: 'Your profile is incomplete. Add your bio, specializations and photo so clients can find you.',
+        isRead: false,
+        createdAt: new Date().toISOString(),
+      });
+
+      // Pošlji push notifikacijo če ima token
+      const expoPushToken = userData.expoPushToken;
+      if (expoPushToken && typeof expoPushToken === 'string' && expoPushToken.startsWith('ExponentPushToken')) {
+        await fetch('https://exp.host/--/api/v2/push/send', {
+          method: 'POST',
+          headers: {
+            Accept: 'application/json',
+            'Accept-Encoding': 'gzip, deflate',
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            to: expoPushToken,
+            sound: 'default',
+            title: '👤 Complete your profile',
+            body: 'Add your bio, specializations and photo so clients can find you on MindMend.',
+            data: { screen: 'profile' },
+          }),
+        });
+      }
+
+      response.status(200).json({ success: true });
+    } catch (error) {
+      sendError(response, error, 'Failed to send incomplete profile notification.');
+    }
+  });
+});
+
+// ─── Upcoming Appointment Reminder (1 dan prej) ───────────────────────────────
+
+export const sendUpcomingAppointmentReminders = onSchedule(
+  {
+    schedule: 'every 60 minutes',
+    timeZone: 'Europe/Ljubljana',
+    region: 'europe-west1',
+  },
+  async () => {
+    const now = new Date();
+
+    // Jutri ob istem času — iščemo appointe ki so točno čez 24h (±30 min)
+    const tomorrowStart = new Date(now.getTime() + 23.5 * 60 * 60 * 1000);
+    const tomorrowEnd = new Date(now.getTime() + 24.5 * 60 * 60 * 1000);
+
+    // Datum jutri v formatu YYYY-MM-DD
+    const tomorrowDate = new Date(now.getTime() + 24 * 60 * 60 * 1000);
+    const tomorrowDateStr = tomorrowDate.toISOString().split('T')[0];
+
+    // Poišči vse CONFIRMED appointe za jutri
+    const appointmentsSnapshot = await db
+      .collection('appointments')
+      .where('status', '==', 'CONFIRMED')
+      .where('date', '==', tomorrowDateStr)
+      .get();
+
+    if (appointmentsSnapshot.empty) {
+      console.log(`[UpcomingReminder] No appointments tomorrow (${tomorrowDateStr})`);
+      return;
+    }
+
+    let sentCount = 0;
+
+    for (const appointmentDoc of appointmentsSnapshot.docs) {
+      const appointment = appointmentDoc.data();
+      const appointmentId = appointmentDoc.id;
+
+      // Preveri da ta reminder še ni bil poslan
+      if (appointment.reminderSent) continue;
+
+      // Preveri da je čas termina v oknu ±30 min
+      const appointmentDateTime = new Date(`${appointment.date}T${appointment.startTime}`);
+      if (appointmentDateTime < tomorrowStart || appointmentDateTime > tomorrowEnd) continue;
+
+      const sendPushToUser = async (userId: string, role: 'user' | 'therapist') => {
+        const userDoc = await db.collection('users').doc(userId).get();
+        const userData = userDoc.data();
+        if (!userData) return;
+
+        const isUser = role === 'user';
+        const title = '📅 Upcoming appointment';
+        const body = isUser
+          ? `Reminder: You have an appointment with ${appointment.therapistName} tomorrow at ${appointment.startTime}.`
+          : `Reminder: You have a session with ${appointment.userName || 'a client'} tomorrow at ${appointment.startTime}.`;
+
+        // Shrani in-app notifikacijo v Firestore
+        await db.collection('notifications').add({
+          userId,
+          type: 'reminder',
+          title,
+          message: body,
+          appointmentId,
+          isRead: false,
+          createdAt: new Date().toISOString(),
+        });
+
+        // Pošlji push notifikacijo če ima token
+        const expoPushToken = userData.expoPushToken;
+        if (expoPushToken && typeof expoPushToken === 'string' && expoPushToken.startsWith('ExponentPushToken')) {
+          await fetch('https://exp.host/--/api/v2/push/send', {
+            method: 'POST',
+            headers: {
+              Accept: 'application/json',
+              'Accept-Encoding': 'gzip, deflate',
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              to: expoPushToken,
+              sound: 'default',
+              title,
+              body,
+              data: { screen: 'appointments', appointmentId },
+            }),
+          });
+        }
+      };
+
+      // Pošlji userju in terapevtu
+      await sendPushToUser(appointment.userId, 'user');
+      await sendPushToUser(appointment.therapistId, 'therapist');
+
+      // Označi da je reminder že bil poslan — prepreči duplikate
+      await db.collection('appointments').doc(appointmentId).set(
+        { reminderSent: true },
+        { merge: true }
+      );
+
+      sentCount++;
+    }
+
+    console.log(`[UpcomingReminder] Sent reminders for ${sentCount} appointments on ${tomorrowDateStr}`);
+  }
+);
+
+// ─── Appointment Notifikacije (rezervacija, accept/decline, cancel) ───────────
+
+export const onAppointmentCreated = onDocumentCreated(
+  { document: 'appointments/{appointmentId}', region: 'europe-west1' },
+  async (event) => {
+    const appointment = event.data?.data();
+    const appointmentId = event.params.appointmentId;
+    if (!appointment) return;
+
+    // Ko user rezervira termin (PENDING_PAYMENT) → terapevt dobi notifikacijo
+    if (appointment.status === 'PENDING_PAYMENT' || appointment.status === 'REQUESTED') {
+      const isRequest = appointment.status === 'REQUESTED';
+      await sendNotificationToUser(
+        appointment.therapistId,
+        isRequest ? 'request' : 'booking',
+        isRequest ? '📋 New appointment request' : '📅 New appointment booked',
+        isRequest
+          ? `${appointment.userName || 'A client'} has requested a different time for ${appointment.appointmentType} on ${appointment.date}.`
+          : `${appointment.userName || 'A client'} has booked a ${appointment.appointmentType} session on ${appointment.date} at ${appointment.startTime}.`,
+        appointmentId
+      );
+    }
+  }
+);
+
+export const onAppointmentUpdated = onDocumentUpdated(
+  { document: 'appointments/{appointmentId}', region: 'europe-west1' },
+  async (event) => {
+    const before = event.data?.before.data();
+    const after = event.data?.after.data();
+    const appointmentId = event.params.appointmentId;
+    if (!before || !after) return;
+
+    const statusChanged = before.status !== after.status;
+    if (!statusChanged) return;
+
+    const newStatus = after.status;
+
+    // Terapevt je sprejel request → user dobi notifikacijo
+    if (before.status === 'REQUESTED' && newStatus === 'PENDING_PAYMENT') {
+      await sendNotificationToUser(
+        after.userId,
+        'booking',
+        '✅ Request accepted',
+        `Your appointment request with ${after.therapistName} has been accepted. Please complete the payment to confirm.`,
+        appointmentId
+      );
+    }
+
+    // Appointment potrjen (plačan) → user dobi potrditev
+    if (before.status === 'PENDING_PAYMENT' && newStatus === 'CONFIRMED') {
+      await sendNotificationToUser(
+        after.userId,
+        'booking',
+        '✅ Appointment confirmed',
+        `Your ${after.appointmentType} session with ${after.therapistName} on ${after.date} at ${after.startTime} is confirmed.`,
+        appointmentId
+      );
+    }
+
+    // Terapevt je zavrnil request → user dobi notifikacijo
+    if (before.status === 'REQUESTED' && (newStatus === 'CANCELLED' || newStatus === 'CANCELLED_BY_THERAPIST')) {
+      await sendNotificationToUser(
+        after.userId,
+        'cancellation',
+        '❌ Request declined',
+        `Your appointment request with ${after.therapistName} has been declined.`,
+        appointmentId
+      );
+    }
+
+    // User je cancelal → terapevt dobi notifikacijo
+    if (newStatus === 'CANCELLED' && after.cancelledBy === 'user') {
+      await sendNotificationToUser(
+        after.therapistId,
+        'cancellation',
+        '❌ Appointment cancelled',
+        `${after.userName || 'A client'} has cancelled the ${after.appointmentType} session on ${after.date} at ${after.startTime}.`,
+        appointmentId
+      );
+    }
+
+    // Terapevt je cancelal → user dobi notifikacijo
+    if (newStatus === 'CANCELLED_BY_THERAPIST' && after.cancelledBy === 'therapist') {
+      await sendNotificationToUser(
+        after.userId,
+        'cancellation',
+        '❌ Appointment cancelled',
+        `${after.therapistName} has cancelled your ${after.appointmentType} session on ${after.date} at ${after.startTime}.`,
+        appointmentId
+      );
+    }
   }
 );
