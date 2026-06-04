@@ -8,8 +8,9 @@ import { ShieldCheck, ClipboardList, Flame, Calendar, Target, TrendingUp, Sparkl
 import { isTodayCompleted, getStreakData, getWeeklyTrend, getFirebaseCheckIns } from '../../utils/checkInUtils';
 import { getStreakDataFromFirestore } from '../../utils/StreakCalculator';
 import { generateAIWellnessTips } from '../../services/gemini';
-import { collection, doc, getDoc, getDocs } from 'firebase/firestore';
+import { collection, doc, getDoc, getDocs, query, where } from 'firebase/firestore';
 import { db } from '../../services/firebaseConfig.js';
+import { getAuth } from 'firebase/auth';
 import { ContentDetail } from './ContentDetail';
 import { getLibraryContent, type LibraryContentItem, formatContentDuration } from '../../services/content';
 
@@ -40,6 +41,8 @@ const currentHour = new Date().getHours();
   });
   const [weeklyTrend, setWeeklyTrend] = useState('Stable');
   const [isLoading, setIsLoading] = useState(true);
+  // ─── NOVO: število neprebranih notifikacij ────────────────────────────────────
+  const [unreadNotificationsCount, setUnreadNotificationsCount] = useState(0);
 
   const [aiTips, setAiTips] = useState<string[]>([]);
 
@@ -148,6 +151,24 @@ const formatRecommendedDifficulty = (difficulty?: string) => {
         }
       }
 
+      // ─── NOVO: naloži število neprebranih notifikacij ──────────────────────
+      const currentUser = getAuth().currentUser;
+      if (currentUser) {
+        try {
+          const q = query(
+            collection(db, 'notifications'),
+            where('userId', '==', currentUser.uid),
+            where('isRead', '==', false)
+          );
+          const snapshot = await getDocs(q);
+          // Prištej še daily check-in če ni opravljen danes
+          const completedToday2 = await isTodayCompleted();
+          setUnreadNotificationsCount(snapshot.size + (completedToday2 ? 0 : 1));
+        } catch (error) {
+          console.error('Error loading unread notifications count:', error);
+        }
+      }
+
      } catch (error) {
         console.error("Napaka pri osveževanju nadzorne plošče:", error);
         setAiTips([
@@ -181,9 +202,12 @@ const formatRecommendedDifficulty = (difficulty?: string) => {
                 className="relative w-10 h-10 rounded-full bg-card flex items-center justify-center"
               >
                 <Bell className="w-5 h-5 text-foreground" />
-                <span className="absolute -top-1 -right-1 w-5 h-5 bg-red-500 text-white text-xs rounded-full flex items-center justify-center">
-                  3
-                </span>
+                {/* ─── NOVO: dinamična številka ───────────────────────────────── */}
+                {unreadNotificationsCount > 0 && (
+                  <span className="absolute -top-1 -right-1 w-5 h-5 bg-red-500 text-white text-xs rounded-full flex items-center justify-center">
+                    {unreadNotificationsCount > 9 ? '9+' : unreadNotificationsCount}
+                  </span>
+                )}
               </button>
             )}
           </div>

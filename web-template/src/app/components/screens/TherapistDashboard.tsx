@@ -4,7 +4,7 @@ import { OtterMascot } from '../mascot/OtterMascot';
 import { Users, FileText, Star, Calendar, Clock, MessageCircle, Phone, Video, MapPin, AlertCircle, X, Bell, RefreshCw } from 'lucide-react';
 import type { Appointment, AppointmentStatus } from '../../types/appointments';
 import { getAuth } from 'firebase/auth';
-import { collection, query, where, orderBy, onSnapshot, doc, getDoc } from 'firebase/firestore';
+import { collection, query, where, orderBy, onSnapshot, doc, getDoc, getDocs } from 'firebase/firestore';
 import { db } from '../../services/firebaseConfig';
 import { cancelAppointment, updateAppointmentStatus } from '../../services/appointments';
 import { getPublishedContentCountForTherapist } from '../../services/content';
@@ -30,6 +30,8 @@ export function TherapistDashboard({ therapistName = 'Dr. Sarah', onViewNotifica
   const [therapistRating, setTherapistRating] = useState<string>('—');
   // ─── NOVO: ali je profil terapevta nepopoln ───────────────────────────────────
   const [isProfileIncomplete, setIsProfileIncomplete] = useState(false);
+  // ─── NOVO: število neprebranih notifikacij ────────────────────────────────────
+  const [unreadNotificationsCount, setUnreadNotificationsCount] = useState(0);
 
   const refreshNow = () => {
     setNow(new Date());
@@ -81,6 +83,21 @@ export function TherapistDashboard({ therapistName = 'Dr. Sarah', onViewNotifica
     }
   };
 
+  // ─── NOVO: naloži število neprebranih notifikacij ─────────────────────────────
+  const loadUnreadNotificationsCount = async (uid: string) => {
+    try {
+      const q = query(
+        collection(db, 'notifications'),
+        where('userId', '==', uid),
+        where('isRead', '==', false)
+      );
+      const snapshot = await getDocs(q);
+      setUnreadNotificationsCount(snapshot.size);
+    } catch (error) {
+      console.error('Error loading unread notifications count:', error);
+    }
+  };
+
   useEffect(() => {
     const currentUser = getAuth().currentUser;
     if (!currentUser) { setIsLoadingAppointments(false); return; }
@@ -103,6 +120,7 @@ export function TherapistDashboard({ therapistName = 'Dr. Sarah', onViewNotifica
     loadStats(currentUser.uid);
     loadRating(currentUser.uid);
     checkProfileComplete(currentUser.uid);
+    loadUnreadNotificationsCount(currentUser.uid);
 
     return () => unsubscribe();
   }, []);
@@ -197,7 +215,12 @@ const stats = [
             {onViewNotifications && (
               <button onClick={onViewNotifications} className="relative w-10 h-10 rounded-full bg-card flex items-center justify-center">
                 <Bell className="w-5 h-5 text-foreground" />
-                <span className="absolute -top-1 -right-1 w-5 h-5 bg-red-500 text-white text-xs rounded-full flex items-center justify-center">3</span>
+                {/* ─── NOVO: dinamična številka ───────────────────────────────── */}
+                {unreadNotificationsCount > 0 && (
+                  <span className="absolute -top-1 -right-1 w-5 h-5 bg-red-500 text-white text-xs rounded-full flex items-center justify-center">
+                    {unreadNotificationsCount > 9 ? '9+' : unreadNotificationsCount}
+                  </span>
+                )}
               </button>
             )}
           </div>

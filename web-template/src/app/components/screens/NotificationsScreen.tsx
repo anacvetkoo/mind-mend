@@ -41,39 +41,6 @@ export function NotificationsScreen({ onClose }: NotificationsScreenProps = {}) 
     }
   };
 
-  const [notifications, setNotifications] = useState<Notification[]>([
-    {
-      id: '1',
-      userId: 'user-1',
-      type: 'booking',
-      title: 'Appointment Confirmed',
-      message: 'Your appointment with Dr. Sarah Mitchell on May 20 at 2:00 PM has been confirmed.',
-      appointmentId: 'apt-1',
-      isRead: false,
-      createdAt: '2026-05-14T10:00:00Z'
-    },
-    {
-      id: '2',
-      userId: 'user-1',
-      type: 'reminder',
-      title: 'Upcoming Appointment',
-      message: 'Reminder: You have an appointment with Dr. Sarah Mitchell tomorrow at 2:00 PM.',
-      appointmentId: 'apt-1',
-      isRead: false,
-      createdAt: '2026-05-14T09:00:00Z'
-    },
-    {
-      id: '3',
-      userId: 'user-1',
-      type: 'payment',
-      title: 'Payment Successful',
-      message: 'Your payment of $120 for the appointment has been processed.',
-      appointmentId: 'apt-1',
-      isRead: true,
-      createdAt: '2026-05-13T15:00:00Z'
-    }
-  ]);
-
   const getNotificationIcon = (type: string) => {
     switch (type) {
       case 'booking': return Calendar;
@@ -102,12 +69,6 @@ export function NotificationsScreen({ onClose }: NotificationsScreenProps = {}) 
     }
   };
 
-  const markAsRead = (id: string) => {
-    setNotifications(notifications.map(n =>
-      n.id === id ? { ...n, isRead: true } : n
-    ));
-  };
-
   // ─── NOVO: označi Firestore notifikacijo kot prebrano ─────────────────────────
   const markFirestoreAsRead = async (id: string) => {
     try {
@@ -121,8 +82,7 @@ export function NotificationsScreen({ onClose }: NotificationsScreenProps = {}) 
   };
 
   const markAllAsRead = () => {
-    setNotifications(notifications.map(n => ({ ...n, isRead: true })));
-    // Označi tudi Firestore notifikacije
+    // Označi vse Firestore notifikacije
     firestoreNotifications.forEach(async (n) => {
       if (!n.isRead) {
         try {
@@ -133,10 +93,6 @@ export function NotificationsScreen({ onClose }: NotificationsScreenProps = {}) 
       }
     });
     setFirestoreNotifications(firestoreNotifications.map(n => ({ ...n, isRead: true })));
-  };
-
-  const deleteNotification = (id: string) => {
-    setNotifications(notifications.filter(n => n.id !== id));
   };
 
   // ─── NOVO: izbriši Firestore notifikacijo ────────────────────────────────────
@@ -161,26 +117,22 @@ export function NotificationsScreen({ onClose }: NotificationsScreenProps = {}) 
     return 'Just now';
   };
 
-  // Create dynamic notification list with daily check-in reminder
-  const allNotifications = !todayCompleted
-    ? [
-        {
-          id: 'daily-checkin',
-          userId: 'current-user',
-          type: 'checkin',
-          title: 'Daily Check-in Reminder',
-          message: 'You still have a daily check-in waiting!',
-          isRead: false,
-          createdAt: new Date().toISOString()
-        },
-        ...notifications
-      ]
-    : notifications;
+  // Daily check-in notifikacija (samo če ni opravljen)
+  const dailyCheckInNotification = !todayCompleted ? [{
+    id: 'daily-checkin',
+    userId: 'current-user',
+    type: 'checkin',
+    title: 'Daily Check-in Reminder',
+    message: 'You still have a daily check-in waiting!',
+    isRead: false,
+    createdAt: new Date().toISOString(),
+    _source: 'local'
+  }] : [];
 
-  // ─── NOVO: združi vse notifikacije — Firestore pride na vrh ──────────────────
+  // ─── Združi vse notifikacije — Firestore pride na vrh ────────────────────────
   const combinedNotifications = [
+    ...dailyCheckInNotification,
     ...firestoreNotifications.map(n => ({ ...n, _source: 'firestore' })),
-    ...allNotifications.map(n => ({ ...n, _source: 'local' })),
   ];
 
   const unreadCount = combinedNotifications.filter(n => !n.isRead).length;
@@ -244,10 +196,8 @@ export function NotificationsScreen({ onClose }: NotificationsScreenProps = {}) 
                   animate={{ opacity: 1, x: 0 }}
                   transition={{ delay: 0.05 * idx }}
                   onClick={() => {
-                    if (!notification.isRead && !isDailyCheckIn) {
-                      isFirestore
-                        ? markFirestoreAsRead(notification.id)
-                        : markAsRead(notification.id);
+                    if (!notification.isRead && !isDailyCheckIn && isFirestore) {
+                      markFirestoreAsRead(notification.id);
                     }
                   }}
                   className={`bg-card rounded-2xl p-4 shadow-md ${!isDailyCheckIn ? 'cursor-pointer' : ''} transition-all ${
@@ -276,13 +226,11 @@ export function NotificationsScreen({ onClose }: NotificationsScreenProps = {}) 
                         </div>
                       )}
                     </div>
-                    {!isDailyCheckIn && (
+                    {!isDailyCheckIn && isFirestore && (
                       <button
                         onClick={(e) => {
                           e.stopPropagation();
-                          isFirestore
-                            ? deleteFirestoreNotification(notification.id)
-                            : deleteNotification(notification.id);
+                          deleteFirestoreNotification(notification.id);
                         }}
                         className="w-6 h-6 rounded-full hover:bg-[var(--muted)] flex items-center justify-center flex-shrink-0"
                       >
