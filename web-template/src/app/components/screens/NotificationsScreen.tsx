@@ -54,6 +54,7 @@ export function NotificationsScreen({ onClose, role = 'user' }: NotificationsScr
       case 'cancellation': return X;
       case 'request': return AlertCircle;
       case 'checkin': return Heart;
+      case 'daily_quote': return Heart;
       // ─── NOVO: ikona za nepopoln profil ──────────────────────────────────────
       case 'profile_incomplete': return UserCircle;
       default: return Bell;
@@ -68,6 +69,7 @@ export function NotificationsScreen({ onClose, role = 'user' }: NotificationsScr
       case 'cancellation': return 'bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400';
       case 'request': return 'bg-purple-100 dark:bg-purple-900/30 text-purple-600 dark:text-purple-400';
       case 'checkin': return 'bg-[var(--lavender)]/20 text-[var(--lavender)]';
+      case 'daily_quote': return 'bg-pink-100 dark:bg-pink-900/30 text-pink-600 dark:text-pink-400';
       // ─── NOVO: barva za nepopoln profil ──────────────────────────────────────
       case 'profile_incomplete': return 'bg-amber-100 dark:bg-amber-900/30 text-amber-600 dark:text-amber-400';
       default: return 'bg-[var(--lavender)]/10 text-[var(--lavender)]';

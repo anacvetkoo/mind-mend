@@ -138,6 +138,52 @@ export const generateDailyQuoteScheduled = onSchedule(
   }
 );
 
+//pošiljanje potisnega obvestila ob izidu nove misli dneva
+export const sendDailyQuoteNotification = onDocumentUpdated(
+  {
+    document: 'quotes/today',
+    region: 'europe-west1',
+  },
+  async (event) => {
+    console.log('[Notification] Zaznana posodobitev dnevne misli. Pripravljam vpis v notifications...');
+
+    const newData = event.data?.after.data();
+    if (!newData) return;
+
+    const quoteMessage = newData.message;
+    const quoteTitle = newData.title || 'Daily Reflection ✨';
+
+    try {
+      const usersSnapshot = await db.collection('users').get();
+      
+      if (usersSnapshot.empty) {
+        console.log('[Notification] V bazi ni najdenih uporabnikov.');
+        return;
+      }
+
+      const batch = db.batch();
+
+      usersSnapshot.docs.forEach((userDoc) => {
+        const notificationRef = db.collection('notifications').doc();
+        
+        batch.set(notificationRef, {
+          userId: userDoc.id,
+          type: 'reminder',
+          title: quoteTitle,
+          message: quoteMessage,
+          isRead: false,
+          createdAt: new Date().toISOString(),
+        });
+      });
+
+      await batch.commit();
+      console.log(`[Notification] Uspešno ustvarjeno obvestilo za ${usersSnapshot.size} uporabnikov.`);
+    } catch (error) {
+      console.error('[Notification] Napaka pri razpošiljanju obvestil v Firestore:', error);
+    }
+  }
+);
+
 //stripe
 
 export const createStripeConnectAccount = onRequest((request, response) => {
