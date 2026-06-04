@@ -524,3 +524,107 @@ export const notifyTherapistIncompleteProfile = onRequest({ region: 'europe-west
     }
   });
 });
+
+// ─── Upcoming Appointment Reminder (1 dan prej) ───────────────────────────────
+
+export const sendUpcomingAppointmentReminders = onSchedule(
+  {
+    schedule: 'every 60 minutes',
+    timeZone: 'Europe/Ljubljana',
+    region: 'europe-west1',
+  },
+  async () => {
+    const now = new Date();
+
+    // Jutri ob istem času — iščemo appointe ki so točno čez 24h (±30 min)
+    const tomorrowStart = new Date(now.getTime() + 23.5 * 60 * 60 * 1000);
+    const tomorrowEnd = new Date(now.getTime() + 24.5 * 60 * 60 * 1000);
+
+    // Datum jutri v formatu YYYY-MM-DD
+    const tomorrowDate = new Date(now.getTime() + 24 * 60 * 60 * 1000);
+    const tomorrowDateStr = tomorrowDate.toISOString().split('T')[0];
+
+    // Poišči vse CONFIRMED appointe za jutri
+    const appointmentsSnapshot = await db
+      .collection('appointments')
+      .where('status', '==', 'CONFIRMED')
+      .where('date', '==', tomorrowDateStr)
+      .get();
+
+    if (appointmentsSnapshot.empty) {
+      console.log(`[UpcomingReminder] No appointments tomorrow (${tomorrowDateStr})`);
+      return;
+    }
+
+    let sentCount = 0;
+
+    for (const appointmentDoc of appointmentsSnapshot.docs) {
+      const appointment = appointmentDoc.data();
+      const appointmentId = appointmentDoc.id;
+
+      // Preveri da ta reminder še ni bil poslan
+      if (appointment.reminderSent) continue;
+
+      // Preveri da je čas termina v oknu ±30 min
+      const appointmentDateTime = new Date(`${appointment.date}T${appointment.startTime}`);
+      if (appointmentDateTime < tomorrowStart || appointmentDateTime > tomorrowEnd) continue;
+
+      const sendPushToUser = async (userId: string, role: 'user' | 'therapist') => {
+        const userDoc = await db.collection('users').doc(userId).get();
+        const userData = userDoc.data();
+        if (!userData) return;
+
+        const isUser = role === 'user';
+        const title = '📅 Upcoming appointment';
+        const body = isUser
+          ? `Reminder: You have an appointment with ${appointment.therapistName} tomorrow at ${appointment.startTime}.`
+          : `Reminder: You have a session with ${appointment.userName || 'a client'} tomorrow at ${appointment.startTime}.`;
+
+        // Shrani in-app notifikacijo v Firestore
+        await db.collection('notifications').add({
+          userId,
+          type: 'reminder',
+          title,
+          message: body,
+          appointmentId,
+          isRead: false,
+          createdAt: new Date().toISOString(),
+        });
+
+        // Pošlji push notifikacijo če ima token
+        const expoPushToken = userData.expoPushToken;
+        if (expoPushToken && typeof expoPushToken === 'string' && expoPushToken.startsWith('ExponentPushToken')) {
+          await fetch('https://exp.host/--/api/v2/push/send', {
+            method: 'POST',
+            headers: {
+              Accept: 'application/json',
+              'Accept-Encoding': 'gzip, deflate',
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              to: expoPushToken,
+              sound: 'default',
+              title,
+              body,
+              data: { screen: 'appointments', appointmentId },
+            }),
+          });
+        }
+      };
+
+      // Pošlji userju in terapevtu
+      await sendPushToUser(appointment.userId, 'user');
+      await sendPushToUser(appointment.therapistId, 'therapist');
+
+      // Označi da je reminder že bil poslan — prepreči duplikate
+      await db.collection('appointments').doc(appointmentId).set(
+        { reminderSent: true },
+        { merge: true }
+      );
+
+      sentCount++;
+    }
+
+    console.log(`[UpcomingReminder] Sent reminders for ${sentCount} appointments on ${tomorrowDateStr}`);
+  }
+);
