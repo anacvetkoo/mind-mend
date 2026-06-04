@@ -108,7 +108,11 @@ export const generateDailyQuoteScheduled = onSchedule(
 
     try {
       const { GoogleGenAI } = await import('@google/genai');
-      const ai = new GoogleGenAI({ vertexai: true });
+      const ai = new GoogleGenAI({ 
+        vertexai: true,
+        project: 'mindmend-a8839',
+        location: 'europe-west1'
+      });
 
       const response = await ai.models.generateContent({
         model: 'gemini-2.5-flash',
@@ -123,7 +127,7 @@ export const generateDailyQuoteScheduled = onSchedule(
 
       await db.collection('quotes').doc('today').set({ //shranimo v dokument 'quotes/today'
         message: quoteText,
-        title: 'Daily Reflection ✨',
+        title: 'Daily Reflection',
         createdAt: new Date().toISOString(),
       });
 
