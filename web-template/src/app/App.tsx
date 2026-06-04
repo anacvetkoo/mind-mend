@@ -281,6 +281,19 @@ const closeContentDetail = () => {
             (window as any).__pendingExpoPushToken = data.token;
           }
         }
+
+        // ─── NOVO: Sinhronizacija toggle-a z sistemskim dovoljenjem ──────────
+        if (data?.type === 'NOTIFICATIONS_ENABLED') {
+          const { auth } = await import('./services/firebaseConfig');
+          const currentUser = auth.currentUser;
+          if (currentUser) {
+            await updateUserNotificationsEnabled(currentUser.uid, true);
+            setNotificationsEnabled(true);
+          } else {
+            // User še ni loginan — shrani začasno
+            (window as any).__pendingNotificationsEnabled = true;
+          }
+        }
       } catch (e) {
         // Ignoriraj sporočila ki niso JSON ali niso naša
       }
@@ -317,6 +330,14 @@ const closeContentDetail = () => {
           if (pendingToken) {
             await saveUserExpoPushToken(firebaseUser.uid, pendingToken);
             delete (window as any).__pendingExpoPushToken;
+          }
+
+          // ─── NOVO: Shrani notifikacije enabled ki je prišel pred loginom ──
+          const pendingNotifications = (window as any).__pendingNotificationsEnabled;
+          if (pendingNotifications) {
+            await updateUserNotificationsEnabled(firebaseUser.uid, true);
+            setNotificationsEnabled(true);
+            delete (window as any).__pendingNotificationsEnabled;
           }
 
           if (role === 'therapist') {
