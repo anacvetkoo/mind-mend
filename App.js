@@ -268,6 +268,7 @@ export default function App() {
           domStorageEnabled
           originWhitelist={["*"]}
           onMessage={handleMessage}
+          automaticallyAdjustKeyboardInsets={true} //da ne skoči chat gor izven ekrana, isto dodano "softwareKeyboardLayoutMode": "resize" v app.json
         />
       </SafeAreaView>
     </SafeAreaProvider>
