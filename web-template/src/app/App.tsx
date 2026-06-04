@@ -1398,7 +1398,7 @@ const handleQuestionnaireComplete = async (data: any) => {
               onOpenClientFile={(userId) => setSelectedClientUserId(userId)}
             />
           )}
-          {currentScreen === 'notifications' && <NotificationsScreen onClose={() => setCurrentScreen('dashboard')} />}
+          {currentScreen === 'notifications' && <NotificationsScreen onClose={() => setCurrentScreen('dashboard')} role="therapist" />}
           {currentScreen === 'privacy-policy' && (
             <PrivacyPolicyPage onBack={() => setCurrentScreen('profile')} />
           )}

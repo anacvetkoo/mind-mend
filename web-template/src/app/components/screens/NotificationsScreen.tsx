@@ -9,15 +9,20 @@ import { db } from '../../services/firebaseConfig';
 
 interface NotificationsScreenProps {
   onClose?: () => void;
+  // ─── NOVO: role prop — daily check-in samo za userje ─────────────────────────
+  role?: 'user' | 'therapist';
 }
 
-export function NotificationsScreen({ onClose }: NotificationsScreenProps = {}) {
+export function NotificationsScreen({ onClose, role = 'user' }: NotificationsScreenProps = {}) {
   const [todayCompleted, setTodayCompleted] = useState(false);
   // ─── NOVO: notifikacije iz Firestorea (za terapevte) ─────────────────────────
   const [firestoreNotifications, setFirestoreNotifications] = useState<any[]>([]);
 
   useEffect(() => {
-      isTodayCompleted().then(setTodayCompleted);
+      // Daily check-in samo za userje
+      if (role === 'user') {
+        isTodayCompleted().then(setTodayCompleted);
+      }
       loadFirestoreNotifications();
     }, []);
 
@@ -117,8 +122,8 @@ export function NotificationsScreen({ onClose }: NotificationsScreenProps = {}) 
     return 'Just now';
   };
 
-  // Daily check-in notifikacija (samo če ni opravljen)
-  const dailyCheckInNotification = !todayCompleted ? [{
+  // Daily check-in notifikacija — samo za userje in samo če ni opravljen
+  const dailyCheckInNotification = role === 'user' && !todayCompleted ? [{
     id: 'daily-checkin',
     userId: 'current-user',
     type: 'checkin',
