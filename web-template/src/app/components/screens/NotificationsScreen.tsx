@@ -17,9 +17,9 @@ export function NotificationsScreen({ onClose }: NotificationsScreenProps = {}) 
   const [firestoreNotifications, setFirestoreNotifications] = useState<any[]>([]);
 
   useEffect(() => {
-    setTodayCompleted(isTodayCompleted());
-    loadFirestoreNotifications();
-  }, []);
+      isTodayCompleted().then(setTodayCompleted);
+      loadFirestoreNotifications();
+    }, []);
 
   // ─── NOVO: naloži notifikacije iz Firestorea ──────────────────────────────────
   const loadFirestoreNotifications = async () => {
