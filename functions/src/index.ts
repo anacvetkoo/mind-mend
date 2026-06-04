@@ -466,3 +466,61 @@ export const sendDailyCheckInReminders = onSchedule(
     console.log(`[CheckInReminder] Sent to ${messages.length} users (slot: ${slotName})`);
   }
 );
+
+// ─── Therapist Incomplete Profile Notification ────────────────────────────────
+
+export const notifyTherapistIncompleteProfile = onRequest({ region: 'europe-west1' }, (request, response) => {
+  corsHandler(request, response, async () => {
+    try {
+      if (request.method !== 'POST') {
+        response.status(405).json({ error: 'Method not allowed' });
+        return;
+      }
+
+      const decodedToken = await verifyUser(request);
+
+      const userRef = db.collection('users').doc(decodedToken.uid);
+      const userSnapshot = await userRef.get();
+      const userData = userSnapshot.data();
+
+      if (!userData || userData.role !== 'therapist') {
+        response.status(403).json({ error: 'Only therapists can receive this notification.' });
+        return;
+      }
+
+      // Shrani in-app notifikacijo v Firestore
+      await db.collection('notifications').add({
+        userId: decodedToken.uid,
+        type: 'profile_incomplete',
+        title: 'Complete your profile',
+        message: 'Your profile is incomplete. Add your bio, specializations and photo so clients can find you.',
+        isRead: false,
+        createdAt: new Date().toISOString(),
+      });
+
+      // Pošlji push notifikacijo če ima token
+      const expoPushToken = userData.expoPushToken;
+      if (expoPushToken && typeof expoPushToken === 'string' && expoPushToken.startsWith('ExponentPushToken')) {
+        await fetch('https://exp.host/--/api/v2/push/send', {
+          method: 'POST',
+          headers: {
+            Accept: 'application/json',
+            'Accept-Encoding': 'gzip, deflate',
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            to: expoPushToken,
+            sound: 'default',
+            title: '👤 Complete your profile',
+            body: 'Add your bio, specializations and photo so clients can find you on MindMend.',
+            data: { screen: 'profile' },
+          }),
+        });
+      }
+
+      response.status(200).json({ success: true });
+    } catch (error) {
+      sendError(response, error, 'Failed to send incomplete profile notification.');
+    }
+  });
+});
