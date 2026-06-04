@@ -1,8 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { motion } from 'motion/react';
-import { Bell, Calendar, CreditCard, X, Check, Clock, AlertCircle, Heart } from 'lucide-react';
+import { Bell, Calendar, CreditCard, X, Check, Clock, AlertCircle, Heart, UserCircle } from 'lucide-react';
 import type { Notification } from '../../types/appointments';
 import { isTodayCompleted } from '../../utils/checkInUtils';
+import { getAuth } from 'firebase/auth';
+import { collection, query, where, orderBy, getDocs, doc, updateDoc, deleteDoc } from 'firebase/firestore';
+import { db } from '../../services/firebaseConfig';
 
 interface NotificationsScreenProps {
   onClose?: () => void;
@@ -10,10 +13,33 @@ interface NotificationsScreenProps {
 
 export function NotificationsScreen({ onClose }: NotificationsScreenProps = {}) {
   const [todayCompleted, setTodayCompleted] = useState(false);
+  // ─── NOVO: notifikacije iz Firestorea (za terapevte) ─────────────────────────
+  const [firestoreNotifications, setFirestoreNotifications] = useState<any[]>([]);
 
   useEffect(() => {
-    setTodayCompleted(isTodayCompleted());
-  }, []);
+      isTodayCompleted().then(setTodayCompleted);
+      loadFirestoreNotifications();
+    }, []);
+
+  // ─── NOVO: naloži notifikacije iz Firestorea ──────────────────────────────────
+  const loadFirestoreNotifications = async () => {
+    try {
+      const currentUser = getAuth().currentUser;
+      if (!currentUser) return;
+
+      const q = query(
+        collection(db, 'notifications'),
+        where('userId', '==', currentUser.uid),
+        orderBy('createdAt', 'desc')
+      );
+
+      const snapshot = await getDocs(q);
+      const data = snapshot.docs.map((d) => ({ id: d.id, ...d.data() }));
+      setFirestoreNotifications(data);
+    } catch (error) {
+      console.error('Error loading notifications from Firestore:', error);
+    }
+  };
 
   const [notifications, setNotifications] = useState<Notification[]>([
     {
@@ -56,6 +82,8 @@ export function NotificationsScreen({ onClose }: NotificationsScreenProps = {}) 
       case 'cancellation': return X;
       case 'request': return AlertCircle;
       case 'checkin': return Heart;
+      // ─── NOVO: ikona za nepopoln profil ──────────────────────────────────────
+      case 'profile_incomplete': return UserCircle;
       default: return Bell;
     }
   };
@@ -68,6 +96,8 @@ export function NotificationsScreen({ onClose }: NotificationsScreenProps = {}) 
       case 'cancellation': return 'bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400';
       case 'request': return 'bg-purple-100 dark:bg-purple-900/30 text-purple-600 dark:text-purple-400';
       case 'checkin': return 'bg-[var(--lavender)]/20 text-[var(--lavender)]';
+      // ─── NOVO: barva za nepopoln profil ──────────────────────────────────────
+      case 'profile_incomplete': return 'bg-amber-100 dark:bg-amber-900/30 text-amber-600 dark:text-amber-400';
       default: return 'bg-[var(--lavender)]/10 text-[var(--lavender)]';
     }
   };
@@ -78,12 +108,45 @@ export function NotificationsScreen({ onClose }: NotificationsScreenProps = {}) 
     ));
   };
 
+  // ─── NOVO: označi Firestore notifikacijo kot prebrano ─────────────────────────
+  const markFirestoreAsRead = async (id: string) => {
+    try {
+      await updateDoc(doc(db, 'notifications', id), { isRead: true });
+      setFirestoreNotifications(firestoreNotifications.map(n =>
+        n.id === id ? { ...n, isRead: true } : n
+      ));
+    } catch (error) {
+      console.error('Error marking notification as read:', error);
+    }
+  };
+
   const markAllAsRead = () => {
     setNotifications(notifications.map(n => ({ ...n, isRead: true })));
+    // Označi tudi Firestore notifikacije
+    firestoreNotifications.forEach(async (n) => {
+      if (!n.isRead) {
+        try {
+          await updateDoc(doc(db, 'notifications', n.id), { isRead: true });
+        } catch (error) {
+          console.error('Error marking all as read:', error);
+        }
+      }
+    });
+    setFirestoreNotifications(firestoreNotifications.map(n => ({ ...n, isRead: true })));
   };
 
   const deleteNotification = (id: string) => {
     setNotifications(notifications.filter(n => n.id !== id));
+  };
+
+  // ─── NOVO: izbriši Firestore notifikacijo ────────────────────────────────────
+  const deleteFirestoreNotification = async (id: string) => {
+    try {
+      await deleteDoc(doc(db, 'notifications', id));
+      setFirestoreNotifications(firestoreNotifications.filter(n => n.id !== id));
+    } catch (error) {
+      console.error('Error deleting notification:', error);
+    }
   };
 
   const formatTime = (dateStr: string) => {
@@ -114,7 +177,13 @@ export function NotificationsScreen({ onClose }: NotificationsScreenProps = {}) 
       ]
     : notifications;
 
-  const unreadCount = allNotifications.filter(n => !n.isRead).length;
+  // ─── NOVO: združi vse notifikacije — Firestore pride na vrh ──────────────────
+  const combinedNotifications = [
+    ...firestoreNotifications.map(n => ({ ...n, _source: 'firestore' })),
+    ...allNotifications.map(n => ({ ...n, _source: 'local' })),
+  ];
+
+  const unreadCount = combinedNotifications.filter(n => !n.isRead).length;
 
   return (
     <div className="min-h-screen bg-background pb-24">
@@ -158,22 +227,29 @@ export function NotificationsScreen({ onClose }: NotificationsScreenProps = {}) 
           transition={{ delay: 0.1 }}
           className="space-y-3"
         >
-          {allNotifications.length === 0 ? (
+          {combinedNotifications.length === 0 ? (
             <div className="text-center py-16">
               <Bell className="w-16 h-16 text-muted-foreground mx-auto mb-4 opacity-50" />
               <p className="text-muted-foreground">No notifications</p>
             </div>
           ) : (
-            allNotifications.map((notification, idx) => {
+            combinedNotifications.map((notification, idx) => {
               const Icon = getNotificationIcon(notification.type);
               const isDailyCheckIn = notification.id === 'daily-checkin';
+              const isFirestore = notification._source === 'firestore';
               return (
                 <motion.div
                   key={notification.id}
                   initial={{ opacity: 0, x: -20 }}
                   animate={{ opacity: 1, x: 0 }}
                   transition={{ delay: 0.05 * idx }}
-                  onClick={() => !notification.isRead && !isDailyCheckIn && markAsRead(notification.id)}
+                  onClick={() => {
+                    if (!notification.isRead && !isDailyCheckIn) {
+                      isFirestore
+                        ? markFirestoreAsRead(notification.id)
+                        : markAsRead(notification.id);
+                    }
+                  }}
                   className={`bg-card rounded-2xl p-4 shadow-md ${!isDailyCheckIn ? 'cursor-pointer' : ''} transition-all ${
                     !notification.isRead ? 'border-2 border-[var(--lavender)]/30' : ''
                   }`}
@@ -204,7 +280,9 @@ export function NotificationsScreen({ onClose }: NotificationsScreenProps = {}) 
                       <button
                         onClick={(e) => {
                           e.stopPropagation();
-                          deleteNotification(notification.id);
+                          isFirestore
+                            ? deleteFirestoreNotification(notification.id)
+                            : deleteNotification(notification.id);
                         }}
                         className="w-6 h-6 rounded-full hover:bg-[var(--muted)] flex items-center justify-center flex-shrink-0"
                       >

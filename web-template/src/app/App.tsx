@@ -281,6 +281,19 @@ const closeContentDetail = () => {
             (window as any).__pendingExpoPushToken = data.token;
           }
         }
+
+        // ─── NOVO: Sinhronizacija toggle-a z sistemskim dovoljenjem ──────────
+        if (data?.type === 'NOTIFICATIONS_ENABLED') {
+          const { auth } = await import('./services/firebaseConfig');
+          const currentUser = auth.currentUser;
+          if (currentUser) {
+            await updateUserNotificationsEnabled(currentUser.uid, true);
+            setNotificationsEnabled(true);
+          } else {
+            // User še ni loginan — shrani začasno
+            (window as any).__pendingNotificationsEnabled = true;
+          }
+        }
       } catch (e) {
         // Ignoriraj sporočila ki niso JSON ali niso naša
       }
@@ -317,6 +330,14 @@ const closeContentDetail = () => {
           if (pendingToken) {
             await saveUserExpoPushToken(firebaseUser.uid, pendingToken);
             delete (window as any).__pendingExpoPushToken;
+          }
+
+          // ─── NOVO: Shrani notifikacije enabled ki je prišel pred loginom ──
+          const pendingNotifications = (window as any).__pendingNotificationsEnabled;
+          if (pendingNotifications) {
+            await updateUserNotificationsEnabled(firebaseUser.uid, true);
+            setNotificationsEnabled(true);
+            delete (window as any).__pendingNotificationsEnabled;
           }
 
           if (role === 'therapist') {
@@ -695,6 +716,35 @@ const handleQuestionnaireComplete = async (data: any) => {
     setShowTherapistProfileEdit(false);
   };
 
+  // ─── NOVO: Pokliče Cloud Function ko terapevt skip-a profile setup ───────────
+  const handleTherapistProfileSkip = async () => {
+    localStorage.setItem('therapistProfileComplete', 'true');
+    setAppState('app');
+    setCurrentScreen('dashboard');
+    const hasSeenTherapistTutorial = localStorage.getItem('hasSeenTherapistTutorial');
+    if (!hasSeenTherapistTutorial) {
+      setTimeout(() => setShowTherapistTutorial(true), 500);
+    }
+
+    // Pošlji notifikacijo v ozadju — ne blokira navigacije
+    try {
+      const { auth } = await import('./services/firebaseConfig');
+      const currentUser = auth.currentUser;
+      if (currentUser) {
+        const idToken = await currentUser.getIdToken();
+        fetch('https://europe-west1-mindmend-a8839.cloudfunctions.net/notifyTherapistIncompleteProfile', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${idToken}`,
+          },
+        }).catch((err) => console.warn('[SkipProfile] Notification failed silently:', err));
+      }
+    } catch (err) {
+      console.warn('[SkipProfile] Could not send incomplete profile notification:', err);
+    }
+  };
+
   const handleTabChange = (tab: string) => {
     if (tab === 'aichat') {
       setChatTarget({
@@ -737,15 +787,7 @@ const handleQuestionnaireComplete = async (data: any) => {
     return (
       <TherapistProfileSetup
         onComplete={handleTherapistProfileSetupComplete}
-        onSkip={() => {
-          localStorage.setItem('therapistProfileComplete', 'true');
-          setAppState('app');
-          setCurrentScreen('dashboard');
-          const hasSeenTherapistTutorial = localStorage.getItem('hasSeenTherapistTutorial');
-          if (!hasSeenTherapistTutorial) {
-            setTimeout(() => setShowTherapistTutorial(true), 500);
-          }
-        }}
+        onSkip={handleTherapistProfileSkip}
       />
     );
   }
@@ -1334,6 +1376,7 @@ const handleQuestionnaireComplete = async (data: any) => {
                 const zoomLink = availability?.zoomLink || null;
                 setActiveSession({ appointment: { ...appointment, therapistZoomLink: zoomLink }, isTherapist: true });
               }}
+              onCompleteProfile={() => setShowTherapistProfileEdit(true)}
             />
           )}
           {currentScreen === 'mycontent' && <TherapistMyContent />}

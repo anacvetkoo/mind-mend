@@ -83,6 +83,10 @@ export default function App() {
         webViewRef.current.postMessage(
           JSON.stringify({ type: 'EXPO_PUSH_TOKEN', token })
         );
+        // User je dovolil notifikacije → prižgi toggle v Firestoreu
+        webViewRef.current.postMessage(
+          JSON.stringify({ type: 'NOTIFICATIONS_ENABLED', enabled: true })
+        );
       }
     });
   }, []);

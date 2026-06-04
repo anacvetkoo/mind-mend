@@ -14,9 +14,11 @@ interface TherapistDashboardProps {
   therapistName?: string;
   onViewNotifications?: () => void;
   onStartSession?: (appointment: Appointment) => void;
+  // ─── NOVO: callback za dokončanje profila iz opozorila ────────────────────────
+  onCompleteProfile?: () => void;
 }
 
-export function TherapistDashboard({ therapistName = 'Dr. Sarah', onViewNotifications, onStartSession }: TherapistDashboardProps) {
+export function TherapistDashboard({ therapistName = 'Dr. Sarah', onViewNotifications, onStartSession, onCompleteProfile }: TherapistDashboardProps) {
   const [selectedTab, setSelectedTab] = useState<'upcoming' | 'requests' | 'past'>('upcoming');
   const [appointments, setAppointments] = useState<Appointment[]>([]);
   const [isLoadingAppointments, setIsLoadingAppointments] = useState(true);
@@ -26,6 +28,8 @@ export function TherapistDashboard({ therapistName = 'Dr. Sarah', onViewNotifica
   const [now, setNow] = useState(() => new Date());
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [therapistRating, setTherapistRating] = useState<string>('—');
+  // ─── NOVO: ali je profil terapevta nepopoln ───────────────────────────────────
+  const [isProfileIncomplete, setIsProfileIncomplete] = useState(false);
 
   const refreshNow = () => {
     setNow(new Date());
@@ -62,6 +66,21 @@ export function TherapistDashboard({ therapistName = 'Dr. Sarah', onViewNotifica
     }
   };
 
+  // ─── NOVO: preveri ali je profil terapevta nepopoln ──────────────────────────
+  const checkProfileComplete = async (uid: string) => {
+    try {
+      const docRef = doc(db, 'users', uid);
+      const docSnap = await getDoc(docRef);
+      if (!docSnap.exists()) return;
+      const data = docSnap.data();
+      // Profil je nepopoln če manjka bio ALI title ALI profilna slika
+      const incomplete = !data.bio || !data.title || !data.profileImage;
+      setIsProfileIncomplete(incomplete);
+    } catch (error) {
+      console.error('Error checking profile completeness:', error);
+    }
+  };
+
   useEffect(() => {
     const currentUser = getAuth().currentUser;
     if (!currentUser) { setIsLoadingAppointments(false); return; }
@@ -83,6 +102,7 @@ export function TherapistDashboard({ therapistName = 'Dr. Sarah', onViewNotifica
 
     loadStats(currentUser.uid);
     loadRating(currentUser.uid);
+    checkProfileComplete(currentUser.uid);
 
     return () => unsubscribe();
   }, []);
@@ -186,6 +206,37 @@ const stats = [
             <OtterMascot size="sm" emotion="happy" />
           </div>
         </motion.div>
+
+        {/* ─── NOVO: Opozorilo o nepopolnem profilu ─────────────────────────────── */}
+        {isProfileIncomplete && (
+          <motion.div
+            initial={{ opacity: 0, y: -10 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="mb-6 bg-amber-50 dark:bg-amber-900/20 border-2 border-amber-200 dark:border-amber-700/50 rounded-2xl p-4"
+          >
+            <div className="flex items-start gap-3">
+              <div className="w-9 h-9 rounded-full bg-amber-100 dark:bg-amber-800/40 flex items-center justify-center flex-shrink-0">
+                <AlertCircle className="w-5 h-5 text-amber-600 dark:text-amber-400" />
+              </div>
+              <div className="flex-1">
+                <p className="text-sm font-medium text-amber-800 dark:text-amber-300 mb-1">
+                  Your profile is incomplete
+                </p>
+                <p className="text-xs text-amber-700 dark:text-amber-400 mb-3">
+                  Add your bio, specializations and photo so clients can find and recognise you.
+                </p>
+                {onCompleteProfile && (
+                  <button
+                    onClick={onCompleteProfile}
+                    className="text-xs font-medium px-4 py-2 rounded-xl bg-amber-500 text-white"
+                  >
+                    Complete profile →
+                  </button>
+                )}
+              </div>
+            </div>
+          </motion.div>
+        )}
 
         {/* Stats */}
         <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }} className="grid grid-cols-2 gap-4 mb-6">
