@@ -20,7 +20,7 @@ const getStripe = ()=> {
   }
 
   return new Stripe(stripeSecretKey, {
-    apiVersion: '2026-04-22.dahlia',
+    apiVersion: '2026-04-22.dahlia' as any, //tu sem dodala as any zaradi teste napake
   });
 };
 
@@ -85,6 +85,56 @@ const sendNotificationToUser = async (
     });
   }
 };
+
+// avtomatsko generiranje misli - enkrat na dan ob 14ih
+
+export const generateDailyQuoteScheduled = onSchedule(
+  {
+    schedule: 'every day 14:00', //vsak dan ob 14ih
+    timeZone: 'Europe/Ljubljana',
+    region: 'europe-west1',
+  },
+  async () => {
+    console.log('[DailyQuote] Zaganjam avtomatsko generiranje dnevne misli...');
+
+    const prompt = `
+      You are MindMend AI, an empathetic and inspiring mental health assistant.
+      Generate exactly ONE beautiful, inspiring, and calming mental wellness quote or reflection for today.
+      The message should be supportive, poetic yet grounded, and help the user find peace.
+      It must be written in English.
+      
+      CRITICAL RULE: Return ONLY the text of the quote (1-2 sentences maximum). Do not use quotation marks, markdown wrappers, or intro text.
+    `;
+
+    try {
+      const { GoogleGenAI } = await import('@google/genai');
+      const ai = new GoogleGenAI({});
+
+      const response = await ai.models.generateContent({
+        model: 'gemini-2.5-flash',
+        contents: prompt,
+      });
+      
+      const quoteText = response.text ? response.text.trim() : '';
+
+      if (!quoteText) {
+        throw new Error('Gemini model je vrnil prazno vsebino.');
+      }
+
+      await db.collection('quotes').doc('today').set({ //shranimo v dokument 'quotes/today'
+        message: quoteText,
+        title: 'Daily Reflection ✨',
+        createdAt: new Date().toISOString(),
+      });
+
+      console.log(`[DailyQuote] Uspešno zgenerirano in shranjeno: "${quoteText}"`);
+    } catch (error) {
+      console.error('[DailyQuote] Napaka pri generiranju dnevne misli:', error);
+    }
+  }
+);
+
+//stripe
 
 export const createStripeConnectAccount = onRequest((request, response) => {
   corsHandler(request, response, async () => {
