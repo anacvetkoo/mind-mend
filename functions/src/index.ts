@@ -108,7 +108,7 @@ export const generateDailyQuoteScheduled = onSchedule(
 
     try {
       const { GoogleGenAI } = await import('@google/genai');
-      const ai = new GoogleGenAI({});
+      const ai = new GoogleGenAI({ vertexai: true });
 
       const response = await ai.models.generateContent({
         model: 'gemini-2.5-flash',
