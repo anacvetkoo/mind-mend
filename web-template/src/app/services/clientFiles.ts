@@ -244,6 +244,8 @@ const getCompletedAppointments = (appointments: Appointment[]) => {
   const now = new Date();
 
   return appointments.filter((appointment) => {
+    if (appointment.status === 'COMPLETED') return true;
+
     if (appointment.status !== 'CONFIRMED') return false;
 
     return getAppointmentEndDate(appointment) < now;

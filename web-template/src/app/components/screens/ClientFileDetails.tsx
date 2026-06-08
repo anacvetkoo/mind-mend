@@ -155,11 +155,15 @@ const confirmedAppointments = details?.appointments.filter(
   (appointment) => appointment.status === 'CONFIRMED'
 ) ?? [];
 
-const completedAppointments = confirmedAppointments.filter((appointment) => {
+const completedAppointments = details?.appointments.filter((appointment) => {
+  if (appointment.status === 'COMPLETED') return true;
+
+  if (appointment.status !== 'CONFIRMED') return false;
+
   const appointmentEndDate = new Date(`${appointment.date}T${appointment.endTime}`);
 
   return appointmentEndDate < now;
-});
+}) ?? [];
 
 const upcomingAppointments = confirmedAppointments.filter((appointment) => {
   const appointmentEndDate = new Date(`${appointment.date}T${appointment.endTime}`);
