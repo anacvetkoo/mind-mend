@@ -223,6 +223,15 @@ paymentId: pi_...
 - preveri `functions/.env`
 - preveri, da sta Stripe ključa oba v test mode: `pk_test_...` `sk_test_...`
 - po spremembi `.env` vedno ponovno zaženi `npm run dev`
+
+---
+# Dostop do aplikacije
+- https://mindmend-a8839.web.app/
+- Namestitev aplikacije MindMend na Androidih preko QR kode: 
+<img width="272" height="272" alt="qr-latest" src="https://github.com/user-attachments/assets/a0ee94c0-9d8c-4af5-8dee-f4f1db09c481" />
+
+
+
 ---
 # Opombe
 > ⚠️ Google prijava ne deluje v navadnem brskalniku na telefonu. Zahteva Expo build ali Expo Go.
