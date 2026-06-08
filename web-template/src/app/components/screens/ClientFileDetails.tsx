@@ -14,6 +14,7 @@ interface ClientFileDetailsProps {
   userId: string;
   onBack: () => void;
 }
+const sessionsPerPage = 5;
 
 export function ClientFileDetails({ therapistId, userId, onBack }: ClientFileDetailsProps) {
   const [details, setDetails] = useState<ClientFileDetailsData | null>(null);
@@ -27,12 +28,14 @@ export function ClientFileDetails({ therapistId, userId, onBack }: ClientFileDet
   const [isSaving, setIsSaving] = useState(false);
   const [showSaved, setShowSaved] = useState(false);
   const [showDiscardConfirm, setShowDiscardConfirm] = useState(false);
+  const [currentSessionsPage, setCurrentSessionsPage] = useState(1);
 
   const loadDetails = async () => {
     try {
       setIsLoading(true);
       const data = await getClientFileDetails(therapistId, userId);
       setDetails(data);
+      setCurrentSessionsPage(1);
       setSelectedAppointment(null);
 setNotesAppointment(null);
 setTherapistNotes('');
@@ -193,6 +196,15 @@ const getNextSessionDate = () => {
 
   return `${formatDate(nextAppointment.date)} at ${nextAppointment.startTime}`;
 };
+
+const totalSessionsPages = details
+  ? Math.ceil(details.appointments.length / sessionsPerPage)
+  : 1;
+
+const paginatedAppointments = details?.appointments.slice(
+  (currentSessionsPage - 1) * sessionsPerPage,
+  currentSessionsPage * sessionsPerPage
+) ?? [];
 
   if (isLoading) {
     return (
@@ -493,7 +505,7 @@ const getNextSessionDate = () => {
                 <p className="text-sm text-muted-foreground">No sessions with this client yet</p>
               </div>
             ) : (
-              details.appointments.map((appointment) => (
+              paginatedAppointments.map((appointment) => (
                 <div
   key={appointment.id}
   className="w-full bg-card rounded-2xl p-4 shadow-md border-2 border-transparent"
@@ -541,6 +553,23 @@ const getNextSessionDate = () => {
               ))
             )}
           </div>
+          {totalSessionsPages > 1 && (
+  <div className="flex items-center justify-center gap-2 mt-4">
+    {Array.from({ length: totalSessionsPages }, (_, index) => (
+      <button
+        key={index + 1}
+        onClick={() => setCurrentSessionsPage(index + 1)}
+        className={`w-9 h-9 rounded-full text-sm transition-colors ${
+          currentSessionsPage === index + 1
+            ? 'bg-[var(--soft-purple)] text-white'
+            : 'bg-card text-muted-foreground border border-[var(--border)]'
+        }`}
+      >
+        {index + 1}
+      </button>
+    ))}
+  </div>
+)}
         </motion.div>
 
     {notesAppointment && (
