@@ -22,6 +22,7 @@ export function ClientFileDetails({ therapistId, userId, onBack }: ClientFileDet
   const [therapistNotes, setTherapistNotes] = useState('');
   const [nextSteps, setNextSteps] = useState('');
   const [messages, setMessages] = useState<AppointmentMessage[]>([]);
+  const [isLoadingMessages, setIsLoadingMessages] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [showSaved, setShowSaved] = useState(false);
@@ -48,24 +49,7 @@ setNextSteps('');
     loadDetails();
   }, [therapistId, userId]);
 
-  useEffect(() => {
-    const loadMessages = async () => {
-      if (!selectedAppointment || selectedAppointment.appointmentType !== 'Chat') {
-        setMessages([]);
-        return;
-      }
-
-      try {
-        const data = await getAppointmentMessages(selectedAppointment.id, therapistId, userId);
-        setMessages(data);
-      } catch (error) {
-        console.error('Failed to load appointment messages:', error);
-        setMessages([]);
-      }
-    };
-
-    loadMessages();
-  }, [selectedAppointment, therapistId, userId]);
+  
 
   const handleOpenNotes = (appointment: Appointment) => {
   setNotesAppointment(appointment);
@@ -74,8 +58,20 @@ setNextSteps('');
   setShowSaved(false);
 };
 
-const handleOpenChat = (appointment: Appointment) => {
+const handleOpenChat = async (appointment: Appointment) => {
   setSelectedAppointment(appointment);
+  setMessages([]);
+  setIsLoadingMessages(true);
+
+  try {
+    const data = await getAppointmentMessages(appointment.id, therapistId, userId);
+    setMessages(data);
+  } catch (error) {
+    console.error('Failed to load appointment messages:', error);
+    setMessages([]);
+  } finally {
+    setIsLoadingMessages(false);
+  }
 };
 
 const handleCloseNotes = () => {
@@ -667,9 +663,11 @@ const getNextSessionDate = () => {
       </button>
     </div>
 
-    {messages.length === 0 ? (
-      <p className="text-sm text-muted-foreground">No archived messages for this session.</p>
-    ) : (
+    {isLoadingMessages ? (
+  <p className="text-sm text-muted-foreground">Loading archived messages...</p>
+) : messages.length === 0 ? (
+  <p className="text-sm text-muted-foreground">No archived messages for this session.</p>
+) : (
       <div className="space-y-3 max-h-80 overflow-y-auto pr-1">
         {messages.map((message) => (
           <div

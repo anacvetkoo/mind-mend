@@ -9,6 +9,7 @@ import {
   setDoc,
   updateDoc,
   where,
+  orderBy
 } from 'firebase/firestore';
 import { db } from './firebaseConfig';
 import type { Appointment } from '../types/appointments';
@@ -343,26 +344,71 @@ export const updateClientAppointmentNotes = async (
   });
 };
 
+const getSessionKeyMaterial = (appointmentId: string): Promise<CryptoKey> =>
+  crypto.subtle.importKey(
+    'raw',
+    new TextEncoder().encode(`mm_session_${appointmentId}_k9x2p`.padEnd(32, '0').slice(0, 32)),
+    { name: 'AES-GCM' },
+    false,
+    ['decrypt']
+  );
+
+const decryptSessionMessage = async (
+  cipherText: string,
+  appointmentId: string
+): Promise<string> => {
+  try {
+    if (!cipherText) return '';
+
+    const key = await getSessionKeyMaterial(appointmentId);
+    const combined = Uint8Array.from(atob(cipherText), c => c.charCodeAt(0));
+    const iv = combined.slice(0, 12);
+    const encrypted = combined.slice(12);
+
+    const decrypted = await crypto.subtle.decrypt(
+      { name: 'AES-GCM', iv },
+      key,
+      encrypted
+    );
+
+    return new TextDecoder().decode(decrypted);
+  } catch (error) {
+    console.error('Archived message decrypt failed:', error);
+    return cipherText;
+  }
+};
+
 export const getAppointmentMessages = async (
   appointmentId: string,
   therapistId: string,
   userId: string
 ): Promise<AppointmentMessage[]> => {
   const messagesQuery = query(
-  collection(db, 'appointmentMessages'),
-  where('appointmentId', '==', appointmentId),
-  where('therapistId', '==', therapistId),
-  where('userId', '==', userId)
-);
+    collection(db, 'sessions', appointmentId, 'messages'),
+    orderBy('timestamp', 'asc')
+  );
 
-const snapshot = await getDocs(messagesQuery);
+  const snapshot = await getDocs(messagesQuery);
 
-return snapshot.docs
-  .map(mapAppointmentMessageDocument)
-  .sort((firstMessage, secondMessage) => {
-    const firstDate = new Date(firstMessage.createdAt).getTime();
-    const secondDate = new Date(secondMessage.createdAt).getTime();
+  const messages: AppointmentMessage[] = await Promise.all(
+    snapshot.docs.map(async (documentSnapshot): Promise<AppointmentMessage> => {
+      const data = documentSnapshot.data();
+      const senderId = data.senderId ?? '';
+      const message = await decryptSessionMessage(data.text ?? '', appointmentId);
 
-    return firstDate - secondDate;
-  });
+      return {
+        id: documentSnapshot.id,
+        appointmentId,
+        therapistId,
+        userId,
+        senderId,
+        senderRole: senderId === therapistId ? 'therapist' : 'user',
+        message,
+        createdAt: mapDateValue(data.timestamp),
+      };
+    })
+  );
+
+  return messages;
 };
+

@@ -369,6 +369,7 @@ export function SessionScreen({ appointment, isTherapist, onEndSession, onLeaveS
     setIsSending(true);
     inputRef.current?.focus();
     try {
+
       // Šifriramo sporočilo preden ga shranimo v Firestore
       const encryptedText = await encryptMessage(text, sessionId);
 
