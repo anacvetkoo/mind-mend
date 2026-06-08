@@ -641,11 +641,13 @@ const getNextSessionDate = () => {
 )}   
 
 {selectedAppointment?.appointmentType === 'Chat' && (
-  <motion.div
-    initial={{ opacity: 0, y: 20 }}
-    animate={{ opacity: 1, y: 0 }}
-    className="bg-card rounded-2xl p-4 shadow-md"
-  >
+  <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+    <motion.div
+      initial={{ opacity: 0, scale: 0.95 }}
+      animate={{ opacity: 1, scale: 1 }}
+      className="bg-card rounded-2xl p-4 shadow-xl w-full max-w-lg max-h-[80vh] overflow-hidden"
+    >
+
     <div className="flex items-start justify-between gap-3 mb-4">
       <div className="flex items-center gap-2">
         <MessageCircle className="w-5 h-5 text-[var(--lavender)]" />
@@ -668,7 +670,7 @@ const getNextSessionDate = () => {
 ) : messages.length === 0 ? (
   <p className="text-sm text-muted-foreground">No archived messages for this session.</p>
 ) : (
-      <div className="space-y-3 max-h-80 overflow-y-auto pr-1">
+      <div className="space-y-3 max-h-[60vh] overflow-y-auto pr-1">
         {messages.map((message) => (
           <div
             key={message.id}
@@ -684,7 +686,8 @@ const getNextSessionDate = () => {
         ))}
       </div>
     )}
-  </motion.div>
+      </motion.div>
+  </div>
 )}
       </div>
     </div>
