@@ -92,7 +92,7 @@ npm install        # če napaka: npm install --legacy-peer-deps
 cd ..
  
 # Cloud Functions
-cd functions && npm install && cd ..
+cd functions && npm install && npm run build && cd ..
 ```
 
 ### 3. Nastavitev spremenljivk okolja
