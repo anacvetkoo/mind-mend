@@ -39,11 +39,11 @@ Mobilna aplikacija je zato trenutno tehnično:
 ## Glavne funkcionalnosti
  
 - 📊 Dnevno sledenje razpoloženja in počutja
-- 🤖 AI analiza razpoloženja (Gemini)
+- 🤖 AI analiza razpoloženja
 - 📚 Knjižnica sprostitvenih vsebin
 - 📅 Rezervacija in upravljanje terminov
 - 💬 Komunikacija med klientom in terapevtom
-- 🔔 Push obvestila za opomnike in termine
+- 🔔 Obvestila za opomnike in termine
 - 💳 Plačevanje terminov (Stripe)
 
 ---
@@ -92,7 +92,7 @@ npm install        # če napaka: npm install --legacy-peer-deps
 cd ..
  
 # Cloud Functions
-cd functions && npm install && cd ..
+cd functions && npm install && npm run build && cd ..
 ```
 
 ### 3. Nastavitev spremenljivk okolja
@@ -109,11 +109,6 @@ Odpri vsako `.env` datoteko in vpiši vrednosti (Firebase ključi, Stripe ključ
 firebase login
 ```
 
-### 5. Gemini API Key
-1. Pojdi na [https://aistudio.google.com](https://aistudio.google.com)
-2. Prijavi se z Google računom
-3. Dashboard → API Keys → Create API Key → izberi projekt MindMend
-4. Kopiraj ključ in ga vpiši v `.env`: `EXPO_PUBLIC_GEMINI_API_KEY=tvoj_ključ`
 
 ---
 
@@ -154,3 +149,20 @@ Skeniraj QR kodo z aplikacijo **Expo Go** na mobilni napravi.
 - **Backend:** Firebase Auth, Firestore, Firebase Storage, Cloud Functions
 - **AI:** Google Gemini API
 - **Plačila:** Stripe
+
+---
+
+## Testni dostop
+
+### Terapevt
+- **E-pošta:** ana@gmail.si
+- **Geslo:** 123456
+
+### Uporabnik
+> 💡 Priporočamo da si ustvariš lasten račun — aplikacija ima lep uvodni zaslon ki ga je vredno videti!
+
+Tukaj je še testni račun (priporočamo ogled, ker so že vneseni testni podatki):
+- **E-pošta:** lia@gmail.com
+- **Geslo:** mindmend
+
+> ⚠️ Za testiranje rezervacije terminov uporabi terapevta Dr. Amara Diallo, PsyD. Stripe plačilo se lahko malo dlje obdeluje — to je normalno.
