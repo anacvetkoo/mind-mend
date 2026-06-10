@@ -39,11 +39,11 @@ Mobilna aplikacija je zato trenutno tehnično:
 ## Glavne funkcionalnosti
  
 - 📊 Dnevno sledenje razpoloženja in počutja
-- 🤖 AI analiza razpoloženja (Gemini)
+- 🤖 AI analiza razpoloženja
 - 📚 Knjižnica sprostitvenih vsebin
 - 📅 Rezervacija in upravljanje terminov
 - 💬 Komunikacija med klientom in terapevtom
-- 🔔 Push obvestila za opomnike in termine
+- 🔔 Obvestila za opomnike in termine
 - 💳 Plačevanje terminov (Stripe)
 
 ---
@@ -109,6 +109,7 @@ Odpri vsako `.env` datoteko in vpiši vrednosti (Firebase ključi, Stripe ključ
 firebase login
 ```
 
+
 ---
 
 ## Zagon
@@ -148,3 +149,20 @@ Skeniraj QR kodo z aplikacijo **Expo Go** na mobilni napravi.
 - **Backend:** Firebase Auth, Firestore, Firebase Storage, Cloud Functions
 - **AI:** Google Gemini API
 - **Plačila:** Stripe
+
+---
+
+## Testni dostop
+
+### Terapevt
+- **E-pošta:** ana@gmail.si
+- **Geslo:** 123456
+
+### Uporabnik
+> 💡 Priporočamo da si ustvariš lasten račun — aplikacija ima lep uvodni zaslon ki ga je vredno videti!
+
+Tukaj je še testni račun (priporočamo ogled, ker so že vneseni testni podatki):
+- **E-pošta:** lia@gmail.com
+- **Geslo:** mindmend
+
+> ⚠️ Za testiranje rezervacije terminov uporabi terapevta Dr. Amara Diallo, PsyD. Stripe plačilo se lahko malo dlje obdeluje — to je normalno.
