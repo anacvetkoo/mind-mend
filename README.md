@@ -109,12 +109,6 @@ Odpri vsako `.env` datoteko in vpiši vrednosti (Firebase ključi, Stripe ključ
 firebase login
 ```
 
-### 5. Gemini API Key
-1. Pojdi na [https://aistudio.google.com](https://aistudio.google.com)
-2. Prijavi se z Google računom
-3. Dashboard → API Keys → Create API Key → izberi projekt MindMend
-4. Kopiraj ključ in ga vpiši v `.env`: `EXPO_PUBLIC_GEMINI_API_KEY=tvoj_ključ`
-
 ---
 
 ## Zagon
