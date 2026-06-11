@@ -57,10 +57,12 @@ Mobilna aplikacija je zato trenutno tehnično:
 ## Posnetki zaslona
  
 <p float="left">
-  <img src="_PROMOCIJA/screenshot-home.png" width="200"/>
-  <img src="_PROMOCIJA/screenshot-content-library.png" width="200"/>
-  <img src="_PROMOCIJA/screenshot-booking.png" width="200"/>
-  <img src="_PROMOCIJA/screenshot-client-files.png" width="200"/>
+  <img src="_PROMOCIJA/1.png" width="200"/>
+  <img src="_PROMOCIJA/4.png" width="200"/>
+  <img src="_PROMOCIJA/5.png" width="200"/>
+  <img src="_PROMOCIJA/6.png" width="200"/>
+  <img src="_PROMOCIJA/10.png" width="200"/>
+  <img src="_PROMOCIJA/12.png" width="200"/>
 </p>
 
 ---
