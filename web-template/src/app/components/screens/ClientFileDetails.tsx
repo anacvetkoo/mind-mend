@@ -14,6 +14,7 @@ interface ClientFileDetailsProps {
   userId: string;
   onBack: () => void;
 }
+const sessionsPerPage = 5;
 
 export function ClientFileDetails({ therapistId, userId, onBack }: ClientFileDetailsProps) {
   const [details, setDetails] = useState<ClientFileDetailsData | null>(null);
@@ -22,16 +23,19 @@ export function ClientFileDetails({ therapistId, userId, onBack }: ClientFileDet
   const [therapistNotes, setTherapistNotes] = useState('');
   const [nextSteps, setNextSteps] = useState('');
   const [messages, setMessages] = useState<AppointmentMessage[]>([]);
+  const [isLoadingMessages, setIsLoadingMessages] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [showSaved, setShowSaved] = useState(false);
   const [showDiscardConfirm, setShowDiscardConfirm] = useState(false);
+  const [currentSessionsPage, setCurrentSessionsPage] = useState(1);
 
   const loadDetails = async () => {
     try {
       setIsLoading(true);
       const data = await getClientFileDetails(therapistId, userId);
       setDetails(data);
+      setCurrentSessionsPage(1);
       setSelectedAppointment(null);
 setNotesAppointment(null);
 setTherapistNotes('');
@@ -48,24 +52,7 @@ setNextSteps('');
     loadDetails();
   }, [therapistId, userId]);
 
-  useEffect(() => {
-    const loadMessages = async () => {
-      if (!selectedAppointment || selectedAppointment.appointmentType !== 'Chat') {
-        setMessages([]);
-        return;
-      }
-
-      try {
-        const data = await getAppointmentMessages(selectedAppointment.id, therapistId, userId);
-        setMessages(data);
-      } catch (error) {
-        console.error('Failed to load appointment messages:', error);
-        setMessages([]);
-      }
-    };
-
-    loadMessages();
-  }, [selectedAppointment, therapistId, userId]);
+  
 
   const handleOpenNotes = (appointment: Appointment) => {
   setNotesAppointment(appointment);
@@ -74,8 +61,20 @@ setNextSteps('');
   setShowSaved(false);
 };
 
-const handleOpenChat = (appointment: Appointment) => {
+const handleOpenChat = async (appointment: Appointment) => {
   setSelectedAppointment(appointment);
+  setMessages([]);
+  setIsLoadingMessages(true);
+
+  try {
+    const data = await getAppointmentMessages(appointment.id, therapistId, userId);
+    setMessages(data);
+  } catch (error) {
+    console.error('Failed to load appointment messages:', error);
+    setMessages([]);
+  } finally {
+    setIsLoadingMessages(false);
+  }
 };
 
 const handleCloseNotes = () => {
@@ -156,11 +155,15 @@ const confirmedAppointments = details?.appointments.filter(
   (appointment) => appointment.status === 'CONFIRMED'
 ) ?? [];
 
-const completedAppointments = confirmedAppointments.filter((appointment) => {
+const completedAppointments = details?.appointments.filter((appointment) => {
+  if (appointment.status === 'COMPLETED') return true;
+
+  if (appointment.status !== 'CONFIRMED') return false;
+
   const appointmentEndDate = new Date(`${appointment.date}T${appointment.endTime}`);
 
   return appointmentEndDate < now;
-});
+}) ?? [];
 
 const upcomingAppointments = confirmedAppointments.filter((appointment) => {
   const appointmentEndDate = new Date(`${appointment.date}T${appointment.endTime}`);
@@ -197,6 +200,15 @@ const getNextSessionDate = () => {
 
   return `${formatDate(nextAppointment.date)} at ${nextAppointment.startTime}`;
 };
+
+const totalSessionsPages = details
+  ? Math.ceil(details.appointments.length / sessionsPerPage)
+  : 1;
+
+const paginatedAppointments = details?.appointments.slice(
+  (currentSessionsPage - 1) * sessionsPerPage,
+  currentSessionsPage * sessionsPerPage
+) ?? [];
 
   if (isLoading) {
     return (
@@ -497,7 +509,7 @@ const getNextSessionDate = () => {
                 <p className="text-sm text-muted-foreground">No sessions with this client yet</p>
               </div>
             ) : (
-              details.appointments.map((appointment) => (
+              paginatedAppointments.map((appointment) => (
                 <div
   key={appointment.id}
   className="w-full bg-card rounded-2xl p-4 shadow-md border-2 border-transparent"
@@ -545,6 +557,23 @@ const getNextSessionDate = () => {
               ))
             )}
           </div>
+          {totalSessionsPages > 1 && (
+  <div className="flex items-center justify-center gap-2 mt-4">
+    {Array.from({ length: totalSessionsPages }, (_, index) => (
+      <button
+        key={index + 1}
+        onClick={() => setCurrentSessionsPage(index + 1)}
+        className={`w-9 h-9 rounded-full text-sm transition-colors ${
+          currentSessionsPage === index + 1
+            ? 'bg-[var(--soft-purple)] text-white'
+            : 'bg-card text-muted-foreground border border-[var(--border)]'
+        }`}
+      >
+        {index + 1}
+      </button>
+    ))}
+  </div>
+)}
         </motion.div>
 
     {notesAppointment && (
@@ -645,11 +674,13 @@ const getNextSessionDate = () => {
 )}   
 
 {selectedAppointment?.appointmentType === 'Chat' && (
-  <motion.div
-    initial={{ opacity: 0, y: 20 }}
-    animate={{ opacity: 1, y: 0 }}
-    className="bg-card rounded-2xl p-4 shadow-md"
-  >
+  <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+    <motion.div
+      initial={{ opacity: 0, scale: 0.95 }}
+      animate={{ opacity: 1, scale: 1 }}
+      className="bg-card rounded-2xl p-4 shadow-xl w-full max-w-lg max-h-[80vh] overflow-hidden"
+    >
+
     <div className="flex items-start justify-between gap-3 mb-4">
       <div className="flex items-center gap-2">
         <MessageCircle className="w-5 h-5 text-[var(--lavender)]" />
@@ -667,10 +698,12 @@ const getNextSessionDate = () => {
       </button>
     </div>
 
-    {messages.length === 0 ? (
-      <p className="text-sm text-muted-foreground">No archived messages for this session.</p>
-    ) : (
-      <div className="space-y-3 max-h-80 overflow-y-auto pr-1">
+    {isLoadingMessages ? (
+  <p className="text-sm text-muted-foreground">Loading archived messages...</p>
+) : messages.length === 0 ? (
+  <p className="text-sm text-muted-foreground">No archived messages for this session.</p>
+) : (
+      <div className="space-y-3 max-h-[60vh] overflow-y-auto pr-1">
         {messages.map((message) => (
           <div
             key={message.id}
@@ -686,7 +719,8 @@ const getNextSessionDate = () => {
         ))}
       </div>
     )}
-  </motion.div>
+      </motion.div>
+  </div>
 )}
       </div>
     </div>
