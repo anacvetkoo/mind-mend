@@ -32,9 +32,20 @@ jobs:
       run: npx tsc --noEmit --skipLibCheck
       continue-on-error: true
 
-    - name: Run Unit Tests
-      run: npm run test
-      continue-on-error: true
+    - name: Install coverage provider
+      run: npm ls @vitest/coverage-v8 > /dev/null 2>&1 || npm install --no-save --no-audit --no-fund @vitest/coverage-v8@4.1.7
+
+    - name: Run Unit Tests with Coverage
+      run: npm run test:coverage
+      # Brez continue-on-error! Neuspešen test tukaj ustreli in ustavi cevovod.
+
+    - name: Upload coverage report
+      if: always() # Izvede se tudi, če testi padejo, da lahko vidite poročilo
+      uses: actions/upload-artifact@v4
+      with:
+        name: coverage-report
+        path: web-template/coverage
+        if-no-files-found: ignore
 
     - name: Build Application
       env:
