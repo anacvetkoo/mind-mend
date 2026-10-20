@@ -7,7 +7,7 @@ import {
   isAppointmentPast,
 } from '../appointments';
 import { db } from '../firebaseConfig';
-import { addDoc, getDocs, updateDoc } from 'firebase/firestore';
+import { addDoc, doc, getDocs, updateDoc } from 'firebase/firestore';
 import { upsertClientFileForAppointment } from '../clientFiles';
 
 vi.mock('../firebaseConfig', () => ({
@@ -42,7 +42,7 @@ describe('Appointments Service', () => {
 
   describe('createAppointment', () => {
     it('should create an appointment and trigger client file upsert', async () => {
-      //lažni odziv za ustvarjen dokument
+      // lažni odziv za ustvarjen dokument
       vi.mocked(addDoc).mockResolvedValueOnce({ id: 'new_apt_123' } as any);
 
       const mockData = {
@@ -94,25 +94,57 @@ describe('Appointments Service', () => {
 
       expect(appointments).toHaveLength(1);
       expect(appointments[0].id).toBe('apt_99');
-      //preverimo pravilno mapiranje v ISO String
+      // preverimo pravilno mapiranje v ISO String
       expect(appointments[0].createdAt).toBe('2026-05-27T12:00:00.000Z');
     });
   });
 
   describe('updateAppointmentStatus', () => {
-    it('should call updateDoc with the correct status', async () => {
+    beforeEach(() => {
+      vi.mocked(doc).mockReturnValueOnce('appointment-ref' as any);
       vi.mocked(updateDoc).mockResolvedValueOnce(undefined as any);
+    });
 
+    it('should write the new status and a fresh updatedAt to the appointment document', async () => {
       await updateAppointmentStatus('apt_123', 'COMPLETED');
 
-      expect(updateDoc).toHaveBeenCalled();
+      expect(doc).toHaveBeenCalledWith(db, 'appointments', 'apt_123');
+      expect(updateDoc).toHaveBeenCalledWith('appointment-ref', {
+        status: 'COMPLETED',
+        updatedAt: 'mocked-timestamp',
+      });
+    });
+
+    it('should mark the payment as paid when the appointment becomes CONFIRMED', async () => {
+      await updateAppointmentStatus('apt_123', 'CONFIRMED');
+
+      expect(updateDoc).toHaveBeenCalledWith(
+        'appointment-ref',
+        expect.objectContaining({ status: 'CONFIRMED', paymentStatus: 'paid' })
+      );
+    });
+
+    it('should store the payment id as paymentId and stripePaymentIntentId when it is given', async () => {
+      await updateAppointmentStatus('apt_123', 'CONFIRMED', 'pi_999');
+
+      expect(updateDoc).toHaveBeenCalledWith(
+        'appointment-ref',
+        expect.objectContaining({ paymentId: 'pi_999', stripePaymentIntentId: 'pi_999' })
+      );
+    });
+
+    it('should leave paymentStatus untouched for statuses other than CONFIRMED', async () => {
+      await updateAppointmentStatus('apt_123', 'IN_SESSION');
+
+      const payload = vi.mocked(updateDoc).mock.calls[0][1] as unknown as Record<string, unknown>;
+      expect(payload).not.toHaveProperty('paymentStatus');
     });
   });
 
   describe('Helpers (isAppointmentUpcoming & isAppointmentPast)', () => {
     beforeEach(() => {
       vi.useFakeTimers();
-      //27. maj 2026 ob 12:00
+      // 27. maj 2026 ob 12:00
       vi.setSystemTime(new Date('2026-05-27T12:00:00'));
     });
 

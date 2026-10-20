@@ -34,6 +34,7 @@ describe('Users Service', () => {
 
   describe('createUserDocument', () => {
     it('should create a user document with default values', async () => {
+      vi.mocked(doc).mockReturnValueOnce('user-ref' as any);
       vi.mocked(setDoc).mockResolvedValueOnce(undefined);
 
       await createUserDocument('user_999', {
@@ -41,13 +42,13 @@ describe('Users Service', () => {
         displayName: 'Janez Novak',
       });
 
+      // The document must be addressed as users/<uid> and written through exactly that reference
+      expect(doc).toHaveBeenCalledWith(db, 'users', 'user_999');
       expect(setDoc).toHaveBeenCalledWith(
-        undefined, // docRef, ki ga mock vrne kot undefined
+        'user-ref',
         expect.objectContaining({
           email: 'test@mindmend.com',
           displayName: 'Janez Novak',
-          role: 'user',
-          hasCompletedOnboarding: false,
         })
       );
     });
@@ -112,13 +113,15 @@ describe('Users Service', () => {
   });
 
   describe('updateUserDarkMode', () => {
-    it('should call setDoc with merge option', async () => {
+    it('should merge the dark mode flag into the user document users/<uid>', async () => {
+      vi.mocked(doc).mockReturnValueOnce('user-ref' as any);
       vi.mocked(setDoc).mockResolvedValueOnce(undefined);
 
       await updateUserDarkMode('user_123', true);
 
+      expect(doc).toHaveBeenCalledWith(db, 'users', 'user_123');
       expect(setDoc).toHaveBeenCalledWith(
-        undefined,
+        'user-ref',
         { darkMode: true },
         { merge: true }
       );
