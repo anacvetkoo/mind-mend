@@ -316,25 +316,6 @@ To niso rezultati testov, ampak hipoteze iz branja kode, ki jih mora izvedba pot
 
 
 
-## 9. Predloga poročila o napaki in viri
-
-Za vsako odstopanje od pričakovanega rezultata se izpolni eno poročilo po spodnji predlogi (Incident Report po ISO/IEC/IEEE 29119-3).
-
-### 9.1 Predloga poročila o napaki
-
-| Polje | Vsebina |
-| --- | --- |
-| ID napake | BUG-001, BUG-002, ... |
-| Naslov | kratek opis, kaj ne deluje |
-| Scenarij in korak | npr. TS-02, korak 11 |
-| Poročevalec in datum | ime, datum in ura |
-| Okolje | brskalnik, različica, časovni pas, račun |
-| Koraki za ponovitev | oštevilčen seznam |
-| Pričakovani rezultat | iz tabele postopka |
-| Dejanski rezultat | kaj se je zgodilo, s posnetkom zaslona |
-| Resnost | Kritična, Visoka, Srednja, Nizka (razdelek 3.5) |
-| Status | Odprta, V popravljanju, Popravljena, Zavrnjena |
-| Odgovorna oseba za popravek | ime |
 
 
 
