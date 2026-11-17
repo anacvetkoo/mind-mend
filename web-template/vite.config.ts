@@ -1,4 +1,4 @@
-import { defineConfig } from 'vitest/config'
+import { defineConfig, configDefaults } from 'vitest/config'
 import path from 'path'
 import tailwindcss from '@tailwindcss/vite'
 import react from '@vitejs/plugin-react'
@@ -38,6 +38,7 @@ export default defineConfig({
   test: {
     globals: true,
     environment: 'jsdom',
+    exclude: [...configDefaults.exclude, 'e2e/**'],
     alias: {
       '@': path.resolve(__dirname, './src'),
     },
