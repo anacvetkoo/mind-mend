@@ -37,10 +37,10 @@ jobs:
 
     - name: Run Unit Tests with Coverage
       run: npm run test:coverage
-      # Brez continue-on-error! Neuspešen test tukaj ustreli in ustavi cevovod.
+      # neuspešen test ustavi cevovod
 
     - name: Upload coverage report
-      if: always() # Izvede se tudi, če testi padejo, da lahko vidite poročilo
+      if: always()
       uses: actions/upload-artifact@v4
       with:
         name: coverage-report
