@@ -1,25 +1,22 @@
-#!/usr/bin/env bash
-# Namerna napaka: preveri, ali avtomatski test zazna okvaro v aplikaciji.
-# Napaka: v DailyCheckIn.tsx gumb Next ne bi bil več onemogočen brez odgovora
-# (funkcija canProceed vedno vrne true). Pričakovano: TS-01-B pade.
-# Zagon (iz mape web-template):  bash e2e/inject-fault.sh
+# Namerna napaka: v LoginScreen.tsx očka za prikaz gesla ne dela
 set -u
 cd "$(dirname "$0")/.."
 
-FILE="src/app/components/screens/DailyCheckIn.tsx"
+FILE="src/app/components/screens/LoginScreen.tsx"
 BACKUP="$(mktemp)"
 cp "$FILE" "$BACKUP"
-trap 'cp "$BACKUP" "$FILE"; rm -f "$BACKUP"' EXIT   # datoteko vedno povrnemo
+trap 'cp "$BACKUP" "$FILE"; rm -f "$BACKUP"' EXIT 
 
-RUN=(npx playwright test ts01-dnevna-prijava.spec.ts -g "TS-01-B" --reporter=line)
+RUN=(npx playwright test 00-prijava-brez-zaledja.spec.ts -g "geslo je privzeto skrito" --reporter=line)
 
 echo "== 1. Brez napake (pričakovano: test uspe)"
 "${RUN[@]}"; BEFORE=$?
 
 echo "== 2. Vnos napake"
-sed -i "s/return answer !== undefined \&\& answer !== '';/return true; \/\/ NAMERNA NAPAKA/" "$FILE"
+sed -i.bak "s/type={showPassword ? 'text' : 'password'}/type=\"password\" \/\/ NAMERNA NAPAKA/" "$FILE"
+rm -f "$FILE.bak"
 if cmp -s "$FILE" "$BACKUP"; then echo "Napake ni bilo mogoče vnesti (vrstica ni najdena)"; exit 2; fi
-git --no-pager diff --no-index --stat "$BACKUP" "$FILE" | tail -1
+diff "$BACKUP" "$FILE"
 
 echo "== 3. Z napako (pričakovano: test pade)"
 "${RUN[@]}"; AFTER=$?
