@@ -34,6 +34,8 @@
   },
   "private": true,
   "devDependencies": {
+    "@playwright/test": "^1.65.1",
+    "@types/node": "^26.6.6",
     "@types/react": "~19.1.10",
     "typescript": "~5.9.2"
   }

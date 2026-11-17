@@ -137,7 +137,7 @@ describe('completeUserOnboarding', () => {
     });
  
     // Known weakness: a blank name is saved as an empty displayName and overwrites the existing one.
-    // Remove `.fails` once a blank name is skipped.
+    // Remove `.fails` once a blank name is skipped. --> da se bojo prazna imena ignorirala
     it.fails('does not overwrite the display name with an empty string', async () => {
       await completeUserOnboarding('user_1', { name: '   ' });
  

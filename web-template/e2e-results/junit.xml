@@ -1,0 +1,64 @@
+<testsuites id="" name="" tests="17" failures="0" skipped="3" errors="0" time="68.40651799999999">
+<testsuite name="00-prijava-brez-zaledja.spec.ts" timestamp="2026-11-17T17:40:52.732Z" hostname="chromium" tests="5" failures="0" skipped="0" time="5.875" errors="0">
+<testcase name="TC-00 Prijavni zaslon (brez zaledja) › prikaže obrazec za prijavo" classname="00-prijava-brez-zaledja.spec.ts" time="1.577">
+</testcase>
+<testcase name="TC-00 Prijavni zaslon (brez zaledja) › geslo je privzeto skrito in ga je mogoče pokazati" classname="00-prijava-brez-zaledja.spec.ts" time="0.877">
+</testcase>
+<testcase name="TC-00 Prijavni zaslon (brez zaledja) › prazen obrazec se ne odda (obvezni polji)" classname="00-prijava-brez-zaledja.spec.ts" time="0.87">
+</testcase>
+<testcase name="TC-00 Prijavni zaslon (brez zaledja) › pozabljeno geslo: prazno polje pokaže napako" classname="00-prijava-brez-zaledja.spec.ts" time="1.688">
+</testcase>
+<testcase name="TC-00 Prijavni zaslon (brez zaledja) › povezava Sign up odpre izbiro vloge" classname="00-prijava-brez-zaledja.spec.ts" time="0.863">
+</testcase>
+</testsuite>
+<testsuite name="ts01-dnevna-prijava.spec.ts" timestamp="2026-11-17T17:40:52.732Z" hostname="chromium" tests="4" failures="0" skipped="3" time="24.64" errors="0">
+<testcase name="TS-01 Dnevna prijava › TS-01-A: uspešna oddaja vseh 10 vprašanj" classname="ts01-dnevna-prijava.spec.ts" time="17.032">
+</testcase>
+<testcase name="TS-01 Dnevna prijava › TS-01-B: Next je onemogočen, dokler ni odgovora" classname="ts01-dnevna-prijava.spec.ts">
+<properties>
+<property name="skip" value="Dnevna prijava je danes že oddana (kartica ni prikazana)">
+</property>
+</properties>
+<skipped>
+</skipped>
+</testcase>
+<testcase name="TS-01 Dnevna prijava › TS-01-C: Back ohrani prejšnji odgovor" classname="ts01-dnevna-prijava.spec.ts">
+<properties>
+<property name="skip" value="Dnevna prijava je danes že oddana (kartica ni prikazana)">
+</property>
+</properties>
+<skipped>
+</skipped>
+</testcase>
+<testcase name="TS-01 Dnevna prijava › TS-01-D: zaprtje zaslona prekine prijavo" classname="ts01-dnevna-prijava.spec.ts">
+<properties>
+<property name="skip" value="Dnevna prijava je danes že oddana (kartica ni prikazana)">
+</property>
+</properties>
+<skipped>
+</skipped>
+</testcase>
+</testsuite>
+<testsuite name="ts02-terapevt-doda-vsebino.spec.ts" timestamp="2026-11-17T17:40:52.732Z" hostname="chromium" tests="3" failures="0" skipped="0" time="10.157" errors="0">
+<testcase name="TS-02 Terapevt doda vsebino s koraki › TS-02-A: objava vsebine z 3 koraki se pojavi na seznamu" classname="ts02-terapevt-doda-vsebino.spec.ts" time="4.037">
+</testcase>
+<testcase name="TS-02 Terapevt doda vsebino s koraki › TS-02-B: brez naslova vsebine ni mogoče objaviti" classname="ts02-terapevt-doda-vsebino.spec.ts" time="2.593">
+</testcase>
+<testcase name="TS-02 Terapevt doda vsebino s koraki › TS-02-C: brez trajanja vsebine s koraki ni mogoče objaviti" classname="ts02-terapevt-doda-vsebino.spec.ts" time="3.527">
+</testcase>
+</testsuite>
+<testsuite name="ts03-uporabnik-vsebina.spec.ts" timestamp="2026-11-17T17:40:52.732Z" hostname="chromium" tests="4" failures="0" skipped="0" time="21.701" errors="0">
+<testcase name="TS-03 Uporabnik poišče in opravi vsebino › TS-03-A: koraki se prikažejo in sejo je mogoče zaključiti" classname="ts03-uporabnik-vsebina.spec.ts" time="5.73">
+</testcase>
+<testcase name="TS-03 Uporabnik poišče in opravi vsebino › TS-03-B: Previous se vrne na prejšnji korak" classname="ts03-uporabnik-vsebina.spec.ts" time="4.668">
+</testcase>
+<testcase name="TS-03 Uporabnik poišče in opravi vsebino › TS-03-C: všeček se vklopi in izklopi" classname="ts03-uporabnik-vsebina.spec.ts" time="4.767">
+</testcase>
+<testcase name="TS-03 Uporabnik poišče in opravi vsebino › TS-03-D: vsebino je mogoče shraniti" classname="ts03-uporabnik-vsebina.spec.ts" time="6.536">
+</testcase>
+</testsuite>
+<testsuite name="ts99-ciscenje.spec.ts" timestamp="2026-11-17T17:40:52.732Z" hostname="chromium" tests="1" failures="0" skipped="0" time="4.027" errors="0">
+<testcase name="čiščenje: izbriše E2E vsebino" classname="ts99-ciscenje.spec.ts" time="4.027">
+</testcase>
+</testsuite>
+</testsuites>
